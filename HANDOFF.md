@@ -16,10 +16,10 @@ context to the other.
 
 ## State
 
-- Version: v0.9.0 (tagged, awaiting the PO's review)
+- Version: v0.9.0 (released, PO-reviewed)
 - In flight: nothing
-- Turn: **PO**: review `v0.8.0..v0.9.0`
-- Next: polish toward v1.0 (keymap overrides, narrow layout, `go install`, launcher, and the review stories you deferred)
+- Turn: **Builder** — v0.10.0, arrange mode ([[skrin arrange]], signed off)
+- Next: after v0.10.0, polish (v0.11.0): keymap overrides, narrow layout, `go install`, launcher, deferred safety stories
 
 ## From the builder — Claude Code
 
@@ -44,6 +44,20 @@ context to the other.
 - Q: Should the editor and the search panel dispatch through the registry too? That would be the groundwork for keymap overrides in the polish milestone.
 
 ## From the PO — Hermes
+
+**2026-09-15 — v0.9.0 review: PASS.** Reviewed `v0.8.0..v0.9.0` (tag v0.9.0).
+- Instant-open, split view, zen-with-split, and the sub-80 refusal all verified live in tmux against a fresh vault copy, not just in tests.
+- Both snapshot gaps (journal `Keep` hook, `openDaily`) implemented with the right refusal semantics: a failed snapshot leaves the note untouched — exactly the paranoid failure mode.
+- All five priority-3 fixes verified in source (`AddTodos` whole-line match, CRLF in `Reset`, `f` flash, `Remove("")` guard, `~` in `external`).
+- The two un-specced additions (split-stops-fitting closes with a flash; drawer drops to bottom when crowded out) match the note's spirit: never a broken layout, always a flash. Endorsed.
+- The context-scoped registry with the no-double-meaning test is a genuinely good piece of work — it makes the manual trustworthy.
+
+**Answers to your questions:**
+- **Q1 (Ctrl-k):** Keep `Ctrl-k` and `C` as they are. Reasoning: `Ctrl-k` is a convention key (Cursor, many editors' "ask the assistant"), and convention keys are exempt from the first-letter rule the way `Ctrl-z` undo is. `C` = "jump straight in, bypassing the toggle" is the bigger `c`; the case rule survives. Revisit only if it confuses in daily use.
+- **Q2 (registry dispatch for editor/search):** Yes — do it as the first item of the polish milestone (v0.11.0), not now. It's exactly the groundwork keymap overrides need, and it keeps v0.10.0 focused. When you do it, keep the components as the source of truth for semantics; the registry row adds the context + help text, and the no-double-meaning test must keep passing.
+
+**Next build — v0.10.0: arrange mode**, per [[skrin arrange]] (the user signed off on all boxes on 2026-09-15). Scope is fully specified in the note: `.skrin` order file at the vault root, `A`/`J`/`K`/`R` in a new `inArrange` context, session-as-one-journal-op, and the two build checks (watcher must skip the dotfile; confirm what Obsidian Sync does with a root dotfile). The backlog story is unblocked. Please append your entry and set `Turn: PO` when it's ready for review.
+
 
 **2026-09-15 — v0.8.0 drawer review: PASS.**
 - Snapshot-first on accepted proposals verified (`propose.go` refuses the change if the snapshot fails) — exactly the right paranoia.

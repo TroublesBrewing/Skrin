@@ -143,6 +143,9 @@ func (m *Model) listPane(w, h int) []string {
 }
 
 func (m *Model) notePane(w, h int) []string {
+	if m.editor != nil {
+		return m.editorPane(w, h)
+	}
 	vis := h - 2
 	var body []string
 	title := ""
@@ -176,6 +179,10 @@ func (m *Model) notePane(w, h int) []string {
 
 func (m *Model) statusLine() string {
 	switch {
+	case m.conflict != nil:
+		return m.conflictLine()
+	case m.editor != nil:
+		return m.editLine()
 	case m.prompt != nil:
 		return m.promptLine()
 	case m.confirm != nil:
@@ -193,7 +200,7 @@ func (m *Model) statusLine() string {
 	if m.isNote && len(m.lines) > 0 {
 		left += m.st.muted.Render("  " + m.scrollInfo())
 	}
-	right := m.st.muted.Render("n new · d delete · t today · U undo · q quit")
+	right := m.st.muted.Render("e edit · n new · d delete · t today · q quit")
 	if m.flash != "" {
 		right = m.st.flash.Render(m.flash)
 	}

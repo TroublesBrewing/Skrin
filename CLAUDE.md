@@ -22,8 +22,10 @@ Go is pinned in `.mise.toml`. If `go` isn't on PATH, prefix commands with `mise 
 - `internal/daily`: the daily-note path, moment.js date formatting, template variables and todo rollover, all mirroring Obsidian and the Rollover Daily Todos plugin.
 - `internal/theme`: builds the palette from Omarchy's `~/.local/state/omarchy/current/theme/colors.toml`, with an optional `skrin.toml` override. It live-reloads by watching `theme.name`.
 - `internal/markdown`: a line-oriented renderer. Every display `Line` carries its source line (`Src`) and heading level. Heading jumps and "open at line" depend on this, so keep it 1:n.
+- `internal/editor`: the built-in editor. `editor.go` has the buffer, keys, vim mode and soft-wrap layout. `view.go` has highlighting and rendering. It returns `Save` / `Close` actions and never touches disk itself.
+- `internal/snapshot`: per-note version stacks (undo/redo) under `$XDG_STATE_HOME/skrin/snapshots`, keyed by note path so they can follow moves. Every write Skrin makes over a note's previous content snapshots it first. That's what makes `u` safe.
 - `internal/logo`: the embedded official Obsidian icon (`assets/obsidian-logo.png`), drawn with half-block characters.
-- `internal/ui`: the root model (`model.go`), rendering (`view.go`), file actions and marks (`ops.go`), the name prompt, delete confirm and move picker (`modal.go`), the folder tree, and the keymap registry (`keys.go`). Every key goes through the registry, because the `?` manual will be generated from it.
+- `internal/ui`: the root model (`model.go`), rendering (`view.go`), file actions and marks (`ops.go`), editing, the save-conflict flow, `E` and `u` (`edit.go`), the name prompt, delete confirm and move picker (`modal.go`), the folder tree, and the keymap registry (`keys.go`). Every key goes through the registry, because the `?` manual will be generated from it.
 
 ## Releases
 
@@ -39,5 +41,5 @@ Milestone N of the plan ships as v0.N.0, and fixes in between bump the patch num
 
 - Test against the copy `~/Work/tries/vault-copy`, never the real vault.
 - Never write inside `.obsidian/`.
-- Tests and manual runs that delete must set `XDG_DATA_HOME` to a temp dir, so nothing lands in the user's real trash.
+- Tests and manual runs must set `XDG_DATA_HOME` and `XDG_STATE_HOME` to temp dirs, so nothing lands in the user's real trash or snapshots.
 - The view must fill the terminal exactly. Use the `fit`, `spread` and `box` helpers in `view.go`.

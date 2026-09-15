@@ -2,6 +2,27 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 8, once Skrin has held up in daily use.
 
+## v0.3.0 — 2026-09-15
+
+Milestone 3: editing.
+
+- `e` edits the note right in the note pane.
+  - The editor opens at the line you were reading, and closing it brings you back there.
+  - It soft-wraps and highlights markdown lightly.
+  - Enter continues lists and checklists; Enter on an empty item ends the list.
+  - Tab / Shift-Tab indent list items.
+  - `Ctrl-z` / `Ctrl-y` undo and redo keystrokes.
+  - `Ctrl-s` saves, and `Esc` saves and leaves.
+- `[editor] vim = true` gives the editor vim-style keys: `hjkl`, `w b e`, `0 ^ $`, `gg G`, `i a I A o O`, `x dd yy p P D J`, `u`, `Ctrl-r`.
+- `E` opens the note in your own editor (`[editor] external`, else `$VISUAL`, `$EDITOR`, nvim) and Skrin waits until you're done.
+- `u` restores a note to how it was before its last edit, and `Ctrl-r` takes that back.
+  - This works for edits in Skrin and in `E`, and survives restarts.
+  - Earlier versions are kept in `~/.local/state/skrin/snapshots/`, 20 per note, and follow renames and moves.
+- Saving checks whether the note changed on disk while you were editing (Obsidian, Sync, another editor). If it did, you choose:
+  - `m` keeps yours, `t` takes theirs, `d` shows the difference.
+  - Either way the other version is kept, so `u` brings it back.
+- A new note (`n`) opens straight in the editor.
+
 ## v0.2.0 — 2026-09-15
 
 Milestone 2: file and folder operations, and daily notes.

@@ -65,7 +65,9 @@ func run(vaultArg string) error {
 		pal = theme.Default()
 	}
 	m, err := ui.New(v, pal, ui.Options{
-		RolloverTodos: cfg.RolloverTodos(),
+		RolloverTodos:  cfg.RolloverTodos(),
+		Vim:            cfg.Editor.Vim,
+		ExternalEditor: cfg.Editor.External,
 		ObsidianOpen: func() bool {
 			if !obsidian.Running() {
 				return false

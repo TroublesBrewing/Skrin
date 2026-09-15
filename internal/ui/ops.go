@@ -212,7 +212,8 @@ func (m *Model) createNote(input string) error {
 		return err
 	}
 	m.reveal(rel)
-	m.flash = "Created " + rel + " (editing arrives in v0.3)"
+	m.openEditor(rel)
+	m.flash = "Created " + rel
 	return nil
 }
 
@@ -259,6 +260,7 @@ func (m *Model) rename(target, input string) error {
 		}
 		return err
 	}
+	_ = m.snaps.Move(target, to) // snapshots only help u; losing them loses no note text
 	m.journal.Record(vault.Op{
 		Desc:  "rename " + path.Base(target) + " to " + name,
 		Steps: []vault.Step{{Kind: vault.StepMoved, Rel: to, From: target}},
@@ -340,6 +342,7 @@ func (m *Model) moveTo(dest string, srcs []string) {
 		}
 		steps = append(steps, vault.Step{Kind: vault.StepMoved, Rel: mv.to, From: mv.from})
 		moved = append(moved, mv.from)
+		_ = m.snaps.Move(mv.from, mv.to)
 	}
 	m.journal.Record(vault.Op{Desc: "move " + describe(moved) + " to " + m.folderLabel(dest), Steps: steps})
 	m.marks = map[string]bool{}
@@ -420,6 +423,11 @@ func (m *Model) undoOp() {
 	if !ok {
 		m.flash = "Nothing to undo"
 		return
+	}
+	for _, s := range op.Steps {
+		if s.Kind == vault.StepMoved && m.vault.Exists(s.From) {
+			_ = m.snaps.Move(s.Rel, s.From)
+		}
 	}
 	m.refresh(m.listCur)
 	// Put the cursor on what came back, if it's in this folder.

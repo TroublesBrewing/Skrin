@@ -20,6 +20,10 @@ type Config struct {
 	Daily struct {
 		RolloverTodos *bool `toml:"rollover_todos"` // unset means on
 	} `toml:"daily"`
+	Editor struct {
+		Vim      bool   `toml:"vim"`      // vim-style keys in the built-in editor
+		External string `toml:"external"` // command for E; default $VISUAL, $EDITOR, nvim
+	} `toml:"editor"`
 }
 
 // RolloverTodos reports whether `t` carries unfinished todos into a new

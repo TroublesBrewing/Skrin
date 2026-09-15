@@ -10,8 +10,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/lurioso/skrin/internal/editor"
 	"github.com/lurioso/skrin/internal/logo"
 	"github.com/lurioso/skrin/internal/markdown"
+	"github.com/lurioso/skrin/internal/snapshot"
 	"github.com/lurioso/skrin/internal/theme"
 	"github.com/lurioso/skrin/internal/vault"
 )
@@ -44,6 +46,11 @@ type Options struct {
 	// ObsidianOpen reports whether Obsidian desktop has this vault open. Its
 	// Rollover plugin then does the rollover, so Skrin must not.
 	ObsidianOpen func() bool
+	// Vim gives the built-in editor vim-style keys.
+	Vim bool
+	// ExternalEditor is the command E runs; empty means $VISUAL, $EDITOR,
+	// then nvim.
+	ExternalEditor string
 	// Now is the clock; tests pin it.
 	Now func() time.Time
 }
@@ -51,6 +58,7 @@ type Options struct {
 // Model is the root Bubble Tea model.
 type Model struct {
 	vault *vault.Vault
+	snaps *snapshot.Store
 	pal   theme.Palette
 	st    styles
 	keys  map[string]action
@@ -77,10 +85,15 @@ type Model struct {
 	lines     []markdown.Line
 	renderedW int // width lines were rendered at; 0 forces a re-render
 	noteOff   int
+	jumpSrc   int // after the next render, scroll to this source line; -1 for none
 
 	journal vault.Journal
 	marks   map[string]bool // marked items by vault path; may span folders
 	visual  *visualRange
+
+	editor   *editor.Editor // the built-in editor, while a note is open in it
+	edit     editSession
+	conflict *conflict
 
 	// At most one of these is open; it takes all keys while it is.
 	prompt  *prompt
@@ -98,7 +111,10 @@ func New(v *vault.Vault, pal theme.Palette, opts Options) (*Model, error) {
 	if opts.ObsidianOpen == nil {
 		opts.ObsidianOpen = func() bool { return false }
 	}
-	m := &Model{vault: v, keys: keymap(), tree: newTree(), opts: opts, marks: map[string]bool{}}
+	m := &Model{
+		vault: v, snaps: snapshot.Open(v.Root), keys: keymap(), tree: newTree(),
+		opts: opts, marks: map[string]bool{}, jumpSrc: -1,
+	}
 	m.setPalette(pal)
 	if lines, w, err := logo.HalfBlock(headerHeight); err == nil {
 		m.logo, m.logoW = lines, w
@@ -115,6 +131,7 @@ func (m *Model) Flash(s string) { m.flash = s }
 func (m *Model) Init() tea.Cmd { return nil }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
@@ -126,9 +143,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if err := m.reload(); err != nil {
 			m.flash = "refresh failed: " + err.Error()
 		}
+	case externalDoneMsg:
+		m.externalDone(msg)
+	case tea.PasteMsg:
+		m.paste(msg.Content)
 	case tea.KeyPressMsg:
 		m.flash = ""
 		switch {
+		case m.conflict != nil:
+			m.conflictKey(msg)
+		case m.editor != nil:
+			m.editorKey(msg)
 		case m.prompt != nil:
 			m.promptKey(msg)
 		case m.confirm != nil:
@@ -140,20 +165,23 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if act == actQuit {
 					return m, tea.Quit
 				}
-				m.do(act)
+				cmd = m.do(act)
 			}
 		}
 	}
 	m.settle()
-	return m, nil
+	return m, cmd
 }
 
 func (m *Model) setPalette(p theme.Palette) {
 	m.pal = p
 	m.st = newStyles(p)
+	if m.editor != nil {
+		m.editor.SetPalette(p)
+	}
 }
 
-func (m *Model) do(a action) {
+func (m *Model) do(a action) tea.Cmd {
 	switch a {
 	case actNextPane:
 		m.focus = (m.focus + 1) % 3
@@ -181,6 +209,14 @@ func (m *Model) do(a action) {
 		m.openDaily()
 	case actEscape:
 		m.escape()
+	case actEdit:
+		m.startEdit()
+	case actEditExternal:
+		return m.startExternal()
+	case actUndoEdit:
+		m.restoreVersion(false)
+	case actRedoEdit:
+		m.restoreVersion(true)
 	default:
 		switch m.focus {
 		case paneTree:
@@ -191,6 +227,7 @@ func (m *Model) do(a action) {
 			m.noteAction(a)
 		}
 	}
+	return nil
 }
 
 func (m *Model) treeAction(a action) {
@@ -424,11 +461,23 @@ func (m *Model) settle() {
 		return
 	}
 	l := m.layout()
+	vis := l.bodyH - 2
+	if m.editor != nil {
+		m.editor.SetSize(l.noteTextW(), vis)
+	}
 	if m.isNote && m.noteErr == nil && l.noteTextW() != m.renderedW {
 		m.lines = markdown.Render(m.noteSrc, markdown.Options{Width: l.noteTextW(), Palette: m.pal, Resolve: m.resolve})
 		m.renderedW = l.noteTextW()
 	}
-	vis := l.bodyH - 2
+	if m.jumpSrc >= 0 && m.editor == nil {
+		for i, ln := range m.lines {
+			if ln.Src >= m.jumpSrc {
+				m.noteOff = i
+				break
+			}
+		}
+		m.jumpSrc = -1
+	}
 	m.tree.off = scrollTo(m.tree.cur, m.tree.off, vis, len(m.tree.rows))
 	m.listOff = scrollTo(m.listCur, m.listOff, vis, len(m.entries))
 	m.noteOff = clamp(m.noteOff, 0, max(len(m.lines)-vis, 0))

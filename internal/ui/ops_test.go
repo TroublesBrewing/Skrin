@@ -22,11 +22,15 @@ func TestCreateNoteInCurrentFolderAndUndo(t *testing.T) {
 	if m.prompt != nil || !m.vault.Exists("Filosofi/Ny tanke.md") {
 		t.Fatalf("note not created (prompt error %q)", m.prompt.err)
 	}
+	if m.editor == nil || m.edit.rel != "Filosofi/Ny tanke.md" {
+		t.Fatal("a new note should open in the editor")
+	}
+	press(m, "esc")
 	if e, _ := m.selected(); e.Rel != "Filosofi/Ny tanke.md" {
 		t.Errorf("cursor on %q, want the new note", e.Rel)
 	}
 
-	press(m, "n", "enter", "n", "enter")
+	press(m, "n", "enter", "esc", "n", "enter", "esc")
 	if !m.vault.Exists("Filosofi/Untitled.md") || !m.vault.Exists("Filosofi/Untitled 1.md") {
 		t.Error("empty names should become Untitled, Untitled 1")
 	}
@@ -45,7 +49,7 @@ func TestNewNoteInNewSubfolders(t *testing.T) {
 	if !m.vault.Exists("Filosofi/Stoa/Seneca/Brev.md") || m.cwd != "Filosofi/Stoa/Seneca" {
 		t.Fatalf("nested create: cwd %q", m.cwd)
 	}
-	press(m, "U")
+	press(m, "esc", "U")
 	if m.vault.Exists("Filosofi/Stoa") {
 		t.Error("undo should remove the folders it created too")
 	}

@@ -30,6 +30,10 @@ const (
 	actEscape
 	actUndoOp
 	actDaily
+	actEdit
+	actEditExternal
+	actUndoEdit
+	actRedoEdit
 	actQuit
 )
 
@@ -68,6 +72,10 @@ var defaultBindings = []binding{
 	{actEscape, []string{"esc"}, "clear marks"},
 	{actUndoOp, []string{"U"}, "undo the last file operation"},
 	{actDaily, []string{"t"}, "open or create today's daily note"},
+	{actEdit, []string{"e"}, "edit the note in Skrin"},
+	{actEditExternal, []string{"E"}, "edit the note in $EDITOR"},
+	{actUndoEdit, []string{"u"}, "undo the note's last edit"},
+	{actRedoEdit, []string{"ctrl+r"}, "redo it"},
 	{actQuit, []string{"q", "ctrl+c"}, "quit"},
 }
 

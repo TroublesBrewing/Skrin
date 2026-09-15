@@ -11,6 +11,7 @@ type styles struct {
 	border, borderFocus, title, titleFocus        lipgloss.Style
 	selFocus, selBlur, marked, cursor             lipgloss.Style
 	pill, dangerPill                              lipgloss.Style
+	diffAdd, diffDel, diffHunk                    lipgloss.Style
 }
 
 func newStyles(p theme.Palette) styles {
@@ -33,5 +34,8 @@ func newStyles(p theme.Palette) styles {
 		cursor:      s().Background(p.Foreground).Foreground(p.Background),
 		pill:        s().Background(p.Accent).Foreground(p.Background).Bold(true),
 		dangerPill:  s().Background(p.Red).Foreground(p.Background).Bold(true),
+		diffAdd:     s().Foreground(p.Green),
+		diffDel:     s().Foreground(p.Red),
+		diffHunk:    s().Foreground(p.Cyan),
 	}
 }

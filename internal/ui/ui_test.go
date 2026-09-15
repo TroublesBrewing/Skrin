@@ -35,7 +35,8 @@ func newTestModel(t *testing.T) *Model {
 
 func newTestModelWith(t *testing.T, opts Options) *Model {
 	t.Helper()
-	t.Setenv("XDG_DATA_HOME", t.TempDir()) // keep the real trash out of it
+	t.Setenv("XDG_DATA_HOME", t.TempDir())  // keep the real trash out of it
+	t.Setenv("XDG_STATE_HOME", t.TempDir()) // and the real snapshots
 	root := t.TempDir()
 	for f, body := range fixture {
 		p := filepath.Join(root, filepath.FromSlash(f))

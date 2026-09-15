@@ -23,6 +23,13 @@ func (in *lineInput) set(s string) {
 
 func (in *lineInput) value() string { return string(in.runes) }
 
+// insert types s at the cursor. Pasted newlines become spaces.
+func (in *lineInput) insert(s string) {
+	r := []rune(strings.NewReplacer("\r\n", " ", "\n", " ").Replace(s))
+	in.runes = append(in.runes[:in.cur], append(r, in.runes[in.cur:]...)...)
+	in.cur += len(r)
+}
+
 // handle applies an editing key and reports whether it used it.
 func (in *lineInput) handle(k tea.KeyPressMsg) bool {
 	switch k.String() {

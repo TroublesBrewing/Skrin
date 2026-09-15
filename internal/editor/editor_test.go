@@ -223,6 +223,44 @@ func TestCursorPos(t *testing.T) {
 	}
 }
 
+func TestCtrlLMakesAndTicksTodos(t *testing.T) {
+	e := open("")
+	keys(e, "ctrl+l")
+	typ(e, "buy milk")
+	if e.Text() != "- [ ] buy milk" {
+		t.Fatalf("empty line: %q", e.Text())
+	}
+	keys(e, "ctrl+l")
+	if e.Text() != "- [x] buy milk" {
+		t.Errorf("tick off: %q", e.Text())
+	}
+	keys(e, "ctrl+l")
+	if e.Text() != "- [ ] buy milk" {
+		t.Errorf("tick back on: %q", e.Text())
+	}
+	for in, want := range map[string]string{
+		"call mum":      "- [ ] call mum",
+		"\t- nested":    "\t- [ ] nested",
+		"1. first":      "1. [ ] first",
+		"  - [-] maybe": "  - [ ] maybe",
+	} {
+		e := open(in)
+		keys(e, "ctrl+l")
+		if e.Text() != want {
+			t.Errorf("ctrl+l on %q = %q, want %q", in, e.Text(), want)
+		}
+	}
+	e = open("call mum")
+	keys(e, "end", "ctrl+l")
+	if e.col != len("- [ ] call mum") {
+		t.Errorf("cursor should stay at the end of the text: %d", e.col)
+	}
+	keys(e, "ctrl+z")
+	if e.Text() != "call mum" {
+		t.Errorf("ctrl+z: %q", e.Text())
+	}
+}
+
 func TestEscAndSaveActions(t *testing.T) {
 	e := open("x")
 	if e.HandleKey(key("ctrl+s")) != Save || e.HandleKey(key("esc")) != Close {

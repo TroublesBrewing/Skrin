@@ -2,6 +2,13 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 8, once Skrin has held up in daily use.
 
+## v0.5.2 — 2026-09-15
+
+- `Ctrl-l` in the editor, the same key as Obsidian's "Toggle checkbox", from the backlog:
+  - An empty or plain line becomes `- [ ] …`, with the cursor ready to type.
+  - A list item becomes a to-do.
+  - A to-do is ticked off, or back on.
+
 ## v0.5.1 — 2026-09-15
 
 Fixes from the backlog note (`skrin backlog.md` in the vault).

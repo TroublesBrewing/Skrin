@@ -277,7 +277,7 @@ func (m *Model) diffLine(l string) string {
 }
 
 func (m *Model) editLine() string {
-	mode, hint := " EDIT ", "ctrl+s save · esc done"
+	mode, hint := " EDIT ", "ctrl+s save · ctrl+l to-do · esc done"
 	if m.opts.Vim {
 		mode, hint = " INSERT ", "esc normal mode"
 		if m.editor.Mode() == editor.Normal {

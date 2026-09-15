@@ -162,6 +162,13 @@ func (e *Editor) HandleKey(k tea.KeyPressMsg) Action {
 		return Save
 	case "ctrl+c":
 		return Close
+	case "ctrl+l":
+		e.push("todo")
+		e.toggleTodo()
+		e.goal = -1
+		e.clampNormal()
+		e.scroll()
+		return None
 	}
 	if e.vim && e.mode == Normal {
 		return e.normalKey(k)
@@ -465,6 +472,34 @@ func (e *Editor) insertLines(at int, lines []string) {
 }
 
 var listRE = regexp.MustCompile(`^(\s*)([-*+]|(\d{1,9})([.)]))( \[.\])? `)
+
+var (
+	taskRE   = regexp.MustCompile(`^(\s*)([-*+]|\d{1,9}[.)]) \[(.)\]`)
+	bulletRE = regexp.MustCompile(`^\s*([-*+]|\d{1,9}[.)]) `)
+)
+
+// toggleTodo is Ctrl-l, like Obsidian's "Toggle checkbox": a to-do is
+// ticked off (or back on), a list item becomes a to-do, and any other line
+// becomes one, "- [ ] " in front.
+func (e *Editor) toggleTodo() {
+	line := string(e.lines[e.row])
+	var next string
+	if m := taskRE.FindStringSubmatchIndex(line); m != nil {
+		mark := "x"
+		if line[m[6]:m[7]] != " " {
+			mark = " "
+		}
+		next = line[:m[6]] + mark + line[m[7]:]
+	} else if m := bulletRE.FindStringIndex(line); m != nil {
+		next = line[:m[1]] + "[ ] " + line[m[1]:]
+	} else {
+		indent := leadingSpace(e.lines[e.row])
+		next = indent + "- [ ] " + line[len(indent):]
+	}
+	shift := utf8.RuneCountInString(next) - len(e.lines[e.row])
+	e.lines[e.row] = []rune(next)
+	e.col = clamp(e.col+shift, 0, len(e.lines[e.row]))
+}
 
 // newline splits the line. Inside a list item it continues the list, and
 // on an empty item it ends the list instead, as Obsidian does.

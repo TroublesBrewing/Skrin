@@ -83,6 +83,9 @@ func key(k string) tea.KeyPressMsg {
 	case "alt+right":
 		return tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModAlt}
 	}
+	if c, ok := strings.CutPrefix(k, "alt+"); ok {
+		return tea.KeyPressMsg{Code: []rune(c)[0], Mod: tea.ModAlt}
+	}
 	if c, ok := strings.CutPrefix(k, "ctrl+"); ok {
 		return tea.KeyPressMsg{Code: []rune(c)[0], Mod: tea.ModCtrl}
 	}

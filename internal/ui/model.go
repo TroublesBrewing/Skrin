@@ -103,6 +103,11 @@ type Model struct {
 	prompt  *prompt
 	confirm *confirm
 	chooser *chooser
+	search  *searchPanel
+	replace *replacePanel
+
+	lastSearch  *searchPanel  // reopened by the next /
+	lastReplace *replacePanel // and by the next R
 
 	flash string // one-shot status message, cleared by the next key
 }
@@ -161,14 +166,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.editorKey(msg)
 				m.updateCompletion()
 			}
+		case m.confirm != nil:
+			m.confirmKey(msg)
 		case m.hints != nil:
 			m.hintKey(msg)
 		case m.prompt != nil:
 			m.promptKey(msg)
-		case m.confirm != nil:
-			m.confirmKey(msg)
 		case m.chooser != nil:
 			m.chooserKey(msg)
+		case m.search != nil:
+			m.searchKey(msg)
+		case m.replace != nil:
+			m.replaceKey(msg)
 		default:
 			if act, ok := m.keys[msg.String()]; ok {
 				if act == actQuit {
@@ -244,6 +253,12 @@ func (m *Model) do(a action) tea.Cmd {
 		if !m.goBack(true) {
 			m.flash = "Nothing to go forward to"
 		}
+	case actSearch:
+		m.openSearch()
+	case actSwitcher:
+		m.openSwitcher()
+	case actReplace:
+		m.openReplace()
 	default:
 		switch m.focus {
 		case paneTree:

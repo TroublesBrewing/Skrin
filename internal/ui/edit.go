@@ -99,6 +99,12 @@ func (m *Model) paste(s string) {
 	case m.chooser != nil:
 		m.chooser.in.insert(s)
 		m.chooser.filter()
+	case m.search != nil:
+		m.search.in.insert(s)
+		m.runSearch()
+	case m.replace != nil:
+		m.replace.paste(s)
+		m.runReplace()
 	}
 }
 

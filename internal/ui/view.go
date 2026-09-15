@@ -44,6 +44,10 @@ func (m *Model) render() string {
 	switch {
 	case m.chooser != nil:
 		out = m.overlay(out, m.chooserBox())
+	case m.search != nil:
+		out = m.overlay(out, m.searchBox())
+	case m.replace != nil:
+		out = m.overlay(out, m.replaceBox())
 	case m.complete != nil && m.editor != nil:
 		box, x, y := m.completionBox()
 		out = m.overlayAt(out, box, x, y)
@@ -213,7 +217,7 @@ func (m *Model) statusLine() string {
 	if m.isNote && len(m.lines) > 0 {
 		left += m.st.muted.Render("  " + m.scrollInfo())
 	}
-	right := m.st.muted.Render("e edit · f follow · b backlinks · o outline · q quit")
+	right := m.st.muted.Render("/ search · e edit · f follow · b backlinks · q quit")
 	if m.flash != "" {
 		right = m.st.flash.Render(m.flash)
 	}

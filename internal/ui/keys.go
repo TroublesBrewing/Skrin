@@ -41,6 +41,9 @@ const (
 	actPrevHeading
 	actBack
 	actForward
+	actSearch
+	actSwitcher
+	actReplace
 	actQuit
 )
 
@@ -90,6 +93,9 @@ var defaultBindings = []binding{
 	{actPrevHeading, []string{"{"}, "previous heading"},
 	{actBack, []string{"ctrl+o", "alt+left"}, "go back"},
 	{actForward, []string{"ctrl+i", "alt+right"}, "go forward"},
+	{actSearch, []string{"/"}, "search the vault"},
+	{actSwitcher, []string{"ctrl+p"}, "go to a note by name"},
+	{actReplace, []string{"R"}, "search & replace in this note or the vault"},
 	{actQuit, []string{"q", "ctrl+c"}, "quit"},
 }
 

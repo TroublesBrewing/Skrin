@@ -57,6 +57,23 @@ func TestParse(t *testing.T) {
 	}
 }
 
+func TestTagsAndProperties(t *testing.T) {
+	n := parse("---\ntags: [Stoa, \"#filosofi/antik\"]\nstatus: draft\ncreated: 2026-09-15\nempty:\naliases: Porch, Colonnade\n---\n" +
+		"Body #Idea and #nested/tag, `#notcode` and x.com/#frag\n```\n#incode\n```\n")
+	if want := []string{"filosofi/antik", "idea", "nested/tag", "stoa"}; !reflect.DeepEqual(n.tags, want) {
+		t.Errorf("tags = %q, want %q", n.tags, want)
+	}
+	if n.props["status"][0] != "draft" || n.props["created"][0] != "2026-09-15" {
+		t.Errorf("props = %v", n.props)
+	}
+	if _, ok := n.props["empty"]; !ok || len(n.props["empty"]) != 0 {
+		t.Errorf("an empty property should exist with no values: %v", n.props)
+	}
+	if !reflect.DeepEqual(n.aliases, []string{"Porch", "Colonnade"}) {
+		t.Errorf("aliases = %q", n.aliases)
+	}
+}
+
 func TestResolveLikeObsidian(t *testing.T) {
 	x, _ := build(t, map[string]string{
 		"Welcome.md":             "",

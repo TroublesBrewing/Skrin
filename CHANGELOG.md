@@ -2,6 +2,26 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 8, once Skrin has held up in daily use.
 
+## v0.5.0 — 2026-09-15
+
+Milestone 5: search & replace.
+
+- `/` searches the vault as you type. Results are grouped by note, with each matching line shown and the match highlighted. `Enter` opens the note at that line, and the next `/` brings the query back.
+  - `word word` must all appear, in the note or its name.
+  - `"a phrase"`, `-exclude` and `a OR b`.
+  - `#tag` or `tag:tag`, where nested tags count.
+  - `[property]` and `[property:value]`.
+  - `path:` and `file:`.
+  - `Alt-c` matches case.
+- `Ctrl-p` jumps to a note by name or alias. `Enter` on a name that doesn't exist offers to create it.
+- `R` is search & replace, in this note or the whole vault (`Ctrl-t`).
+  - Toggles: case-sensitive (`Alt-c`) and whole words (`Alt-w`). Plain text only.
+  - A live preview shows every match as old→new and marks ⚠ on matches inside `[[links]]`. `Space` skips a match or a whole note.
+  - `Ctrl-s` asks, then replaces.
+  - A note changed on disk since the preview is skipped, not overwritten.
+  - Every changed note gets a snapshot (`u`), and one `U` undoes the whole replace.
+- The index now keeps tags (from the body and the `tags` property), properties as written, and each note's text.
+
 ## v0.4.0 — 2026-09-15
 
 Milestone 4: links and headings.

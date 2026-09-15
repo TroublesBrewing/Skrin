@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/lurioso/skrin/internal/search"
 	"github.com/lurioso/skrin/internal/vault"
 )
 
@@ -43,8 +44,10 @@ type Backlink struct {
 
 type entry struct {
 	note
-	mod  int64
-	size int64
+	content string
+	lines   []string
+	mod     int64
+	size    int64
 }
 
 // Index is the vault's link and heading index.
@@ -84,7 +87,7 @@ func (x *Index) Update(v *vault.Vault) error {
 		if err != nil {
 			continue
 		}
-		notes[f.Rel] = &entry{note: parse(content), mod: mod, size: f.Size}
+		notes[f.Rel] = &entry{note: parse(content), content: content, lines: splitLines(content), mod: mod, size: f.Size}
 	}
 	x.notes, x.paths, x.byName = notes, paths, byName
 	return nil
@@ -106,6 +109,40 @@ func (x *Index) Aliases(rel string) []string {
 		return n.aliases
 	}
 	return nil
+}
+
+// Doc is a note as search sees it.
+func (x *Index) Doc(rel string) (search.Doc, bool) {
+	n := x.notes[rel]
+	if n == nil {
+		return search.Doc{}, false
+	}
+	return search.Doc{Rel: rel, Lines: n.lines, Tags: n.tags, Props: n.props}, true
+}
+
+// Content is a note's text as last read.
+func (x *Index) Content(rel string) (string, bool) {
+	if n := x.notes[rel]; n != nil {
+		return n.content, true
+	}
+	return "", false
+}
+
+// Line is one line of a note's text, or "" when out of range.
+func (x *Index) Line(rel string, i int) string {
+	n := x.notes[rel]
+	if n == nil || i < 0 || i >= len(n.lines) {
+		return ""
+	}
+	return n.lines[i]
+}
+
+func splitLines(s string) []string {
+	lines := strings.Split(s, "\n")
+	for i, l := range lines {
+		lines[i] = strings.TrimSuffix(l, "\r")
+	}
+	return lines
 }
 
 // Headings are a note's headings, in order.

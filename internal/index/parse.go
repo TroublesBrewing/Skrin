@@ -3,7 +3,9 @@ package index
 import (
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
+	"unicode"
 
 	"gopkg.in/yaml.v3"
 )
@@ -14,6 +16,7 @@ var (
 	mdLinkRE   = regexp.MustCompile(`(!?)\[([^\[\]]*)\]\(([^()\s]+)\)`)
 	blockRE    = regexp.MustCompile(`(?:^|\s)\^([A-Za-z0-9-]+)\s*$`)
 	codeSpanRE = regexp.MustCompile("`[^`]*`")
+	tagRE      = regexp.MustCompile(`(?:^|\s)#([\p{L}\p{N}_/-]*[\p{L}_/-][\p{L}\p{N}_/-]*)`)
 )
 
 // note is what the index keeps about one markdown note.
@@ -21,17 +24,21 @@ type note struct {
 	links    []Link
 	headings []Heading
 	aliases  []string
+	tags     []string            // lower-case, without '#', from the body and the tags property
+	props    map[string][]string // frontmatter, lower-case keys, values as written
 	blocks   map[string]int
 }
 
-// parse reads links, headings, aliases and block ids from a note. Links in
-// code are ignored, as in Obsidian; links in frontmatter properties count.
+// parse reads links, headings, tags, properties, aliases and block ids
+// from a note. Links and tags in code are ignored, as in Obsidian; links in
+// frontmatter properties count.
 func parse(content string) note {
 	n := note{blocks: map[string]int{}}
 	lines := strings.Split(content, "\n")
 	frontEnd := frontmatterEnd(lines)
 	fence := ""
 	offset := 0
+	var tags []string
 	for i, raw := range lines {
 		l := strings.TrimSuffix(raw, "\r")
 		t := strings.TrimSpace(l)
@@ -40,7 +47,9 @@ func parse(content string) note {
 		case frontEnd > 0 && i < frontEnd:
 			n.links = append(n.links, findLinks(l, i, offset)...)
 		case frontEnd > 0 && i == frontEnd:
-			n.aliases = aliases(strings.Join(lines[1:frontEnd], "\n"))
+			var fmTags []string
+			n.props, n.aliases, fmTags = frontmatter(strings.Join(lines[1:frontEnd], "\n"))
+			tags = append(tags, fmTags...)
 		case fence != "":
 			if strings.HasPrefix(t, fence) && strings.Trim(t, fence[:1]) == "" {
 				fence = ""
@@ -55,9 +64,11 @@ func parse(content string) note {
 				n.blocks[m[1]] = i
 			}
 			n.links = append(n.links, findLinks(l, i, offset)...)
+			tags = append(tags, inlineTags(l)...)
 		}
 		offset += len(raw) + 1
 	}
+	n.tags = unique(tags)
 	return n
 }
 
@@ -73,11 +84,15 @@ func frontmatterEnd(lines []string) int {
 	return 0
 }
 
+// maskCode blanks out code spans, keeping byte offsets.
+func maskCode(l string) string {
+	return codeSpanRE.ReplaceAllStringFunc(l, func(s string) string { return strings.Repeat(" ", len(s)) })
+}
+
 // findLinks finds the wikilinks and internal markdown links on one line.
 // offset is the line's byte offset in the note.
 func findLinks(l string, line, offset int) []Link {
-	// Blank out code spans, keeping byte offsets.
-	masked := codeSpanRE.ReplaceAllStringFunc(l, func(s string) string { return strings.Repeat(" ", len(s)) })
+	masked := maskCode(l)
 	context := strings.TrimSpace(l)
 	var out []Link
 	for _, m := range wikiRE.FindAllStringSubmatchIndex(masked, -1) {
@@ -104,6 +119,14 @@ func findLinks(l string, line, offset int) []Link {
 	return out
 }
 
+func inlineTags(l string) []string {
+	var out []string
+	for _, m := range tagRE.FindAllStringSubmatch(maskCode(l), -1) {
+		out = append(out, strings.ToLower(m[1]))
+	}
+	return out
+}
+
 // splitWiki splits the inside of [[...]] into target, #sub and |alias.
 // Inside tables Obsidian writes the alias separator as \|.
 func splitWiki(inner string) (target, sub, alias, sep string, hasAlias bool) {
@@ -118,27 +141,61 @@ func splitWiki(inner string) (target, sub, alias, sep string, hasAlias bool) {
 	return strings.TrimSpace(target), strings.TrimSpace(sub), alias, sep, hasAlias
 }
 
-// aliases reads the aliases property from frontmatter.
-func aliases(front string) []string {
-	var props map[string]any
-	if yaml.Unmarshal([]byte(front), &props) != nil {
-		return nil
+// frontmatter reads properties, aliases and tags from YAML frontmatter.
+// Values keep the text as written, so dates stay "2026-09-15".
+func frontmatter(front string) (props map[string][]string, aliases, tags []string) {
+	var doc yaml.Node
+	if yaml.Unmarshal([]byte(front), &doc) != nil || len(doc.Content) == 0 || doc.Content[0].Kind != yaml.MappingNode {
+		return nil, nil, nil
 	}
+	props = map[string][]string{}
+	pairs := doc.Content[0].Content
+	for k := 0; k+1 < len(pairs); k += 2 {
+		key, val := strings.ToLower(pairs[k].Value), pairs[k+1]
+		var vals []string
+		switch val.Kind {
+		case yaml.ScalarNode:
+			if val.Tag != "!!null" && val.Value != "" {
+				vals = []string{val.Value}
+			}
+		case yaml.SequenceNode:
+			for _, c := range val.Content {
+				if c.Kind == yaml.ScalarNode && c.Value != "" {
+					vals = append(vals, c.Value)
+				}
+			}
+		}
+		props[key] = vals
+		switch key {
+		case "aliases", "alias":
+			for _, v := range vals {
+				if val.Kind != yaml.ScalarNode {
+					aliases = append(aliases, v)
+					continue
+				}
+				for _, a := range strings.Split(v, ",") {
+					if a = strings.TrimSpace(a); a != "" {
+						aliases = append(aliases, a)
+					}
+				}
+			}
+		case "tags", "tag":
+			for _, v := range vals {
+				for _, t := range strings.FieldsFunc(v, func(r rune) bool { return r == ',' || unicode.IsSpace(r) }) {
+					tags = append(tags, strings.ToLower(strings.TrimPrefix(t, "#")))
+				}
+			}
+		}
+	}
+	return props, aliases, tags
+}
+
+func unique(s []string) []string {
+	sort.Strings(s)
 	var out []string
-	for _, key := range []string{"aliases", "alias"} {
-		switch v := props[key].(type) {
-		case string:
-			for _, a := range strings.Split(v, ",") {
-				if a = strings.TrimSpace(a); a != "" {
-					out = append(out, a)
-				}
-			}
-		case []any:
-			for _, a := range v {
-				if s, ok := a.(string); ok && s != "" {
-					out = append(out, s)
-				}
-			}
+	for i, v := range s {
+		if v != "" && (i == 0 || v != s[i-1]) {
+			out = append(out, v)
 		}
 	}
 	return out

@@ -170,9 +170,10 @@ type choice struct {
 // backlinks, the outline.
 type chooser struct {
 	title   string
-	prompt  string // before the filter field
-	empty   string // when nothing matches
-	verb    string // what enter does, for the footer
+	prompt  string             // before the filter field
+	empty   string             // when nothing matches
+	verb    string             // what enter does, for the footer
+	none    func(query string) // what enter does when nothing matches, if anything
 	items   []choice
 	in      lineInput
 	matches []int // indexes into items, best first
@@ -208,10 +209,15 @@ func (m *Model) chooserKey(k tea.KeyPressMsg) {
 	case "esc", "ctrl+c":
 		m.chooser = nil
 	case "enter":
-		if len(c.matches) > 0 {
+		q := strings.TrimSpace(c.in.value())
+		switch {
+		case len(c.matches) > 0:
 			it := c.items[c.matches[c.cur]]
 			m.chooser = nil
 			it.do()
+		case c.none != nil && q != "":
+			m.chooser = nil
+			c.none(q)
 		}
 	case "up", "ctrl+p", "shift+tab":
 		c.cur = max(c.cur-1, 0)

@@ -4,6 +4,16 @@ Skrin is a keyboard-driven terminal UI for Obsidian vaults, written in Go with B
 
 The spec and milestone plan live in the user's vault at `~/Documents/vault-1/tui.md`. The user signs off there and leaves comments at the bottom, so read it before starting a milestone.
 
+## Roles
+
+There are three of us. You (Claude Code) are the **builder**. Hermes Agent is the **product owner**; its reviews and stories come with PO callouts in the vault notes and it holds the UX/keybinding-ergonomics bar. The user has the final word and signs off in `tui.md`. Practical points:
+
+- Before starting a milestone, read `tui.md`, `skrin backlog.md`, and any proposal note with an open sign-off box (e.g. [[skrin split view]]). Proposal notes define scope before a story is built.
+- The 13 stories tagged *(LLM-added …)* in the backlog were found by Hermes's code review of v0.5.4; they are triaged in the notes around them but not yet human verified. The stories tagged *Product owner, 2026-09-15* are from user feedback after daily use and reflect the user's current intent.
+- When a review story conflicts with a milestone in flight, fix the story into the milestone's scope rather than deferring it.
+- Hermes reviews builds against the spec, the acceptance criteria, and the keymap rules (lowercase = local, uppercase = global/bigger; first letter of the action; every key in the registry with context-aware help text; no prefix keys unless the spec demands one).
+- Release versions are the PO's and user's call: propose, don't decide.
+
 ## Commands
 
 Go is pinned in `.mise.toml`. If `go` isn't on PATH, prefix commands with `mise exec --`.

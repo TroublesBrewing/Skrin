@@ -96,7 +96,7 @@ func TestRenameAndUndo(t *testing.T) {
 	}
 	press(m, "ctrl+u")
 	typeText(m, "Stoa")
-	press(m, "enter")
+	press(m, "enter", "y") // y: also update the two links to it
 	if !m.vault.Exists("Filosofi/Stoa.md") || m.vault.Exists("Filosofi/Stoic.md") {
 		t.Fatal("rename failed")
 	}
@@ -165,8 +165,8 @@ func TestMarkMoveAndUndoAsOne(t *testing.T) {
 	}
 	press(m, "m")
 	typeText(m, "daily")
-	if m.picker == nil || len(m.picker.matches) == 0 || m.picker.folders[m.picker.matches[0]] != "Daily" {
-		t.Fatalf("picker didn't find Daily: %+v", m.picker)
+	if c := m.chooser; c == nil || len(c.matches) == 0 || c.items[c.matches[0]].label != "Daily/" {
+		t.Fatalf("picker didn't find Daily: %+v", m.chooser)
 	}
 	press(m, "enter")
 	if !m.vault.Exists("Daily/Stoic.md") || !m.vault.IsDir("Daily/Antik") || len(m.marks) != 0 {

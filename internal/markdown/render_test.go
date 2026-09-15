@@ -97,6 +97,22 @@ func TestInlineMarkup(t *testing.T) {
 	}
 }
 
+func TestLinksKnowTheirColumns(t *testing.T) {
+	lines := render(t, "See [[Stoic#Morning|the morning]] and [web](https://x.com) or ![[Zeno]]", 80)
+	want := []Link{
+		{Col: 4, Target: "Stoic#Morning", Wiki: true},
+		{Col: 20, Target: "https://x.com"},
+		{Col: 27, Target: "Zeno", Wiki: true},
+	}
+	if got := lines[0].Links; len(got) != 3 || got[0] != want[0] || got[1] != want[1] || got[2] != want[2] {
+		t.Errorf("links = %+v\nwant %+v", got, want)
+	}
+	table := render(t, "| a | b |\n|---|---|\n| x | [[Note\\|alias]] |", 40)
+	if l := table[2].Links; len(l) != 1 || l[0].Target != "Note" || l[0].Col != 6 {
+		t.Errorf("table link = %+v", l)
+	}
+}
+
 func TestBrokenLinksAreStyledDifferently(t *testing.T) {
 	good := Render("[[Note]]", Options{Width: 40, Palette: theme.Default(), Resolve: func(string) bool { return true }})
 	bad := Render("[[Note]]", Options{Width: 40, Palette: theme.Default(), Resolve: func(string) bool { return false }})

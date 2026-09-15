@@ -118,9 +118,13 @@ type Rollover struct {
 
 // Settings are the parts of a vault's .obsidian/ configuration Skrin uses.
 type Settings struct {
-	TrashOption string // "system", "local" or "none"
-	Daily       DailyNotes
-	Rollover    Rollover
+	TrashOption       string // "system", "local" or "none"
+	AlwaysUpdateLinks bool   // update links on rename/move without asking
+	NewLinkFormat     string // "shortest", "relative" or "absolute"
+	NewFileLocation   string // where notes created from links go: "root", "current" or "folder"
+	NewFileFolderPath string // the folder for NewFileLocation "folder"
+	Daily             DailyNotes
+	Rollover          Rollover
 }
 
 // RolloverPluginID is the Rollover Daily Todos plugin's id.
@@ -130,17 +134,33 @@ const RolloverPluginID = "obsidian-rollover-daily-todos"
 // Obsidian's (and the plugin's) defaults in place.
 func LoadSettings(root string) Settings {
 	s := Settings{
-		TrashOption: "system",
-		Daily:       DailyNotes{Format: "YYYY-MM-DD"},
-		Rollover:    Rollover{TemplateHeading: "none", DoneStatusMarkers: "xX-"},
+		TrashOption:     "system",
+		NewLinkFormat:   "shortest",
+		NewFileLocation: "root",
+		Daily:           DailyNotes{Format: "YYYY-MM-DD"},
+		Rollover:        Rollover{TemplateHeading: "none", DoneStatusMarkers: "xX-"},
 	}
 	dir := filepath.Join(root, ".obsidian")
 
 	var app struct {
-		TrashOption string `json:"trashOption"`
+		TrashOption       string `json:"trashOption"`
+		AlwaysUpdateLinks bool   `json:"alwaysUpdateLinks"`
+		NewLinkFormat     string `json:"newLinkFormat"`
+		NewFileLocation   string `json:"newFileLocation"`
+		NewFileFolderPath string `json:"newFileFolderPath"`
 	}
-	if readJSON(filepath.Join(dir, "app.json"), &app) && app.TrashOption != "" {
-		s.TrashOption = app.TrashOption
+	if readJSON(filepath.Join(dir, "app.json"), &app) {
+		if app.TrashOption != "" {
+			s.TrashOption = app.TrashOption
+		}
+		if app.NewLinkFormat != "" {
+			s.NewLinkFormat = app.NewLinkFormat
+		}
+		if app.NewFileLocation != "" {
+			s.NewFileLocation = app.NewFileLocation
+		}
+		s.AlwaysUpdateLinks = app.AlwaysUpdateLinks
+		s.NewFileFolderPath = strings.Trim(app.NewFileFolderPath, "/")
 	}
 
 	var dn struct {

@@ -765,4 +765,52 @@ func leadingSpace(line []rune) string {
 	return string(line[:firstNonSpace(line)])
 }
 
+// LinkQuery reports what has been typed after an unclosed "[[" before the
+// cursor on the current line. Typing an alias (after "|") ends it.
+func (e *Editor) LinkQuery() (string, bool) {
+	before := string(e.lines[e.row][:e.col])
+	i := strings.LastIndex(before, "[[")
+	if i < 0 {
+		return "", false
+	}
+	q := before[i+2:]
+	if strings.Contains(q, "]]") || strings.Contains(q, "|") {
+		return "", false
+	}
+	return q, true
+}
+
+// CompleteLink replaces the link query with text and closes the link,
+// leaving the cursor after the "]]".
+func (e *Editor) CompleteLink(text string) {
+	q, ok := e.LinkQuery()
+	if !ok {
+		return
+	}
+	e.push("complete")
+	line := e.lines[e.row]
+	start := e.col - utf8.RuneCountInString(q)
+	rest := append([]rune(nil), line[e.col:]...)
+	closing := "]]"
+	if strings.HasPrefix(string(rest), "]]") {
+		closing = ""
+	}
+	ins := []rune(text + closing)
+	e.lines[e.row] = append(append(append([]rune(nil), line[:start]...), ins...), rest...)
+	e.col = start + len(ins)
+	if closing == "" {
+		e.col += 2
+	}
+	e.lastKind, e.goal = "", -1
+	e.scroll()
+}
+
+// CursorPos is where the cursor is drawn: display row from the top of the
+// text area, and column.
+func (e *Editor) CursorPos() (row, col int) {
+	starts := e.segments(e.row)
+	s := segOf(starts, e.col)
+	return e.displayIndex(e.row, e.col) - e.top, width(e.lines[e.row][starts[s]:e.col])
+}
+
 func clamp(v, lo, hi int) int { return max(lo, min(v, hi)) }

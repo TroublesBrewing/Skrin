@@ -199,6 +199,11 @@ func (m *Model) createNote(input string) error {
 	if !vault.IsNote(rel) {
 		rel += ".md"
 	}
+	return m.createNoteAt(rel)
+}
+
+// createNoteAt creates an empty note at rel and opens it in the editor.
+func (m *Model) createNoteAt(rel string) error {
 	if m.vault.Exists(rel) {
 		return fmt.Errorf("%s already exists", rel)
 	}
@@ -254,31 +259,32 @@ func (m *Model) rename(target, input string) error {
 	if to == target {
 		return nil
 	}
-	if _, err := m.vault.Move(target, to); err != nil {
-		if errors.Is(err, vault.ErrExists) {
-			return fmt.Errorf("%s already exists", name)
-		}
-		return err
+	if m.vault.Exists(to) {
+		return fmt.Errorf("%s already exists", name)
 	}
-	_ = m.snaps.Move(target, to) // snapshots only help u; losing them loses no note text
-	m.journal.Record(vault.Op{
-		Desc:  "rename " + path.Base(target) + " to " + name,
-		Steps: []vault.Step{{Kind: vault.StepMoved, Rel: to, From: target}},
+	fromTree := m.focus == paneTree
+	m.relocate([][2]string{{target, to}}, "rename "+path.Base(target)+" to "+name, func(moved []string, relinked int, err error) {
+		m.marks = map[string]bool{}
+		if err != nil {
+			m.refresh(m.listCur)
+			m.flash = "Rename failed: " + err.Error()
+			return
+		}
+		// Renaming the folder we're in (or one above it) moves us along.
+		if m.cwd == target || strings.HasPrefix(m.cwd, target+"/") {
+			m.cwd = to + strings.TrimPrefix(m.cwd, target)
+		}
+		if isDir && fromTree {
+			if err := m.reload(); err != nil {
+				m.flash = err.Error()
+				return
+			}
+			m.enterDir(to, "")
+		} else {
+			m.reveal(to)
+		}
+		m.flash = "Renamed to " + name + linksNote(relinked) + " · U undoes"
 	})
-	m.marks = map[string]bool{}
-	// Renaming the folder we're in (or one above it) moves us along.
-	if m.cwd == target || strings.HasPrefix(m.cwd, target+"/") {
-		m.cwd = to + strings.TrimPrefix(m.cwd, target)
-	}
-	if isDir && m.focus == paneTree {
-		if err := m.reload(); err != nil {
-			return err
-		}
-		m.enterDir(to, "")
-	} else {
-		m.reveal(to)
-	}
-	m.flash = "Renamed to " + name + " · U undoes"
 	return nil
 }
 
@@ -288,16 +294,14 @@ func (m *Model) startMove(srcs []string) {
 		m.flash = err.Error()
 		return
 	}
-	p := &picker{sources: srcs}
+	c := &chooser{title: "Move " + describe(srcs), prompt: "to", empty: "No folder matches", verb: "move"}
 	for _, d := range dirs {
 		if movesIntoItself(d, srcs) {
 			continue
 		}
-		p.folders = append(p.folders, d)
-		p.labels = append(p.labels, m.folderLabel(d))
+		c.items = append(c.items, choice{label: m.folderLabel(d), do: func() { m.moveTo(d, srcs) }})
 	}
-	p.filter()
-	m.picker = p
+	m.openChooser(c)
 }
 
 func movesIntoItself(dest string, srcs []string) bool {
@@ -312,8 +316,7 @@ func movesIntoItself(dest string, srcs []string) bool {
 // moveTo moves srcs into dest as one undoable operation. Name clashes are
 // checked first, so either everything moves or nothing does.
 func (m *Model) moveTo(dest string, srcs []string) {
-	type move struct{ from, to string }
-	var plan []move
+	var moves [][2]string
 	for _, s := range srcs {
 		to := path.Join(dest, path.Base(s))
 		if to == s {
@@ -323,35 +326,26 @@ func (m *Model) moveTo(dest string, srcs []string) {
 			m.flash = fmt.Sprintf("Nothing moved: %s already has a %s", m.folderLabel(dest), path.Base(s))
 			return
 		}
-		plan = append(plan, move{s, to})
+		moves = append(moves, [2]string{s, to})
 	}
-	if len(plan) == 0 {
+	if len(moves) == 0 {
 		m.flash = "Already in " + m.folderLabel(dest)
 		return
 	}
+	froms := make([]string, len(moves))
+	for i, mv := range moves {
+		froms[i] = mv[0]
+	}
 	row := m.listCur
-	var steps []vault.Step
-	var moved []string
-	var failed error
-	for _, mv := range plan {
-		dirs, err := m.vault.Move(mv.from, mv.to)
-		steps = append(steps, createdSteps(dirs)...)
+	m.relocate(moves, "move "+describe(froms)+" to "+m.folderLabel(dest), func(moved []string, relinked int, err error) {
+		m.marks = map[string]bool{}
+		m.refresh(row)
 		if err != nil {
-			failed = err
-			break
+			m.flash = "Move stopped: " + err.Error()
+			return
 		}
-		steps = append(steps, vault.Step{Kind: vault.StepMoved, Rel: mv.to, From: mv.from})
-		moved = append(moved, mv.from)
-		_ = m.snaps.Move(mv.from, mv.to)
-	}
-	m.journal.Record(vault.Op{Desc: "move " + describe(moved) + " to " + m.folderLabel(dest), Steps: steps})
-	m.marks = map[string]bool{}
-	m.refresh(row)
-	if failed != nil {
-		m.flash = "Move stopped: " + failed.Error()
-		return
-	}
-	m.flash = "Moved " + describe(moved) + " to " + m.folderLabel(dest) + " · U undoes"
+		m.flash = "Moved " + describe(moved) + " to " + m.folderLabel(dest) + linksNote(relinked) + " · U undoes"
+	})
 }
 
 func (m *Model) askDelete(ts []string) {
@@ -379,7 +373,10 @@ func (m *Model) askDelete(ts []string) {
 	default:
 		q = fmt.Sprintf("Delete %s %s?", describe(ts), where)
 	}
-	m.confirm = &confirm{question: q, yes: func() { m.deletePaths(ts, option) }}
+	m.confirm = &confirm{
+		pill: " DELETE ", question: q, keys: "y/n", danger: true, cancel: "Nothing deleted",
+		yes: func() { m.deletePaths(ts, option) },
+	}
 }
 
 func (m *Model) deletePaths(ts []string, option string) {

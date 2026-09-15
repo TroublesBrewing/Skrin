@@ -34,6 +34,13 @@ const (
 	actEditExternal
 	actUndoEdit
 	actRedoEdit
+	actHints
+	actBacklinks
+	actOutline
+	actNextHeading
+	actPrevHeading
+	actBack
+	actForward
 	actQuit
 )
 
@@ -59,8 +66,8 @@ var defaultBindings = []binding{
 	{actPane1, []string{"1"}, "folder tree"},
 	{actPane2, []string{"2"}, "folder contents"},
 	{actPane3, []string{"3"}, "note"},
-	{actOpen, []string{"enter"}, "expand folder / open"},
-	{actParent, []string{"backspace"}, "parent folder / back"},
+	{actOpen, []string{"enter"}, "expand folder / open / follow a link"},
+	{actParent, []string{"backspace"}, "parent folder / go back"},
 	{actNewNote, []string{"n"}, "new note in the current folder"},
 	{actNewFolder, []string{"N"}, "new folder in the current folder"},
 	{actRename, []string{"r"}, "rename"},
@@ -76,6 +83,13 @@ var defaultBindings = []binding{
 	{actEditExternal, []string{"E"}, "edit the note in $EDITOR"},
 	{actUndoEdit, []string{"u"}, "undo the note's last edit"},
 	{actRedoEdit, []string{"ctrl+r"}, "redo it"},
+	{actHints, []string{"f"}, "follow a link: letters appear on each"},
+	{actBacklinks, []string{"b"}, "notes linking here"},
+	{actOutline, []string{"o"}, "outline: jump to a heading"},
+	{actNextHeading, []string{"}"}, "next heading"},
+	{actPrevHeading, []string{"{"}, "previous heading"},
+	{actBack, []string{"ctrl+o", "alt+left"}, "go back"},
+	{actForward, []string{"ctrl+i", "alt+right"}, "go forward"},
 	{actQuit, []string{"q", "ctrl+c"}, "quit"},
 }
 

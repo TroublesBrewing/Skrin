@@ -13,6 +13,7 @@ import (
 	udiff "github.com/aymanbagabas/go-udiff"
 
 	"github.com/lurioso/skrin/internal/editor"
+	"github.com/lurioso/skrin/internal/obsidian"
 	"github.com/lurioso/skrin/internal/snapshot"
 	"github.com/lurioso/skrin/internal/vault"
 )
@@ -22,6 +23,7 @@ type editSession struct {
 	rel         string
 	base        string // the note as it was on disk when last loaded or saved
 	snapshotted bool   // the version from before this session is in the snapshot store
+	linkFormat  string // Obsidian's newLinkFormat, for [[ completion
 }
 
 // conflict is raised when a save finds that the note changed on disk since
@@ -71,7 +73,7 @@ func (m *Model) openEditor(rel string) {
 		row = m.lines[m.noteOff].Src
 	}
 	m.editor = editor.New(text, m.opts.Vim, m.pal)
-	m.edit = editSession{rel: rel, base: text}
+	m.edit = editSession{rel: rel, base: text, linkFormat: obsidian.LoadSettings(m.vault.Root).NewLinkFormat}
 	m.focus = paneNote
 	m.settle()
 	m.editor.GoTo(row)
@@ -91,11 +93,12 @@ func (m *Model) paste(s string) {
 	case m.conflict != nil:
 	case m.editor != nil:
 		m.editor.Paste(s)
+		m.updateCompletion()
 	case m.prompt != nil:
 		m.prompt.in.insert(s)
-	case m.picker != nil:
-		m.picker.in.insert(s)
-		m.picker.filter()
+	case m.chooser != nil:
+		m.chooser.in.insert(s)
+		m.chooser.filter()
 	}
 }
 
@@ -223,6 +226,7 @@ func (m *Model) takeTheirs() {
 func (m *Model) closeEditor() {
 	row, rel := m.editor.TopRow(), m.edit.rel
 	m.editor, m.conflict, m.edit = nil, nil, editSession{}
+	m.complete, m.noComplete = nil, false
 	if err := m.reload(); err != nil {
 		m.flash = err.Error()
 	}

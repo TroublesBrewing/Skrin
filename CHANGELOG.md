@@ -2,6 +2,28 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 8, once Skrin has held up in daily use.
 
+## v0.4.0 — 2026-09-15
+
+Milestone 4: links and headings.
+
+- A vault-wide index of links, headings, aliases and block ids. Links resolve the way Obsidian resolves them:
+  1. the vault path
+  2. a path relative to the note
+  3. the file name, preferring the note's own folder, then the shortest path
+- Following links:
+  - `f` puts letters on the links in view; type one to follow it. `Enter` in the note pane does the same, and follows directly when only one link is in view.
+  - Links to `#Heading` and `#^block` land on that line.
+  - Web links and other files (images, PDFs) open with `xdg-open`.
+- `Backspace` / `Ctrl-o` / `Alt-←` go back through followed links; `Ctrl-i` / `Alt-→` go forward.
+- A link to a note that doesn't exist offers to create it, in the place Obsidian's "Default location for new notes" setting says.
+- `b` lists the notes linking to this one, with the linking line; `Enter` opens it there.
+- `o` shows the outline, filterable. `{` and `}` jump to the previous and next heading.
+- Typing `[[` in the editor suggests notes and their aliases. `[[Note#` suggests that note's headings. `Enter` or `Tab` accepts, `Esc` dismisses.
+- Rename and move update links:
+  - Skrin asks "Update N links in M notes?" when links would break. Plain `[[Name]]` links that still work are left alone.
+  - It follows Obsidian's "Always update internal links" and link-format settings.
+  - One `U` undoes the move together with the link edits.
+
 ## v0.3.0 — 2026-09-15
 
 Milestone 3: editing.

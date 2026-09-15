@@ -185,6 +185,44 @@ func TestGoToAndTopRow(t *testing.T) {
 	}
 }
 
+func TestLinkCompletion(t *testing.T) {
+	e := open("See [[Sto")
+	keys(e, "end")
+	if q, ok := e.LinkQuery(); !ok || q != "Sto" {
+		t.Fatalf("LinkQuery = %q %v", q, ok)
+	}
+	e.CompleteLink("Stoic")
+	if e.Text() != "See [[Stoic]]" || e.col != 13 {
+		t.Errorf("completed %q, cursor %d", e.Text(), e.col)
+	}
+	if _, ok := e.LinkQuery(); ok {
+		t.Error("closed link still offers completion")
+	}
+	keys(e, "ctrl+z")
+	if e.Text() != "See [[Sto" {
+		t.Errorf("undo completion: %q", e.Text())
+	}
+
+	e = open("[[Sto]] x")
+	keys(e, "right", "right", "right", "right", "right")
+	e.CompleteLink("Filosofi/Stoic")
+	if e.Text() != "[[Filosofi/Stoic]] x" || e.col != 18 {
+		t.Errorf("already closed: %q cursor %d", e.Text(), e.col)
+	}
+	if _, ok := open("[[a|b").LinkQuery(); ok {
+		t.Error("typing an alias should not complete")
+	}
+}
+
+func TestCursorPos(t *testing.T) {
+	e := open("aaaa bbbb cccc")
+	e.SetSize(11, 5)
+	keys(e, "end")
+	if r, c := e.CursorPos(); r != 1 || c != 4 {
+		t.Errorf("CursorPos = %d,%d, want 1,4", r, c)
+	}
+}
+
 func TestEscAndSaveActions(t *testing.T) {
 	e := open("x")
 	if e.HandleKey(key("ctrl+s")) != Save || e.HandleKey(key("esc")) != Close {

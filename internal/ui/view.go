@@ -41,8 +41,12 @@ func (m *Model) render() string {
 	}
 	rows = append(rows, m.statusLine())
 	out := strings.Join(rows[:min(len(rows), m.height)], "\n")
-	if m.picker != nil {
-		out = m.overlay(out, m.pickerBox())
+	switch {
+	case m.chooser != nil:
+		out = m.overlay(out, m.chooserBox())
+	case m.complete != nil && m.editor != nil:
+		box, x, y := m.completionBox()
+		out = m.overlayAt(out, box, x, y)
 	}
 	return out
 }
@@ -171,7 +175,15 @@ func (m *Model) notePane(w, h int) []string {
 	default:
 		title = strings.TrimSuffix(e.Name, path.Ext(e.Name))
 		for i := m.noteOff; i < min(len(m.lines), m.noteOff+vis); i++ {
-			body = append(body, " "+m.lines[i].Text)
+			line := " " + m.lines[i].Text
+			if m.hints != nil {
+				for _, ht := range m.hints.hints {
+					if ht.row == i {
+						line = m.withLabel(line, 1+ht.link.Col, ht.label)
+					}
+				}
+			}
+			body = append(body, line)
 		}
 	}
 	return m.box(title, body, w, h, m.focus == paneNote)
@@ -183,11 +195,12 @@ func (m *Model) statusLine() string {
 		return m.conflictLine()
 	case m.editor != nil:
 		return m.editLine()
+	case m.hints != nil:
+		return spread(m.st.pill.Render(" FOLLOW ")+" "+m.st.text.Render("Type the letters on a link"), m.st.muted.Render("esc cancel"), m.width)
 	case m.prompt != nil:
 		return m.promptLine()
 	case m.confirm != nil:
-		left := m.st.dangerPill.Render(" DELETE ") + " " + m.st.text.Render(m.confirm.question) + " " + m.st.bold.Render("y/n")
-		return spread(left, "", m.width)
+		return m.confirmLine()
 	}
 	mode := " VIEW "
 	if m.visual != nil {
@@ -200,7 +213,7 @@ func (m *Model) statusLine() string {
 	if m.isNote && len(m.lines) > 0 {
 		left += m.st.muted.Render("  " + m.scrollInfo())
 	}
-	right := m.st.muted.Render("e edit · n new · d delete · t today · q quit")
+	right := m.st.muted.Render("e edit · f follow · b backlinks · o outline · q quit")
 	if m.flash != "" {
 		right = m.st.flash.Render(m.flash)
 	}

@@ -20,7 +20,7 @@ var today = time.Date(2026, 9, 15, 9, 30, 0, 0, time.Local)
 var fixture = map[string]string{
 	"Welcome.md":                       "# Welcome\nSee [[Stoic]] and [[Missing]] #start\n",
 	"Filosofi/Stoic.md":                "---\ntags: [stoa]\n---\n# Stoic\n## Morning\n" + strings.Repeat("line\n", 80),
-	"Filosofi/Antik/Zeno.md":           "# Zeno\n",
+	"Filosofi/Antik/Zeno.md":           "# Zeno\nTeacher of [[Stoic|the Stoics]].\n",
 	"Daily/2026-09-11.md":              "### Reflection\n",
 	"Daily/2026-09-13.md":              "### Todo's\n- [ ] call mum\n  - about sunday\n- [x] done thing\n- [ ] \n- [-] cancelled\n* [ ] star task\n",
 	"Templates/Daily template.md":      "# {{date:dddd D MMMM}}\n### Todo's\n\n### Notes\n",
@@ -76,6 +76,12 @@ func key(k string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: tea.KeySpace, Text: " "}
 	case "down":
 		return tea.KeyPressMsg{Code: tea.KeyDown}
+	case "end":
+		return tea.KeyPressMsg{Code: tea.KeyEnd}
+	case "alt+left":
+		return tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModAlt}
+	case "alt+right":
+		return tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModAlt}
 	}
 	if c, ok := strings.CutPrefix(k, "ctrl+"); ok {
 		return tea.KeyPressMsg{Code: []rune(c)[0], Mod: tea.ModCtrl}
@@ -129,7 +135,7 @@ func TestModalsFillTerminalExactly(t *testing.T) {
 		press(m, "esc", "d")
 		checkFrame(t, m, "delete confirm")
 		press(m, "n", "m")
-		if m.picker == nil {
+		if m.chooser == nil {
 			t.Fatal("m did not open the folder picker")
 		}
 		checkFrame(t, m, "move picker")

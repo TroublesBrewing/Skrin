@@ -19,15 +19,16 @@ func write(t *testing.T, root, rel, content string) {
 
 func TestLoadSettings(t *testing.T) {
 	root := t.TempDir()
-	write(t, root, ".obsidian/app.json", `{"trashOption":"local"}`)
+	write(t, root, ".obsidian/app.json", `{"trashOption":"local","alwaysUpdateLinks":true,"newLinkFormat":"absolute","newFileLocation":"folder","newFileFolderPath":"/Inbox/"}`)
 	write(t, root, ".obsidian/daily-notes.json", `{"folder":"/Journal/Daily/","format":"DD.MM.YYYY","template":"Templates/Day"}`)
 	write(t, root, ".obsidian/community-plugins.json", `["obsidian-rollover-daily-todos"]`)
 	write(t, root, ".obsidian/plugins/obsidian-rollover-daily-todos/data.json",
 		`{"templateHeading":"### Todo's","rolloverChildren":true,"removeEmptyTodos":true}`)
 
 	s := LoadSettings(root)
-	if s.TrashOption != "local" {
-		t.Errorf("trash option = %q", s.TrashOption)
+	if s.TrashOption != "local" || !s.AlwaysUpdateLinks || s.NewLinkFormat != "absolute" ||
+		s.NewFileLocation != "folder" || s.NewFileFolderPath != "Inbox" {
+		t.Errorf("app settings = %+v", s)
 	}
 	if s.Daily != (DailyNotes{Folder: "Journal/Daily", Format: "DD.MM.YYYY", Template: "Templates/Day"}) {
 		t.Errorf("daily notes = %+v", s.Daily)
@@ -40,7 +41,8 @@ func TestLoadSettings(t *testing.T) {
 
 func TestLoadSettingsDefaults(t *testing.T) {
 	s := LoadSettings(t.TempDir())
-	if s.TrashOption != "system" || s.Daily.Format != "YYYY-MM-DD" || s.Daily.Folder != "" {
+	if s.TrashOption != "system" || s.Daily.Format != "YYYY-MM-DD" || s.Daily.Folder != "" ||
+		s.NewLinkFormat != "shortest" || s.NewFileLocation != "root" || s.AlwaysUpdateLinks {
 		t.Errorf("defaults = %+v", s)
 	}
 	if s.Rollover.Installed || s.Rollover.TemplateHeading != "none" {

@@ -5,12 +5,12 @@ package ui
 import (
 	"fmt"
 	"path"
-	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/lurioso/skrin/internal/editor"
+	"github.com/lurioso/skrin/internal/index"
 	"github.com/lurioso/skrin/internal/logo"
 	"github.com/lurioso/skrin/internal/markdown"
 	"github.com/lurioso/skrin/internal/snapshot"
@@ -58,6 +58,7 @@ type Options struct {
 // Model is the root Bubble Tea model.
 type Model struct {
 	vault *vault.Vault
+	idx   *index.Index
 	snaps *snapshot.Store
 	pal   theme.Palette
 	st    styles
@@ -75,8 +76,6 @@ type Model struct {
 	listCur int
 	listOff int
 
-	links map[string]bool // lower-cased paths and names a wikilink can resolve to
-
 	notePath  string // selected file ("" when a folder is selected)
 	isNote    bool   // notePath is a markdown note
 	noteSrc   string
@@ -87,18 +86,23 @@ type Model struct {
 	noteOff   int
 	jumpSrc   int // after the next render, scroll to this source line; -1 for none
 
+	back, fwd []place // followed-link history
+
 	journal vault.Journal
 	marks   map[string]bool // marked items by vault path; may span folders
 	visual  *visualRange
 
-	editor   *editor.Editor // the built-in editor, while a note is open in it
-	edit     editSession
-	conflict *conflict
+	editor     *editor.Editor // the built-in editor, while a note is open in it
+	edit       editSession
+	conflict   *conflict
+	complete   *completion // the [[ popup
+	noComplete bool        // the popup was dismissed for this link
 
 	// At most one of these is open; it takes all keys while it is.
+	hints   *hintState
 	prompt  *prompt
 	confirm *confirm
-	picker  *picker
+	chooser *chooser
 
 	flash string // one-shot status message, cleared by the next key
 }
@@ -112,7 +116,7 @@ func New(v *vault.Vault, pal theme.Palette, opts Options) (*Model, error) {
 		opts.ObsidianOpen = func() bool { return false }
 	}
 	m := &Model{
-		vault: v, snaps: snapshot.Open(v.Root), keys: keymap(), tree: newTree(),
+		vault: v, idx: index.New(), snaps: snapshot.Open(v.Root), keys: keymap(), tree: newTree(),
 		opts: opts, marks: map[string]bool{}, jumpSrc: -1,
 	}
 	m.setPalette(pal)
@@ -153,13 +157,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case m.conflict != nil:
 			m.conflictKey(msg)
 		case m.editor != nil:
-			m.editorKey(msg)
+			if m.complete == nil || !m.completionKey(msg) {
+				m.editorKey(msg)
+				m.updateCompletion()
+			}
+		case m.hints != nil:
+			m.hintKey(msg)
 		case m.prompt != nil:
 			m.promptKey(msg)
 		case m.confirm != nil:
 			m.confirmKey(msg)
-		case m.picker != nil:
-			m.pickerKey(msg)
+		case m.chooser != nil:
+			m.chooserKey(msg)
 		default:
 			if act, ok := m.keys[msg.String()]; ok {
 				if act == actQuit {
@@ -217,6 +226,24 @@ func (m *Model) do(a action) tea.Cmd {
 		m.restoreVersion(false)
 	case actRedoEdit:
 		m.restoreVersion(true)
+	case actHints:
+		m.startHints(false)
+	case actBacklinks:
+		m.showBacklinks()
+	case actOutline:
+		m.showOutline()
+	case actNextHeading:
+		m.headingJump(1)
+	case actPrevHeading:
+		m.headingJump(-1)
+	case actBack:
+		if !m.goBack(false) {
+			m.flash = "Nothing to go back to"
+		}
+	case actForward:
+		if !m.goBack(true) {
+			m.flash = "Nothing to go forward to"
+		}
 	default:
 		switch m.focus {
 		case paneTree:
@@ -290,8 +317,14 @@ func (m *Model) noteAction(a action) {
 		off = 0
 	case actBottom:
 		off = maxOff
+	case actOpen:
+		m.startHints(true)
+		return
 	case actParent:
-		m.focus = paneList
+		if !m.goBack(false) {
+			m.focus = paneList
+		}
+		return
 	}
 	m.noteOff = clamp(off, 0, maxOff)
 }
@@ -365,11 +398,9 @@ func (m *Model) reload() error {
 	}
 	m.tree.expandTo(m.cwd)
 	m.tree.selectPath(m.cwd)
-	files, err := m.vault.Files()
-	if err != nil {
+	if err := m.idx.Update(m.vault); err != nil {
 		return err
 	}
-	m.links = linkIndex(files)
 	for p := range m.marks {
 		if !m.vault.Exists(p) {
 			delete(m.marks, p)
@@ -414,6 +445,7 @@ func (m *Model) preview(keep bool) {
 	prev := m.notePath
 	m.notePath, m.isNote, m.noteSrc, m.noteErr, m.dirInfo, m.lines = "", false, "", nil, "", nil
 	m.renderedW = 0
+	m.hints = nil
 	e, ok := m.selected()
 	switch {
 	case !ok:
@@ -496,21 +528,10 @@ func scrollTo(cur, off, vis, n int) int {
 	return clamp(off, 0, max(n-vis, 0))
 }
 
+// resolve reports whether a wikilink in the shown note leads anywhere.
 func (m *Model) resolve(target string) bool {
-	t := strings.ToLower(strings.TrimSpace(target))
-	return m.links[t] || m.links[t+".md"]
-}
-
-// linkIndex maps every name a wikilink may use for a file (its vault path
-// or bare file name, lower-cased) to true.
-func linkIndex(files []string) map[string]bool {
-	idx := make(map[string]bool, 2*len(files))
-	for _, f := range files {
-		lf := strings.ToLower(f)
-		idx[lf] = true
-		idx[path.Base(lf)] = true
-	}
-	return idx
+	_, ok := m.idx.Resolve(target, m.notePath)
+	return ok
 }
 
 type layout struct{ treeW, listW, noteW, bodyH int }

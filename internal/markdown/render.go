@@ -25,6 +25,14 @@ type Line struct {
 	Text    string // styled; at most Options.Width cells wide
 	Src     int    // 0-based source line it came from
 	Heading int    // 1–6 on the first display line of a heading, else 0
+	Links   []Link // links whose text starts, or continues, on this line
+}
+
+// Link is a link as drawn on a display line.
+type Link struct {
+	Col    int    // display column where its text starts on the line
+	Target string // wikilink target with any #heading ("Note#Morning"), or a markdown link's URL
+	Wiki   bool
 }
 
 // Options controls rendering.
@@ -58,16 +66,16 @@ func Render(src string, o Options) []Line {
 		case fence != "":
 			if isFenceClose(l, fence) {
 				fence = ""
-				r.emit(i, "", "", []span{{l, r.st.muted}}, 0, clip)
+				r.emit(i, "", "", []span{plain(l, r.st.muted)}, 0, clip)
 			} else {
 				// Code keeps its layout (ASCII art, indentation), so long
 				// lines are clipped rather than wrapped, as in Obsidian.
-				r.emit(i, r.st.rule.Render("│ "), "", []span{{l, r.st.code}}, 0, clip)
+				r.emit(i, r.st.rule.Render("│ "), "", []span{plain(l, r.st.code)}, 0, clip)
 			}
 		case fenceMarker(l) != "":
 			fence = fenceMarker(l)
 			r.callout = nil
-			r.emit(i, "", "", []span{{l, r.st.muted}}, 0, clip)
+			r.emit(i, "", "", []span{plain(l, r.st.muted)}, 0, clip)
 		case isTableRow(l):
 			j := i + 1
 			for j < len(lines) && isTableRow(lines[j]) {
@@ -93,7 +101,10 @@ const (
 type span struct {
 	text  string
 	style lipgloss.Style
+	link  int // index into renderer.links, or -1
 }
+
+func plain(text string, style lipgloss.Style) span { return span{text, style, -1} }
 
 type styles struct {
 	text, muted, rule, quote, code, bullet, done, doneText, propKey lipgloss.Style
@@ -126,6 +137,7 @@ type renderer struct {
 	resolve func(string) bool
 	st      styles
 	callout *lipgloss.Style // colour of the callout we're inside, if any
+	links   []Link          // every link seen, referenced by span.link
 	out     []Line
 }
 
@@ -161,7 +173,7 @@ func (r *renderer) block(i int, l string) {
 		level := len(m[1])
 		r.emit(i, "", "", r.inline(strings.TrimSpace(m[2]), r.st.heading[level-1]), level, wrapWords)
 	case isRule(t):
-		r.emit(i, "", "", []span{{strings.Repeat("─", r.width), r.st.rule}}, 0, clip)
+		r.emit(i, "", "", []span{plain(strings.Repeat("─", r.width), r.st.rule)}, 0, clip)
 	case isQuote:
 		r.quote(i, l)
 	case listRE.MatchString(l):
@@ -183,7 +195,7 @@ func (r *renderer) quote(i int, l string) {
 			title = strings.ToUpper(kind[:1]) + kind[1:]
 		}
 		bar := st.Render("▌ ")
-		spans := append([]span{{icon + " ", st.Bold(true)}}, r.inline(title, st.Bold(true))...)
+		spans := append([]span{plain(icon+" ", st.Bold(true))}, r.inline(title, st.Bold(true))...)
 		r.emit(i, bar, bar, spans, 0, wrapWords)
 		return
 	}
@@ -302,6 +314,7 @@ func (r *renderer) table(rows []string, start int) {
 	bar := r.st.rule.Render("│")
 	for k := range rows {
 		var b strings.Builder
+		var links []Link
 		if cells[k] == nil {
 			parts := make([]string, len(widths))
 			for c, w := range widths {
@@ -310,15 +323,25 @@ func (r *renderer) table(rows []string, start int) {
 			b.WriteString(r.st.rule.Render("├" + strings.Join(parts, "┼") + "┤"))
 		} else {
 			b.WriteString(bar)
+			col := 1
 			for c, w := range widths {
 				var spans []span
 				if c < len(cells[k]) {
 					spans = cells[k][c]
 				}
+				for _, sp := range spans {
+					if sp.link >= 0 && col+1 < r.width {
+						l := r.links[sp.link]
+						l.Col = col + 1
+						links = append(links, l)
+						break
+					}
+				}
 				b.WriteString(" " + r.fitSpans(spans, w) + " " + bar)
+				col += w + 3
 			}
 		}
-		r.out = append(r.out, Line{Text: ansi.Truncate(b.String(), r.width, ""), Src: start + k})
+		r.out = append(r.out, Line{Text: ansi.Truncate(b.String(), r.width, ""), Src: start + k, Links: links})
 	}
 }
 
@@ -348,7 +371,7 @@ func (r *renderer) properties(body []string, closeLine int) {
 	err := yaml.Unmarshal([]byte(strings.Join(body, "\n")), &doc)
 	if err != nil || len(doc.Content) == 0 || doc.Content[0].Kind != yaml.MappingNode {
 		for j, l := range body {
-			r.emit(j+1, "", "", []span{{l, r.st.muted}}, 0, wrapWords)
+			r.emit(j+1, "", "", []span{plain(l, r.st.muted)}, 0, wrapWords)
 		}
 	} else {
 		pairs := doc.Content[0].Content
@@ -363,7 +386,7 @@ func (r *renderer) properties(body []string, closeLine int) {
 			r.emit(key.Line, prefix, strings.Repeat(" ", kw+2), r.inline(propValue(key.Value, val), r.st.text), 0, wrapWords)
 		}
 	}
-	r.emit(closeLine, "", "", []span{{strings.Repeat("─", r.width), r.st.rule}}, 0, clip)
+	r.emit(closeLine, "", "", []span{plain(strings.Repeat("─", r.width), r.st.rule)}, 0, clip)
 }
 
 func propValue(key string, n *yaml.Node) string {
@@ -401,13 +424,13 @@ func (r *renderer) inline(s string, base lipgloss.Style) []span {
 			a++
 		}
 		if a > last {
-			out = append(out, span{s[last:a], base})
+			out = append(out, plain(s[last:a], base))
 		}
 		out = append(out, r.token(s[a:b], base)...)
 		last = b
 	}
 	if last < len(s) {
-		out = append(out, span{s[last:], base})
+		out = append(out, plain(s[last:], base))
 	}
 	return out
 }
@@ -415,12 +438,19 @@ func (r *renderer) inline(s string, base lipgloss.Style) []span {
 func (r *renderer) token(tok string, base lipgloss.Style) []span {
 	switch {
 	case strings.HasPrefix(tok, "`"):
-		return []span{{strings.Trim(tok, "`"), r.st.code}}
+		return []span{plain(strings.Trim(tok, "`"), r.st.code)}
 	case strings.HasPrefix(tok, "![[") || strings.HasPrefix(tok, "[["):
 		return []span{r.wikilink(tok, base)}
 	case strings.HasPrefix(tok, "["):
-		text := tok[1:strings.Index(tok, "](")]
-		return r.inline(text, base.Foreground(r.pal.Link).Underline(true))
+		mid := strings.Index(tok, "](")
+		id := r.addLink(tok[mid+2:len(tok)-1], false)
+		spans := r.inline(tok[1:mid], base.Foreground(r.pal.Link).Underline(true))
+		for i := range spans {
+			if spans[i].link < 0 {
+				spans[i].link = id
+			}
+		}
+		return spans
 	case strings.HasPrefix(tok, "**") || strings.HasPrefix(tok, "__"):
 		return r.inline(tok[2:len(tok)-2], base.Bold(true))
 	case strings.HasPrefix(tok, "~~"):
@@ -430,9 +460,14 @@ func (r *renderer) token(tok string, base lipgloss.Style) []span {
 	case strings.HasPrefix(tok, "*") || strings.HasPrefix(tok, "_"):
 		return r.inline(tok[1:len(tok)-1], base.Italic(true))
 	case strings.HasPrefix(tok, "#"):
-		return []span{{tok, base.Foreground(r.pal.Tag)}}
+		return []span{plain(tok, base.Foreground(r.pal.Tag))}
 	}
-	return []span{{tok, base}}
+	return []span{plain(tok, base)}
+}
+
+func (r *renderer) addLink(target string, wiki bool) int {
+	r.links = append(r.links, Link{Target: target, Wiki: wiki})
+	return len(r.links) - 1
 }
 
 // wikilink renders [[target#heading|alias]] and ![[embeds]] by their display
@@ -440,7 +475,7 @@ func (r *renderer) token(tok string, base lipgloss.Style) []span {
 func (r *renderer) wikilink(tok string, base lipgloss.Style) span {
 	embed := strings.HasPrefix(tok, "!")
 	inner := strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(tok, "!"), "[["), "]]")
-	target, alias, hasAlias := strings.Cut(inner, "|")
+	target, alias, hasAlias := strings.Cut(strings.ReplaceAll(inner, `\|`, "|"), "|")
 	note, sub, _ := strings.Cut(target, "#")
 	display := alias
 	if !hasAlias {
@@ -459,7 +494,7 @@ func (r *renderer) wikilink(tok string, base lipgloss.Style) span {
 	if note != "" && r.resolve != nil && !r.resolve(note) {
 		st = base.Foreground(r.pal.DarkForeground).Underline(true)
 	}
-	return span{display, st}
+	return span{display, st, r.addLink(target, true)}
 }
 
 // emit wraps spans to the width left after prefix and appends the display
@@ -478,8 +513,24 @@ func (r *renderer) emit(src int, prefix, cont string, spans []span, heading int,
 			p, h = cont, 0
 		}
 		text := ansi.Truncate(p+renderTokens(toks, spans)+tail, r.width, "")
-		r.out = append(r.out, Line{Text: text, Src: src, Heading: h})
+		r.out = append(r.out, Line{Text: text, Src: src, Heading: h, Links: r.linksIn(toks, spans, ansi.StringWidth(p))})
 	}
+}
+
+// linksIn lists the links on one display line and where each starts.
+func (r *renderer) linksIn(toks []token, spans []span, col int) []Link {
+	var out []Link
+	seen := map[int]bool{}
+	for _, t := range toks {
+		if id := spans[t.span].link; id >= 0 && !seen[id] && col < r.width {
+			seen[id] = true
+			l := r.links[id]
+			l.Col = col
+			out = append(out, l)
+		}
+		col += t.w
+	}
+	return out
 }
 
 type token struct {

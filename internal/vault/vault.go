@@ -88,6 +88,27 @@ func (v *Vault) Files() ([]string, error) {
 	return files, err
 }
 
+// FileInfo is a file's path, modification time and size.
+type FileInfo struct {
+	Rel     string
+	ModTime time.Time
+	Size    int64
+}
+
+// FileInfos lists every visible file with its time and size, in one walk.
+func (v *Vault) FileInfos() ([]FileInfo, error) {
+	var out []FileInfo
+	err := v.walk(func(rel string, d fs.DirEntry) {
+		if d.IsDir() {
+			return
+		}
+		if info, err := d.Info(); err == nil {
+			out = append(out, FileInfo{Rel: rel, ModTime: info.ModTime(), Size: info.Size()})
+		}
+	})
+	return out, err
+}
+
 func (v *Vault) walk(fn func(rel string, d fs.DirEntry)) error {
 	return filepath.WalkDir(v.Root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {

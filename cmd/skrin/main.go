@@ -13,9 +13,8 @@ import (
 	"github.com/lurioso/skrin/internal/theme"
 	"github.com/lurioso/skrin/internal/ui"
 	"github.com/lurioso/skrin/internal/vault"
+	"github.com/lurioso/skrin/internal/version"
 )
-
-const version = "0.1.0-dev"
 
 func main() {
 	flag.Usage = func() {
@@ -32,7 +31,7 @@ Flags:
 	showVersion := flag.Bool("version", false, "print the version and exit")
 	flag.Parse()
 	if *showVersion {
-		fmt.Println("skrin", version)
+		fmt.Println("skrin v" + version.Version)
 		return
 	}
 	if err := run(flag.Arg(0)); err != nil {

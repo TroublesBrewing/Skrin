@@ -23,6 +23,16 @@ Go is pinned in `.mise.toml`. If `go` isn't on PATH, prefix commands with `mise 
 - `internal/logo`: the embedded official Obsidian icon (`assets/obsidian-logo.png`), drawn with half-block characters.
 - `internal/ui`: the root model (`model.go`), rendering (`view.go`), the folder tree, and the keymap registry (`keys.go`). Every key goes through the registry, because the `?` manual will be generated from it.
 
+## Releases
+
+Milestone N of the plan ships as v0.N.0, and fixes in between bump the patch number. To release:
+
+1. Set `Version` in `internal/version/version.go`.
+2. Add a section to `CHANGELOG.md`.
+3. Commit, then `git tag vX.Y.Z`.
+4. Reinstall the binary.
+5. Mark the milestone done in `tui.md`, with its version.
+
 ## Rules
 
 - Test against the copy `~/Work/tries/vault-copy`, never the real vault.

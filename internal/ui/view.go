@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/lurioso/skrin/internal/vault"
+	"github.com/lurioso/skrin/internal/version"
 )
 
 func (m *Model) View() tea.View {
@@ -44,7 +45,7 @@ func (m *Model) render() string {
 
 func (m *Model) header() []string {
 	left := []string{
-		m.st.brand.Render("Skrin") + m.st.muted.Render(" · ") + m.st.bold.Render(m.vault.Name()),
+		m.st.brand.Render("Skrin") + m.st.muted.Render(" v"+version.Version+" · ") + m.st.bold.Render(m.vault.Name()),
 		m.st.muted.Render("unofficial TUI for Obsidian vaults"),
 		m.st.muted.Render(tildePath(m.vault.Root)),
 	}

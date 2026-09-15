@@ -6,35 +6,48 @@ import (
 	"testing"
 )
 
-func TestDiscoverPrefersOpenVault(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "obsidian.json")
-	data := `{"vaults":{
-		"a":{"path":"/vaults/recent","ts":300},
-		"b":{"path":"/vaults/open","ts":100,"open":true},
-		"c":{"path":"/vaults/old","ts":50}}}`
-	if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	got, err := discoverFrom(path)
+func TestRolloverDefaultsOn(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	c, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got != "/vaults/open" {
-		t.Errorf("got %q, want the open vault", got)
+	if !c.RolloverTodos() {
+		t.Error("rollover should default to on")
 	}
 }
 
-func TestDiscoverFallsBackToMostRecent(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "obsidian.json")
-	data := `{"vaults":{"a":{"path":"/vaults/old","ts":1},"b":{"path":"/vaults/new","ts":2}}}`
-	if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
+func TestLoadReadsVaultAndRollover(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", home)
+	dir := filepath.Join(home, "skrin")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	got, err := discoverFrom(path)
+	conf := "vault = \"/vaults/main\"\n\n[daily]\nrollover_todos = false\n"
+	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte(conf), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got != "/vaults/new" {
-		t.Errorf("got %q, want the most recent vault", got)
+	if c.Vault != "/vaults/main" || c.RolloverTodos() {
+		t.Errorf("config = %+v, rollover %v", c, c.RolloverTodos())
+	}
+}
+
+func TestDiscoverVaultUsesObsidianRegistry(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", home)
+	if err := os.MkdirAll(filepath.Join(home, "obsidian"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	reg := `{"vaults":{"a":{"path":"/vaults/one","ts":1,"open":true}}}`
+	if err := os.WriteFile(ObsidianRegistry(), []byte(reg), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := DiscoverVault(); err != nil || got != "/vaults/one" {
+		t.Errorf("DiscoverVault = %q, %v", got, err)
 	}
 }

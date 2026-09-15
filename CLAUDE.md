@@ -17,11 +17,13 @@ Go is pinned in `.mise.toml`. If `go` isn't on PATH, prefix commands with `mise 
 ## Layout
 
 - `cmd/skrin`: flags and vault resolution (argument → `~/.config/skrin/config.toml` → Obsidian's `obsidian.json`); wires the watchers to `tea.Program.Send`.
-- `internal/vault`: disk access. Paths are vault-relative with `/`, and `""` is the root. Dot-entries (`.obsidian`, `.trash`) are hidden. Also has the debounced fsnotify watcher.
+- `internal/vault`: disk access. Paths are vault-relative with `/`, and `""` is the root. Dot-entries (`.obsidian`, `.trash`) are hidden. Also has the debounced fsnotify watcher. File operations (`ops.go`) never overwrite. Deletes go to the freedesktop trash or the vault's `.trash` (`trash.go`). `journal.go` is the undo stack behind `U`.
+- `internal/obsidian`: read-only access to Obsidian's own config: the vault registry, `.obsidian/*.json`, the Rollover plugin's settings, and whether Obsidian is running.
+- `internal/daily`: the daily-note path, moment.js date formatting, template variables and todo rollover, all mirroring Obsidian and the Rollover Daily Todos plugin.
 - `internal/theme`: builds the palette from Omarchy's `~/.local/state/omarchy/current/theme/colors.toml`, with an optional `skrin.toml` override. It live-reloads by watching `theme.name`.
 - `internal/markdown`: a line-oriented renderer. Every display `Line` carries its source line (`Src`) and heading level. Heading jumps and "open at line" depend on this, so keep it 1:n.
 - `internal/logo`: the embedded official Obsidian icon (`assets/obsidian-logo.png`), drawn with half-block characters.
-- `internal/ui`: the root model (`model.go`), rendering (`view.go`), the folder tree, and the keymap registry (`keys.go`). Every key goes through the registry, because the `?` manual will be generated from it.
+- `internal/ui`: the root model (`model.go`), rendering (`view.go`), file actions and marks (`ops.go`), the name prompt, delete confirm and move picker (`modal.go`), the folder tree, and the keymap registry (`keys.go`). Every key goes through the registry, because the `?` manual will be generated from it.
 
 ## Releases
 
@@ -37,4 +39,5 @@ Milestone N of the plan ships as v0.N.0, and fixes in between bump the patch num
 
 - Test against the copy `~/Work/tries/vault-copy`, never the real vault.
 - Never write inside `.obsidian/`.
+- Tests and manual runs that delete must set `XDG_DATA_HOME` to a temp dir, so nothing lands in the user's real trash.
 - The view must fill the terminal exactly. Use the `fit`, `spread` and `box` helpers in `view.go`.

@@ -9,7 +9,8 @@ import (
 type styles struct {
 	text, bold, muted, dir, brand, flash, errText lipgloss.Style
 	border, borderFocus, title, titleFocus        lipgloss.Style
-	selFocus, selBlur, pill                       lipgloss.Style
+	selFocus, selBlur, marked, cursor             lipgloss.Style
+	pill, dangerPill                              lipgloss.Style
 }
 
 func newStyles(p theme.Palette) styles {
@@ -28,6 +29,9 @@ func newStyles(p theme.Palette) styles {
 		titleFocus:  s().Foreground(p.Accent).Bold(true),
 		selFocus:    s().Background(p.Selection).Foreground(p.LightForeground).Bold(true),
 		selBlur:     s().Foreground(p.Accent),
+		marked:      s().Foreground(p.Yellow),
+		cursor:      s().Background(p.Foreground).Foreground(p.Background),
 		pill:        s().Background(p.Accent).Foreground(p.Background).Bold(true),
+		dangerPill:  s().Background(p.Red).Foreground(p.Background).Bold(true),
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -36,12 +37,24 @@ type ThemeMsg struct{ Palette theme.Palette }
 // VaultChangedMsg reports that files changed on disk.
 type VaultChangedMsg struct{}
 
+// Options tune behaviour that depends on the world outside the vault.
+type Options struct {
+	// RolloverTodos makes `t` carry unfinished todos into a new daily note.
+	RolloverTodos bool
+	// ObsidianOpen reports whether Obsidian desktop has this vault open. Its
+	// Rollover plugin then does the rollover, so Skrin must not.
+	ObsidianOpen func() bool
+	// Now is the clock; tests pin it.
+	Now func() time.Time
+}
+
 // Model is the root Bubble Tea model.
 type Model struct {
 	vault *vault.Vault
 	pal   theme.Palette
 	st    styles
 	keys  map[string]action
+	opts  Options
 	logo  []string
 	logoW int
 
@@ -49,7 +62,7 @@ type Model struct {
 	focus         pane
 
 	tree    tree
-	cwd     string // current folder, where new notes will be created
+	cwd     string // current folder, where new notes are created
 	entries []vault.Entry
 	listCur int
 	listOff int
@@ -65,12 +78,27 @@ type Model struct {
 	renderedW int // width lines were rendered at; 0 forces a re-render
 	noteOff   int
 
+	journal vault.Journal
+	marks   map[string]bool // marked items by vault path; may span folders
+	visual  *visualRange
+
+	// At most one of these is open; it takes all keys while it is.
+	prompt  *prompt
+	confirm *confirm
+	picker  *picker
+
 	flash string // one-shot status message, cleared by the next key
 }
 
 // New builds the model for vault v.
-func New(v *vault.Vault, pal theme.Palette) (*Model, error) {
-	m := &Model{vault: v, keys: keymap(), tree: newTree()}
+func New(v *vault.Vault, pal theme.Palette, opts Options) (*Model, error) {
+	if opts.Now == nil {
+		opts.Now = time.Now
+	}
+	if opts.ObsidianOpen == nil {
+		opts.ObsidianOpen = func() bool { return false }
+	}
+	m := &Model{vault: v, keys: keymap(), tree: newTree(), opts: opts, marks: map[string]bool{}}
 	m.setPalette(pal)
 	if lines, w, err := logo.HalfBlock(headerHeight); err == nil {
 		m.logo, m.logoW = lines, w
@@ -100,11 +128,20 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.KeyPressMsg:
 		m.flash = ""
-		if act, ok := m.keys[msg.String()]; ok {
-			if act == actQuit {
-				return m, tea.Quit
+		switch {
+		case m.prompt != nil:
+			m.promptKey(msg)
+		case m.confirm != nil:
+			m.confirmKey(msg)
+		case m.picker != nil:
+			m.pickerKey(msg)
+		default:
+			if act, ok := m.keys[msg.String()]; ok {
+				if act == actQuit {
+					return m, tea.Quit
+				}
+				m.do(act)
 			}
-			m.do(act)
 		}
 	}
 	m.settle()
@@ -132,6 +169,18 @@ func (m *Model) do(a action) {
 		m.focus = paneList
 	case actPane3:
 		m.focus = paneNote
+	case actNewNote:
+		m.startCreate(promptNewNote)
+	case actNewFolder:
+		m.startCreate(promptNewFolder)
+	case actRename, actMove, actDelete:
+		m.fileAction(a)
+	case actUndoOp:
+		m.undoOp()
+	case actDaily:
+		m.openDaily()
+	case actEscape:
+		m.escape()
 	default:
 		switch m.focus {
 		case paneTree:
@@ -170,10 +219,19 @@ func (m *Model) listAction(a action) {
 		}
 	case actParent:
 		m.goParent()
+	case actMark:
+		m.toggleMark()
+	case actVisual:
+		m.toggleVisual()
+	case actMarkAll:
+		m.markAll()
 	default:
 		if c := step(m.listCur, len(m.entries), a, m.layout().bodyH-2); c != m.listCur {
 			m.listCur = c
 			m.preview(false)
+			if m.visual != nil {
+				m.applyVisual()
+			}
 		}
 	}
 }
@@ -232,10 +290,16 @@ func (m *Model) enterDir(dir, sel string) {
 	m.tree.expandTo(dir)
 	m.tree.selectPath(dir)
 	m.setCwd(dir)
+	m.selectRel(sel)
+}
+
+// selectRel puts the list cursor on rel if it is in the current folder.
+func (m *Model) selectRel(rel string) {
 	for i, e := range m.entries {
-		if e.Rel == sel {
+		if e.Rel == rel {
 			m.listCur = i
 			m.preview(false)
+			return
 		}
 	}
 }
@@ -245,27 +309,35 @@ func (m *Model) setCwd(dir string) {
 		return
 	}
 	m.cwd = dir
+	m.visual = nil
 	if err := m.loadEntries(false); err != nil {
 		m.flash = err.Error()
 	}
 }
 
 // reload rescans the vault after a change on disk, keeping the user's place.
+// If the current folder is gone, its nearest surviving parent takes over.
 func (m *Model) reload() error {
 	dirs, err := m.vault.Dirs()
 	if err != nil {
 		return err
 	}
 	m.tree.setDirs(dirs, m.vault.Name())
-	if !m.tree.has(m.cwd) {
-		m.cwd = ""
+	for !m.tree.has(m.cwd) {
+		m.cwd = parentOf(m.cwd)
 	}
+	m.tree.expandTo(m.cwd)
 	m.tree.selectPath(m.cwd)
 	files, err := m.vault.Files()
 	if err != nil {
 		return err
 	}
 	m.links = linkIndex(files)
+	for p := range m.marks {
+		if !m.vault.Exists(p) {
+			delete(m.marks, p)
+		}
+	}
 	return m.loadEntries(true)
 }
 
@@ -410,6 +482,13 @@ func (m *Model) layout() layout {
 		l.noteW = m.width - l.treeW - l.listW
 	}
 	return l
+}
+
+func parentOf(p string) string {
+	if d := path.Dir(p); d != "." {
+		return d
+	}
+	return ""
 }
 
 func clamp(v, lo, hi int) int { return max(lo, min(v, hi)) }

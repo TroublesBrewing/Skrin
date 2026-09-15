@@ -10,6 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/lurioso/skrin/internal/config"
+	"github.com/lurioso/skrin/internal/obsidian"
 	"github.com/lurioso/skrin/internal/theme"
 	"github.com/lurioso/skrin/internal/ui"
 	"github.com/lurioso/skrin/internal/vault"
@@ -41,9 +42,18 @@ Flags:
 }
 
 func run(vaultArg string) error {
-	root, err := resolveVault(vaultArg)
+	cfg, err := config.Load()
 	if err != nil {
 		return err
+	}
+	root := vaultArg
+	if root == "" {
+		root = cfg.Vault
+	}
+	if root == "" {
+		if root, err = config.DiscoverVault(); err != nil {
+			return err
+		}
 	}
 	v, err := vault.Open(root)
 	if err != nil {
@@ -54,7 +64,17 @@ func run(vaultArg string) error {
 	if themeErr != nil {
 		pal = theme.Default()
 	}
-	m, err := ui.New(v, pal)
+	m, err := ui.New(v, pal, ui.Options{
+		RolloverTodos: cfg.RolloverTodos(),
+		ObsidianOpen: func() bool {
+			if !obsidian.Running() {
+				return false
+			}
+			reg, err := obsidian.LoadRegistry(config.ObsidianRegistry())
+			// Unsure means open: skipping a rollover beats doing it twice.
+			return err != nil || reg.IsOpen(v.Root)
+		},
+	})
 	if err != nil {
 		return err
 	}
@@ -72,18 +92,4 @@ func run(vaultArg string) error {
 	}
 	_, err = p.Run()
 	return err
-}
-
-func resolveVault(arg string) (string, error) {
-	if arg != "" {
-		return arg, nil
-	}
-	cfg, err := config.Load()
-	if err != nil {
-		return "", err
-	}
-	if cfg.Vault != "" {
-		return cfg.Vault, nil
-	}
-	return config.DiscoverVault()
 }

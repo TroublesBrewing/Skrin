@@ -40,7 +40,11 @@ func (m *Model) render() string {
 		rows = append(rows, b.String())
 	}
 	rows = append(rows, m.statusLine())
-	return strings.Join(rows[:min(len(rows), m.height)], "\n")
+	out := strings.Join(rows[:min(len(rows), m.height)], "\n")
+	if m.picker != nil {
+		out = m.overlay(out, m.pickerBox())
+	}
+	return out
 }
 
 func (m *Model) header() []string {
@@ -61,6 +65,14 @@ func (m *Model) header() []string {
 	return out
 }
 
+// markCell is the one-cell column in front of a row that shows a mark.
+func (m *Model) markCell(rel string) string {
+	if m.marks[rel] {
+		return "●"
+	}
+	return " "
+}
+
 func (m *Model) treePane(w, h int) []string {
 	inner, vis := w-2, h-2
 	t := &m.tree
@@ -74,10 +86,13 @@ func (m *Model) treePane(w, h int) []string {
 				icon = "▾ "
 			}
 		}
-		text := fit(" "+strings.Repeat("  ", r.depth)+icon+r.name, inner)
+		text := fit(m.markCell(r.path)+strings.Repeat("  ", r.depth)+icon+r.name, inner)
 		st := m.st.text
-		if r.path == "" {
+		switch {
+		case r.path == "":
 			st = m.st.bold
+		case m.marks[r.path]:
+			st = m.st.marked
 		}
 		switch {
 		case i == t.cur && m.focus == paneTree:
@@ -110,7 +125,10 @@ func (m *Model) listPane(w, h int) []string {
 		default:
 			name, st, date = "  "+name, m.st.muted, shortDate(e.ModTime, now)
 		}
-		left := fit(" "+name, max(inner-8, 1))
+		if m.marks[e.Rel] {
+			st = m.st.marked
+		}
+		left := fit(m.markCell(e.Rel)+name, max(inner-8, 1))
 		right := fmt.Sprintf(" %6s ", date)
 		switch {
 		case i == m.listCur && m.focus == paneList:
@@ -121,11 +139,7 @@ func (m *Model) listPane(w, h int) []string {
 			body = append(body, st.Render(left)+m.st.muted.Render(right))
 		}
 	}
-	title := m.vault.Name() + "/"
-	if m.cwd != "" {
-		title = m.cwd + "/"
-	}
-	return m.box(title, body, w, h, m.focus == paneList)
+	return m.box(m.folderLabel(m.cwd), body, w, h, m.focus == paneList)
 }
 
 func (m *Model) notePane(w, h int) []string {
@@ -135,7 +149,7 @@ func (m *Model) notePane(w, h int) []string {
 	e, ok := m.selected()
 	switch {
 	case !ok:
-		body = []string{"", m.st.muted.Render("  Nothing here yet.")}
+		body = []string{"", m.st.muted.Render("  Nothing here yet. n creates a note.")}
 	case e.IsDir:
 		title = e.Name + "/"
 		body = []string{
@@ -161,11 +175,25 @@ func (m *Model) notePane(w, h int) []string {
 }
 
 func (m *Model) statusLine() string {
-	left := m.st.pill.Render(" VIEW ") + " " + m.st.text.Render(m.location())
+	switch {
+	case m.prompt != nil:
+		return m.promptLine()
+	case m.confirm != nil:
+		left := m.st.dangerPill.Render(" DELETE ") + " " + m.st.text.Render(m.confirm.question) + " " + m.st.bold.Render("y/n")
+		return spread(left, "", m.width)
+	}
+	mode := " VIEW "
+	if m.visual != nil {
+		mode = " VISUAL "
+	}
+	left := m.st.pill.Render(mode) + " " + m.st.text.Render(m.location())
+	if n := len(m.marks); n > 0 {
+		left += m.st.marked.Render(fmt.Sprintf("  ● %d marked", n))
+	}
 	if m.isNote && len(m.lines) > 0 {
 		left += m.st.muted.Render("  " + m.scrollInfo())
 	}
-	right := m.st.muted.Render("h/l panes · enter open · q quit")
+	right := m.st.muted.Render("n new · d delete · t today · U undo · q quit")
 	if m.flash != "" {
 		right = m.st.flash.Render(m.flash)
 	}
@@ -173,13 +201,10 @@ func (m *Model) statusLine() string {
 }
 
 func (m *Model) location() string {
-	switch {
-	case m.notePath != "":
+	if m.notePath != "" {
 		return m.notePath
-	case m.cwd != "":
-		return m.cwd + "/"
 	}
-	return m.vault.Name() + "/"
+	return m.folderLabel(m.cwd)
 }
 
 // scrollInfo describes the note's scroll position the way vim does.
@@ -231,11 +256,22 @@ func fit(s string, w int) string {
 	return s
 }
 
-// spread puts left and right on one line of exactly w cells.
+// spread puts left and right on one line of exactly w cells. When both
+// don't fit, the right side keeps up to two thirds of the line and the left
+// side is clipped.
 func spread(left, right string, w int) string {
-	gap := w - ansi.StringWidth(left) - ansi.StringWidth(right) - 1
+	lw, rw := ansi.StringWidth(left), ansi.StringWidth(right)
+	if lw+rw+2 > w {
+		if rw > w*2/3 {
+			right = ansi.Truncate(right, w*2/3, "…")
+			rw = ansi.StringWidth(right)
+		}
+		left = ansi.Truncate(left, max(w-rw-2, 0), "…")
+		lw = ansi.StringWidth(left)
+	}
+	gap := w - lw - rw - 1
 	if gap < 1 {
-		return fit(left, w)
+		return fit(left+" "+right, w)
 	}
 	return left + strings.Repeat(" ", gap) + right + " "
 }

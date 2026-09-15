@@ -97,7 +97,7 @@ type span struct {
 
 type styles struct {
 	text, muted, rule, quote, code, bullet, done, doneText, propKey lipgloss.Style
-	heading                                                          [6]lipgloss.Style
+	heading                                                         [6]lipgloss.Style
 }
 
 func newStyles(p theme.Palette) styles {
@@ -139,10 +139,10 @@ var (
 		`!?\[\[[^\[\]]+\]\]`,         // wikilink or embed
 		`\[[^\[\]]+\]\([^()\s]+\)`,   // markdown link
 		`\*\*[^*]+\*\*`, `__[^_]+__`, // bold
-		`~~[^~]+~~`,                  // strikethrough
-		`==[^=]+==`,                  // highlight
-		`\*[^*\s](?:[^*]*[^*\s])?\*`, // italic
-		`(?:^|[\s(])_[^_\s](?:[^_]*[^_\s])?_`,                    // italic
+		`~~[^~]+~~`,                           // strikethrough
+		`==[^=]+==`,                           // highlight
+		`\*[^*\s](?:[^*]*[^*\s])?\*`,          // italic
+		`(?:^|[\s(])_[^_\s](?:[^_]*[^_\s])?_`, // italic
 		`(?:^|[\s(])#[\p{L}\p{N}_/-]*[\p{L}_/-][\p{L}\p{N}_/-]*`, // tag
 	}, "|"))
 )

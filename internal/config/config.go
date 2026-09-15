@@ -2,7 +2,6 @@
 package config
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -11,11 +10,22 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+
+	"github.com/lurioso/skrin/internal/obsidian"
 )
 
 // Config mirrors ~/.config/skrin/config.toml.
 type Config struct {
 	Vault string `toml:"vault"`
+	Daily struct {
+		RolloverTodos *bool `toml:"rollover_todos"` // unset means on
+	} `toml:"daily"`
+}
+
+// RolloverTodos reports whether `t` carries unfinished todos into a new
+// daily note. It is on unless turned off.
+func (c Config) RolloverTodos() bool {
+	return c.Daily.RolloverTodos == nil || *c.Daily.RolloverTodos
 }
 
 // Load reads the config file. A missing file is not an error.
@@ -32,40 +42,23 @@ func Load() (Config, error) {
 	return c, nil
 }
 
-// DiscoverVault asks Obsidian's own vault registry which vault to use: the
-// one currently open, or else the most recently used.
-func DiscoverVault() (string, error) {
-	return discoverFrom(filepath.Join(configHome(), "obsidian", "obsidian.json"))
+// ObsidianRegistry is where Obsidian keeps its list of vaults.
+func ObsidianRegistry() string {
+	return filepath.Join(configHome(), "obsidian", "obsidian.json")
 }
 
-func discoverFrom(path string) (string, error) {
-	data, err := os.ReadFile(path)
+// DiscoverVault asks Obsidian's vault list which vault to use: the one
+// open now, or else the most recently used.
+func DiscoverVault() (string, error) {
+	path := ObsidianRegistry()
+	reg, err := obsidian.LoadRegistry(path)
 	if err != nil {
 		return "", fmt.Errorf("no vault given and Obsidian's vault list is unreadable: %w", err)
 	}
-	var reg struct {
-		Vaults map[string]struct {
-			Path string `json:"path"`
-			TS   int64  `json:"ts"`
-			Open bool   `json:"open"`
-		} `json:"vaults"`
+	if p, ok := reg.Preferred(); ok {
+		return p, nil
 	}
-	if err := json.Unmarshal(data, &reg); err != nil {
-		return "", fmt.Errorf("parsing %s: %w", path, err)
-	}
-	best, bestTS, bestOpen := "", int64(-1), false
-	for _, v := range reg.Vaults {
-		if v.Path == "" {
-			continue
-		}
-		if (v.Open && !bestOpen) || (v.Open == bestOpen && v.TS > bestTS) {
-			best, bestTS, bestOpen = v.Path, v.TS, v.Open
-		}
-	}
-	if best == "" {
-		return "", fmt.Errorf("no vault given and %s lists none", path)
-	}
-	return best, nil
+	return "", fmt.Errorf("no vault given and %s lists none", path)
 }
 
 func configHome() string {

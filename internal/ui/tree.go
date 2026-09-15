@@ -110,10 +110,3 @@ func (t *tree) expandTo(p string) {
 	}
 	t.build()
 }
-
-func parentOf(p string) string {
-	if d := path.Dir(p); d != "." {
-		return d
-	}
-	return ""
-}

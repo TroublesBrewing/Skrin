@@ -25,10 +25,10 @@ type Palette struct {
 	Name string
 	Dark bool
 
-	Accent, Selection, Muted                                 color.Color
+	Accent, Selection, Muted                                        color.Color
 	Background, DarkBackground, DarkerBackground, LighterBackground color.Color
-	Foreground, DarkForeground, LightForeground              color.Color
-	Red, Yellow, Orange, Green, Cyan, Blue, Magenta          color.Color
+	Foreground, DarkForeground, LightForeground                     color.Color
+	Red, Yellow, Orange, Green, Cyan, Blue, Magenta                 color.Color
 
 	Headings                [6]color.Color
 	Link, Tag, Code, Border color.Color

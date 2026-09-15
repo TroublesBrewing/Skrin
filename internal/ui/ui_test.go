@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -13,17 +14,30 @@ import (
 	"github.com/lurioso/skrin/internal/vault"
 )
 
+// today is the pinned clock for tests: a Tuesday.
+var today = time.Date(2026, 9, 15, 9, 30, 0, 0, time.Local)
+
+var fixture = map[string]string{
+	"Welcome.md":                       "# Welcome\nSee [[Stoic]] and [[Missing]] #start\n",
+	"Filosofi/Stoic.md":                "---\ntags: [stoa]\n---\n# Stoic\n## Morning\n" + strings.Repeat("line\n", 80),
+	"Filosofi/Antik/Zeno.md":           "# Zeno\n",
+	"Daily/2026-09-11.md":              "### Reflection\n",
+	"Daily/2026-09-13.md":              "### Todo's\n- [ ] call mum\n  - about sunday\n- [x] done thing\n- [ ] \n- [-] cancelled\n* [ ] star task\n",
+	"Templates/Daily template.md":      "# {{date:dddd D MMMM}}\n### Todo's\n\n### Notes\n",
+	".obsidian/daily-notes.json":       `{"folder":"Daily","template":"Templates/Daily template.md"}`,
+	".obsidian/community-plugins.json": `["obsidian-rollover-daily-todos"]`,
+	".obsidian/plugins/obsidian-rollover-daily-todos/data.json": `{"templateHeading":"### Todo's","deleteOnComplete":false,"removeEmptyTodos":true,"rolloverChildren":true,"doneStatusMarkers":"xX-"}`,
+}
+
 func newTestModel(t *testing.T) *Model {
+	return newTestModelWith(t, Options{RolloverTodos: true})
+}
+
+func newTestModelWith(t *testing.T, opts Options) *Model {
 	t.Helper()
+	t.Setenv("XDG_DATA_HOME", t.TempDir()) // keep the real trash out of it
 	root := t.TempDir()
-	files := map[string]string{
-		"Welcome.md":               "# Welcome\nSee [[Stoic]] and [[Missing]] #start\n",
-		"Filosofi/Stoic.md":        "---\ntags: [stoa]\n---\n# Stoic\n## Morning\n" + strings.Repeat("line\n", 80),
-		"Filosofi/Antik/Zeno.md":   "# Zeno\n",
-		"Daily/2026-09-11.md":      "### Reflection\n",
-		".obsidian/workspace.json": "{}",
-	}
-	for f, body := range files {
+	for f, body := range fixture {
 		p := filepath.Join(root, filepath.FromSlash(f))
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 			t.Fatal(err)
@@ -36,28 +50,60 @@ func newTestModel(t *testing.T) *Model {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m, err := New(v, theme.Default())
+	if opts.Now == nil {
+		opts.Now = func() time.Time { return today }
+	}
+	m, err := New(v, theme.Default(), opts)
 	if err != nil {
 		t.Fatal(err)
 	}
+	m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 	return m
+}
+
+func key(k string) tea.KeyPressMsg {
+	switch k {
+	case "enter":
+		return tea.KeyPressMsg{Code: tea.KeyEnter}
+	case "backspace":
+		return tea.KeyPressMsg{Code: tea.KeyBackspace}
+	case "tab":
+		return tea.KeyPressMsg{Code: tea.KeyTab}
+	case "esc":
+		return tea.KeyPressMsg{Code: tea.KeyEscape}
+	case "space":
+		return tea.KeyPressMsg{Code: tea.KeySpace, Text: " "}
+	case "down":
+		return tea.KeyPressMsg{Code: tea.KeyDown}
+	}
+	if c, ok := strings.CutPrefix(k, "ctrl+"); ok {
+		return tea.KeyPressMsg{Code: []rune(c)[0], Mod: tea.ModCtrl}
+	}
+	return tea.KeyPressMsg{Code: []rune(k)[0], Text: k}
 }
 
 func press(m *Model, keys ...string) {
 	for _, k := range keys {
-		var msg tea.KeyPressMsg
-		switch k {
-		case "enter":
-			msg = tea.KeyPressMsg{Code: tea.KeyEnter}
-		case "backspace":
-			msg = tea.KeyPressMsg{Code: tea.KeyBackspace}
-		case "tab":
-			msg = tea.KeyPressMsg{Code: tea.KeyTab}
-		default:
-			r := []rune(k)[0]
-			msg = tea.KeyPressMsg{Code: r, Text: k}
+		m.Update(key(k))
+	}
+}
+
+func typeText(m *Model, s string) {
+	for _, r := range s {
+		m.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
+	}
+}
+
+func checkFrame(t *testing.T, m *Model, what string) {
+	t.Helper()
+	lines := strings.Split(m.render(), "\n")
+	if len(lines) != m.height {
+		t.Fatalf("%s: %d lines, want %d", what, len(lines), m.height)
+	}
+	for i, l := range lines {
+		if w := ansi.StringWidth(l); w != m.width {
+			t.Errorf("%s: line %d is %d wide, want %d: %q", what, i, w, m.width, ansi.Strip(l))
 		}
-		m.Update(msg)
 	}
 }
 
@@ -67,24 +113,33 @@ func TestFrameFillsTerminalExactly(t *testing.T) {
 		m.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
 		for _, focus := range []string{"1", "2", "3"} {
 			press(m, focus)
-			lines := strings.Split(m.render(), "\n")
-			if len(lines) != size[1] {
-				t.Fatalf("%dx%d: %d lines", size[0], size[1], len(lines))
-			}
-			for i, l := range lines {
-				if w := ansi.StringWidth(l); w != size[0] {
-					t.Errorf("%dx%d focus %s: line %d is %d wide: %q", size[0], size[1], focus, i, w, ansi.Strip(l))
-				}
-			}
+			checkFrame(t, m, "focus "+focus)
 		}
+	}
+}
+
+func TestModalsFillTerminalExactly(t *testing.T) {
+	m := newTestModel(t)
+	for _, size := range [][2]int{{120, 40}, {60, 16}} {
+		m.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
+		press(m, "2", "n")
+		typeText(m, "a rather long name for a brand new note")
+		checkFrame(t, m, "new-note prompt")
+		press(m, "esc", "d")
+		checkFrame(t, m, "delete confirm")
+		press(m, "n", "m")
+		if m.picker == nil {
+			t.Fatal("m did not open the folder picker")
+		}
+		checkFrame(t, m, "move picker")
+		press(m, "esc")
 	}
 }
 
 func TestNavigateTreeListAndNote(t *testing.T) {
 	m := newTestModel(t)
-	m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 
-	// Tree rows: vault root, Daily, Filosofi. Moving the cursor changes folder.
+	// Tree rows: vault root, Daily, Filosofi, Templates.
 	press(m, "1", "j", "j")
 	if m.cwd != "Filosofi" {
 		t.Fatalf("cwd = %q, want Filosofi", m.cwd)
@@ -114,7 +169,6 @@ func TestNavigateTreeListAndNote(t *testing.T) {
 
 func TestVaultChangeKeepsPlace(t *testing.T) {
 	m := newTestModel(t)
-	m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 	press(m, "1", "j", "j", "l", "j")
 	if err := os.WriteFile(m.vault.Abs("Filosofi/Aaa.md"), []byte("# new"), 0o644); err != nil {
 		t.Fatal(err)

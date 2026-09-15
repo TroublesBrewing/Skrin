@@ -19,6 +19,17 @@ const (
 	actPane3
 	actOpen
 	actParent
+	actNewNote
+	actNewFolder
+	actRename
+	actMove
+	actDelete
+	actMark
+	actVisual
+	actMarkAll
+	actEscape
+	actUndoOp
+	actDaily
 	actQuit
 )
 
@@ -46,6 +57,17 @@ var defaultBindings = []binding{
 	{actPane3, []string{"3"}, "note"},
 	{actOpen, []string{"enter"}, "expand folder / open"},
 	{actParent, []string{"backspace"}, "parent folder / back"},
+	{actNewNote, []string{"n"}, "new note in the current folder"},
+	{actNewFolder, []string{"N"}, "new folder in the current folder"},
+	{actRename, []string{"r"}, "rename"},
+	{actMove, []string{"m"}, "move (the marked items, if any)"},
+	{actDelete, []string{"d"}, "delete to the trash (the marked items, if any)"},
+	{actMark, []string{"space", " "}, "mark / unmark"},
+	{actVisual, []string{"v"}, "mark a range"},
+	{actMarkAll, []string{"ctrl+a"}, "mark everything in the folder"},
+	{actEscape, []string{"esc"}, "clear marks"},
+	{actUndoOp, []string{"U"}, "undo the last file operation"},
+	{actDaily, []string{"t"}, "open or create today's daily note"},
 	{actQuit, []string{"q", "ctrl+c"}, "quit"},
 }
 

@@ -1,6 +1,28 @@
 # Changelog
 
-Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 8, once Skrin has held up in daily use.
+Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
+
+## v0.6.0 — 2026-09-15
+
+Milestone 6: two panels, like Obsidian (`skrin two panels.md` in the vault).
+
+- **Files** replaces the folder tree and the folder contents. It's one tree holding folders and files, folders first, A→Z. Notes show without `.md`, and other files are dimmed. The top row is the vault itself.
+- A note opens on `Enter` (or `l`), as in Obsidian, and stays open while you move around Files. The open note is highlighted in Files.
+- Keys in Files:
+  - `l` goes into a folder, opening it. `h` closes the folder, or goes up when it's closed. `Backspace` goes up.
+  - `Enter` opens or closes a folder, opens a note, or opens any other file in its own app.
+  - `H` closes all folders.
+  - `1` is Files, `2` the note, and `Tab` switches between them. `3` is gone.
+- Which item a key acts on:
+  - In Files, it's the row under the cursor. `e`, `E`, `u`, `Ctrl-r` and `o` open that note first.
+  - In the note, it's the open note.
+  - Marks still come first for `m` and `d`.
+- The Files cursor stays put when a link, a search hit, Go to note, `t` or going back opens a note. The exception is when Obsidian's "Automatically reveal current file" is on.
+- Renaming or moving the open note keeps it open under its new name. Deleting it empties the note panel.
+- `v` ranges can cross folders. `Ctrl-a` marks everything next to the cursor in its folder.
+- Skrin remembers the open folders, the cursor and the open note for each vault, under `~/.local/state/skrin/session/`.
+- Files and the note fit side by side down to 80 columns; it was 100.
+- The status line shows the open note's modified date.
 
 ## v0.5.4 — 2026-09-15
 

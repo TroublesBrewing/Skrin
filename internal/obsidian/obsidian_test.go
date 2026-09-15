@@ -39,10 +39,21 @@ func TestLoadSettings(t *testing.T) {
 	}
 }
 
+func TestRevealActiveFileFromWorkspace(t *testing.T) {
+	root := t.TempDir()
+	write(t, root, ".obsidian/workspace.json", `{"main":{"type":"split","children":[]},
+		"left":{"type":"split","children":[{"type":"tabs","children":[
+			{"id":"a","type":"leaf","state":{"type":"search","state":{"query":""}}},
+			{"id":"b","type":"leaf","state":{"type":"file-explorer","state":{"sortOrder":"alphabetical","autoReveal":true}}}]}]}}`)
+	if !LoadSettings(root).RevealActiveFile {
+		t.Error("autoReveal: true in the file explorer's state was missed")
+	}
+}
+
 func TestLoadSettingsDefaults(t *testing.T) {
 	s := LoadSettings(t.TempDir())
 	if s.TrashOption != "system" || s.Daily.Format != "YYYY-MM-DD" || s.Daily.Folder != "" ||
-		s.NewLinkFormat != "shortest" || s.NewFileLocation != "root" || s.AlwaysUpdateLinks {
+		s.NewLinkFormat != "shortest" || s.NewFileLocation != "root" || s.AlwaysUpdateLinks || s.RevealActiveFile {
 		t.Errorf("defaults = %+v", s)
 	}
 	if s.Rollover.Installed || s.Rollover.TemplateHeading != "none" {

@@ -12,16 +12,16 @@ import (
 	"github.com/lurioso/skrin/internal/vault"
 )
 
-// visualRange is an active v selection: marks from anchor to the cursor,
-// on top of the marks that existed before it started.
+// visualRange is an active v selection: marks on the Files rows from anchor
+// to the cursor, on top of the marks that existed before it started.
 type visualRange struct {
 	anchor int
 	base   map[string]bool
 }
 
 func (m *Model) toggleMark() {
-	e, ok := m.selected()
-	if !ok {
+	e := m.files.selected()
+	if e.Rel == "" {
 		return
 	}
 	m.visual = nil
@@ -30,19 +30,21 @@ func (m *Model) toggleMark() {
 	} else {
 		m.marks[e.Rel] = true
 	}
-	if m.listCur < len(m.entries)-1 {
-		m.listCur++
-		m.preview(false)
+	if m.files.cur < len(m.files.rows)-1 {
+		m.files.cur++
 	}
 }
 
+// markAll marks the cursor's row and everything next to it in its folder,
+// or unmarks them all when they already are.
 func (m *Model) markAll() {
 	m.visual = nil
+	sibs := m.files.siblings()
 	all := true
-	for _, e := range m.entries {
+	for _, e := range sibs {
 		all = all && m.marks[e.Rel]
 	}
-	for _, e := range m.entries {
+	for _, e := range sibs {
 		if all {
 			delete(m.marks, e.Rel)
 		} else {
@@ -56,18 +58,17 @@ func (m *Model) toggleVisual() {
 		m.visual = nil
 		return
 	}
-	if len(m.entries) == 0 {
-		return
-	}
-	m.visual = &visualRange{anchor: m.listCur, base: cloneMarks(m.marks)}
+	m.visual = &visualRange{anchor: m.files.cur, base: cloneMarks(m.marks)}
 	m.applyVisual()
 }
 
 func (m *Model) applyVisual() {
 	marks := cloneMarks(m.visual.base)
-	lo, hi := min(m.visual.anchor, m.listCur), max(m.visual.anchor, m.listCur)
-	for i := lo; i <= hi && i < len(m.entries); i++ {
-		marks[m.entries[i].Rel] = true
+	lo, hi := min(m.visual.anchor, m.files.cur), max(m.visual.anchor, m.files.cur)
+	for i := lo; i <= hi && i < len(m.files.rows); i++ {
+		if rel := m.files.rows[i].Rel; rel != "" {
+			marks[rel] = true
+		}
 	}
 	m.marks = marks
 }
@@ -92,8 +93,9 @@ func cloneMarks(src map[string]bool) map[string]bool {
 }
 
 // targets are what r, m and d act on: the marked items if there are any,
-// otherwise the item under the cursor. Marked items inside a marked folder
-// are left out, since they go wherever the folder goes.
+// otherwise the row under the cursor in Files, or the open note in the note
+// pane. Marked items inside a marked folder are left out, since they go
+// wherever the folder goes.
 func (m *Model) targets() []string {
 	if len(m.marks) > 0 {
 		var out []string
@@ -105,16 +107,14 @@ func (m *Model) targets() []string {
 		sort.Strings(out)
 		return out
 	}
-	if m.focus == paneTree {
-		if p := m.tree.selected(); p != "" {
-			return []string{p}
-		}
+	p := m.files.selected().Rel
+	if m.focus == paneNote {
+		p = m.notePath
+	}
+	if p == "" {
 		return nil
 	}
-	if e, ok := m.selected(); ok {
-		return []string{e.Rel}
-	}
-	return nil
+	return []string{p}
 }
 
 func insideMarked(p string, marks map[string]bool) bool {
@@ -130,7 +130,9 @@ func (m *Model) fileAction(a action) {
 	m.visual = nil
 	ts := m.targets()
 	if len(ts) == 0 {
-		if m.focus == paneTree {
+		if m.focus == paneNote {
+			m.flash = "No note open"
+		} else {
 			m.flash = "The vault itself can't be renamed, moved or deleted"
 		}
 		return
@@ -154,7 +156,7 @@ func (m *Model) startCreate(k promptKind) {
 	if k == promptNewFolder {
 		what = "New folder in "
 	}
-	m.prompt = &prompt{kind: k, label: what + m.folderLabel(m.cwd)}
+	m.prompt = &prompt{kind: k, label: what + m.folderLabel(m.cwd())}
 }
 
 func (m *Model) startRename(rel string) {
@@ -190,10 +192,11 @@ func (m *Model) submitPrompt() {
 // folders on the way. An empty name becomes "Untitled", as in Obsidian, and
 // so does "sub/" with no name after the slash, inside sub.
 func (m *Model) createNote(input string) error {
+	cwd := m.cwd()
 	if i := strings.LastIndex(input, "/"); input == "" || (i >= 0 && strings.TrimSpace(input[i+1:]) == "") {
-		dir := m.cwd
+		dir := cwd
 		if folder := strings.TrimSpace(strings.TrimSuffix(input, "/")); folder != "" {
-			d, err := joinUserPath(m.cwd, folder)
+			d, err := joinUserPath(cwd, folder)
 			if err != nil {
 				return err
 			}
@@ -201,7 +204,7 @@ func (m *Model) createNote(input string) error {
 		}
 		return m.createNoteAt(path.Join(dir, m.untitledIn(dir, ".md")+".md"))
 	}
-	rel, err := joinUserPath(m.cwd, input)
+	rel, err := joinUserPath(cwd, input)
 	if err != nil {
 		return err
 	}
@@ -211,7 +214,8 @@ func (m *Model) createNote(input string) error {
 	return m.createNoteAt(rel)
 }
 
-// createNoteAt creates an empty note at rel and opens it in the editor.
+// createNoteAt creates an empty note at rel, puts the Files cursor on it and
+// opens it in the editor.
 func (m *Model) createNoteAt(rel string) error {
 	if m.vault.Exists(rel) {
 		return fmt.Errorf("%s already exists", rel)
@@ -226,17 +230,20 @@ func (m *Model) createNoteAt(rel string) error {
 		return err
 	}
 	m.reveal(rel)
+	m.pushHistory()
+	m.showNote(rel)
 	m.openEditor(rel)
 	m.flash = "Created " + rel
 	return nil
 }
 
 func (m *Model) createFolder(input string) error {
+	cwd := m.cwd()
 	input = strings.TrimSpace(strings.TrimRight(input, "/"))
 	if input == "" {
-		input = m.untitledIn(m.cwd, "")
+		input = m.untitledIn(cwd, "")
 	}
-	rel, err := joinUserPath(m.cwd, input)
+	rel, err := joinUserPath(cwd, input)
 	if err != nil {
 		return err
 	}
@@ -260,9 +267,8 @@ func (m *Model) rename(target, input string) error {
 	if err := vault.CheckName(input); err != nil {
 		return err
 	}
-	isDir := m.vault.IsDir(target)
 	name := input
-	if !isDir && vault.IsNote(path.Base(target)) && !vault.IsNote(name) {
+	if !m.vault.IsDir(target) && vault.IsNote(path.Base(target)) && !vault.IsNote(name) {
 		name += ".md"
 	}
 	to := path.Join(parentOf(target), name)
@@ -272,26 +278,14 @@ func (m *Model) rename(target, input string) error {
 	if m.vault.Exists(to) {
 		return fmt.Errorf("%s already exists", name)
 	}
-	fromTree := m.focus == paneTree
-	m.relocate([][2]string{{target, to}}, "rename "+path.Base(target)+" to "+name, func(moved []string, relinked int, err error) {
+	m.relocate([][2]string{{target, to}}, "rename "+path.Base(target)+" to "+name, func(moved [][2]string, relinked int, err error) {
 		m.marks = map[string]bool{}
+		// A rename stays in place, so the cursor goes along with it.
+		m.followMoves(moved, true)
+		m.refresh()
 		if err != nil {
-			m.refresh(m.listCur)
 			m.flash = "Rename failed: " + err.Error()
 			return
-		}
-		// Renaming the folder we're in (or one above it) moves us along.
-		if m.cwd == target || strings.HasPrefix(m.cwd, target+"/") {
-			m.cwd = to + strings.TrimPrefix(m.cwd, target)
-		}
-		if isDir && fromTree {
-			if err := m.reload(); err != nil {
-				m.flash = err.Error()
-				return
-			}
-			m.enterDir(to, "")
-		} else {
-			m.reveal(to)
 		}
 		m.flash = "Renamed to " + name + linksNote(relinked) + " · U undoes"
 	})
@@ -324,7 +318,8 @@ func movesIntoItself(dest string, srcs []string) bool {
 }
 
 // moveTo moves srcs into dest as one undoable operation. Name clashes are
-// checked first, so either everything moves or nothing does.
+// checked first, so either everything moves or nothing does. The cursor
+// stays behind on the next row, ready for the next item to tidy.
 func (m *Model) moveTo(dest string, srcs []string) {
 	var moves [][2]string
 	for _, s := range srcs {
@@ -342,19 +337,15 @@ func (m *Model) moveTo(dest string, srcs []string) {
 		m.flash = "Already in " + m.folderLabel(dest)
 		return
 	}
-	froms := make([]string, len(moves))
-	for i, mv := range moves {
-		froms[i] = mv[0]
-	}
-	row := m.listCur
-	m.relocate(moves, "move "+describe(froms)+" to "+m.folderLabel(dest), func(moved []string, relinked int, err error) {
+	m.relocate(moves, "move "+describe(froms(moves))+" to "+m.folderLabel(dest), func(moved [][2]string, relinked int, err error) {
 		m.marks = map[string]bool{}
-		m.refresh(row)
+		m.followMoves(moved, false)
+		m.refresh()
 		if err != nil {
 			m.flash = "Move stopped: " + err.Error()
 			return
 		}
-		m.flash = "Moved " + describe(moved) + " to " + m.folderLabel(dest) + linksNote(relinked) + " · U undoes"
+		m.flash = "Moved " + describe(froms(moved)) + " to " + m.folderLabel(dest) + linksNote(relinked) + " · U undoes"
 	})
 }
 
@@ -390,7 +381,6 @@ func (m *Model) askDelete(ts []string) {
 }
 
 func (m *Model) deletePaths(ts []string, option string) {
-	row := m.listCur
 	var steps []vault.Step
 	var done []string
 	var failed error
@@ -413,7 +403,7 @@ func (m *Model) deletePaths(ts []string, option string) {
 	}
 	m.journal.Record(vault.Op{Desc: "delete " + describe(done), Steps: steps})
 	m.marks = map[string]bool{}
-	m.refresh(row)
+	m.refresh()
 	switch {
 	case failed != nil:
 		m.flash = "Couldn't delete everything: " + failed.Error()
@@ -431,20 +421,24 @@ func (m *Model) undoOp() {
 		m.flash = "Nothing to undo"
 		return
 	}
+	var back [][2]string
 	for _, s := range op.Steps {
 		if s.Kind == vault.StepMoved && m.vault.Exists(s.From) {
 			_ = m.snaps.Move(s.Rel, s.From)
+			back = append(back, [2]string{s.Rel, s.From})
 		}
 	}
-	m.refresh(m.listCur)
-	// Put the cursor on what came back, if it's in this folder.
-	if s := op.Steps[0]; s.Kind != vault.StepCreated {
-		back := s.Rel
-		if s.Kind == vault.StepMoved {
-			back = s.From
+	m.followMoves(back, true)
+	m.refresh()
+	// Put the cursor on what came back.
+	for _, s := range op.Steps {
+		if s.Kind == vault.StepTrashed {
+			m.files.reveal(s.Rel)
+			break
 		}
-		if parentOf(back) == m.cwd {
-			m.selectRel(back)
+		if s.Kind == vault.StepMoved {
+			m.files.reveal(s.From)
+			break
 		}
 	}
 	m.flash = "Undone: " + op.Desc
@@ -462,8 +456,7 @@ func (m *Model) openDaily() {
 	now := m.opts.Now()
 	rel := daily.Path(s.Daily, now)
 	if m.vault.Exists(rel) {
-		m.reveal(rel)
-		m.focus = paneNote
+		m.goTo(rel, "")
 		m.flash = "Today's note: " + rel
 		return
 	}
@@ -518,8 +511,8 @@ func (m *Model) openDaily() {
 		}
 	}
 	m.journal.Record(vault.Op{Desc: "create " + rel, Steps: steps})
-	m.reveal(rel)
-	m.focus = paneNote
+	m.refresh()
+	m.goTo(rel, "")
 
 	msg := "Created " + rel
 	if len(rolled) > 0 {
@@ -531,27 +524,38 @@ func (m *Model) openDaily() {
 	m.flash = msg
 }
 
-// reveal reloads the vault and puts the cursor on rel in its folder.
+// reveal reloads the vault and puts the Files cursor on rel, opening the
+// folders above it.
 func (m *Model) reveal(rel string) {
-	if err := m.reload(); err != nil {
-		m.flash = err.Error()
-		return
-	}
-	m.enterDir(parentOf(rel), rel)
+	m.refresh()
+	m.files.reveal(rel)
 }
 
-// refresh reloads after items left the current folder. If the selected
-// entry is gone, the cursor stays on the same row.
-func (m *Model) refresh(row int) {
-	before, _ := m.selected()
+// refresh reloads the vault after Skrin changed it.
+func (m *Model) refresh() {
 	if err := m.reload(); err != nil {
 		m.flash = err.Error()
-		return
 	}
-	if e, ok := m.selected(); !ok || e.Rel != before.Rel {
-		m.listCur = clamp(row, 0, max(len(m.entries)-1, 0))
-		m.preview(false)
+}
+
+// followMoves carries the open note, the history, open folders and, with
+// cursor, the Files cursor along with items that moved.
+func (m *Model) followMoves(moves [][2]string, cursor bool) {
+	m.notePath = movedPath(m.notePath, moves)
+	for _, h := range [][]place{m.back, m.fwd} {
+		for i := range h {
+			h[i].rel = movedPath(h[i].rel, moves)
+		}
 	}
+	m.files.follow(moves, cursor)
+}
+
+func froms(moves [][2]string) []string {
+	out := make([]string, len(moves))
+	for i, mv := range moves {
+		out[i] = mv[0]
+	}
+	return out
 }
 
 func createdSteps(dirs []string) []vault.Step {

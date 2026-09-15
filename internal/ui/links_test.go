@@ -1,12 +1,14 @@
 package ui
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
 
-// onWelcome shows Welcome.md, which links to [[Stoic]] and [[Missing]].
-func onWelcome(m *Model) { press(m, "2", "G", "enter") }
+// onWelcome opens Welcome.md, the last row in Files, which links to
+// [[Stoic]] and [[Missing]].
+func onWelcome(m *Model) { press(m, "G", "enter") }
 
 func TestFollowLinkWithHintsAndGoBack(t *testing.T) {
 	m := newTestModel(t)
@@ -37,7 +39,7 @@ func TestFollowLinkWithHintsAndGoBack(t *testing.T) {
 func TestEnterFollowsTheOnlyLinkInView(t *testing.T) {
 	m := newTestModel(t)
 	inFilosofi(m)
-	press(m, "enter", "enter", "enter") // into Antik/, Zeno.md into the note pane, follow
+	press(m, "l", "enter", "enter") // into Antik/, open Zeno, follow its one link
 	if m.notePath != "Filosofi/Stoic.md" {
 		t.Errorf("enter followed to %q", m.notePath)
 	}
@@ -81,7 +83,7 @@ func TestBacklinks(t *testing.T) {
 func TestOutlineAndHeadingJumps(t *testing.T) {
 	m := newTestModel(t)
 	inFilosofi(m)
-	press(m, "j", "}")
+	press(m, "j", "enter", "}")
 	if m.lines[m.noteOff].Heading != 1 {
 		t.Fatalf("} landed on %+v", m.lines[m.noteOff])
 	}
@@ -152,6 +154,23 @@ func TestMoveKeepsPlainLinksThatStillWork(t *testing.T) {
 	}
 	if !m.vault.Exists("Daily/Stoic.md") || !strings.Contains(read(m, "Welcome.md"), "[[Stoic]]") {
 		t.Error("move went wrong")
+	}
+}
+
+func TestLinksLeaveFilesCursorUnlessObsidianReveals(t *testing.T) {
+	m := newTestModel(t)
+	onWelcome(m)
+	press(m, "f", "a") // to Stoic
+	if m.notePath != "Filosofi/Stoic.md" || m.files.selected().Rel != "Welcome.md" {
+		t.Fatalf("open %q, cursor on %q: following a link shouldn't move the cursor", m.notePath, m.files.selected().Rel)
+	}
+	ws := `{"left":{"type":"split","children":[{"type":"leaf","state":{"type":"file-explorer","state":{"autoReveal":true}}}]}}`
+	if err := os.WriteFile(m.vault.Abs(".obsidian/workspace.json"), []byte(ws), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	press(m, "backspace", "alt+right")
+	if m.files.selected().Rel != "Filosofi/Stoic.md" || !m.files.expanded["Filosofi"] {
+		t.Errorf("with autoReveal on, the cursor should follow to the note, got %q", m.files.selected().Rel)
 	}
 }
 

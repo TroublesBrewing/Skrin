@@ -3,7 +3,6 @@ package ui
 import (
 	"fmt"
 	"os"
-	"path"
 	"strings"
 	"time"
 
@@ -28,10 +27,10 @@ func (m *Model) render() string {
 	l := m.layout()
 	rows := m.header()
 	var cols [][]string
-	if l.treeW > 0 {
-		cols = append(cols, m.treePane(l.treeW, l.bodyH))
+	if l.filesW > 0 {
+		cols = append(cols, m.filesPane(l.filesW, l.bodyH))
 	}
-	cols = append(cols, m.listPane(l.listW, l.bodyH), m.notePane(l.noteW, l.bodyH))
+	cols = append(cols, m.notePane(l.noteW, l.bodyH))
 	for i := 0; i < l.bodyH; i++ {
 		var b strings.Builder
 		for _, c := range cols {
@@ -79,73 +78,44 @@ func (m *Model) markCell(rel string) string {
 	return " "
 }
 
-func (m *Model) treePane(w, h int) []string {
+// filesPane draws the tree. The open note is highlighted, as Obsidian
+// highlights the active file; the cursor bar only shows while Files has
+// focus.
+func (m *Model) filesPane(w, h int) []string {
 	inner, vis := w-2, h-2
-	t := &m.tree
+	f := &m.files
 	var body []string
-	for i := t.off; i < min(len(t.rows), t.off+vis); i++ {
-		r := t.rows[i]
-		icon := "  "
-		if r.hasKids {
-			icon = "▸ "
-			if t.expanded[r.path] {
+	for i := f.off; i < min(len(f.rows), f.off+vis); i++ {
+		r := f.rows[i]
+		name, icon, st := r.Name, "  ", m.st.text
+		switch {
+		case r.Rel == "":
+			icon, st = "", m.st.bold
+		case r.IsDir:
+			icon, st = "▸ ", m.st.dir
+			if f.expanded[r.Rel] {
 				icon = "▾ "
 			}
-		}
-		text := fit(m.markCell(r.path)+strings.Repeat("  ", r.depth)+icon+r.name, inner)
-		st := m.st.text
-		switch {
-		case r.path == "":
-			st = m.st.bold
-		case m.marks[r.path]:
-			st = m.st.marked
-		}
-		switch {
-		case i == t.cur && m.focus == paneTree:
-			text = m.st.selFocus.Render(text)
-		case i == t.cur:
-			text = m.st.selBlur.Render(text)
+		case vault.IsNote(r.Name):
+			name = displayName(r.Rel)
 		default:
+			st = m.st.muted
+		}
+		switch {
+		case m.marks[r.Rel]:
+			st = m.st.marked
+		case r.Rel == m.notePath && r.Rel != "":
+			st = m.st.open
+		}
+		text := fit(m.markCell(r.Rel)+strings.Repeat("  ", r.depth)+icon+name, inner)
+		if i == f.cur && m.focus == paneFiles {
+			text = m.st.selFocus.Render(text)
+		} else {
 			text = st.Render(text)
 		}
 		body = append(body, text)
 	}
-	return m.box("Folders", body, w, h, m.focus == paneTree)
-}
-
-func (m *Model) listPane(w, h int) []string {
-	inner, vis := w-2, h-2
-	var body []string
-	if len(m.entries) == 0 {
-		body = append(body, m.st.muted.Render(fit("  (empty folder)", inner)))
-	}
-	now := time.Now()
-	for i := m.listOff; i < min(len(m.entries), m.listOff+vis); i++ {
-		e := m.entries[i]
-		name, st, date := e.Name, m.st.text, ""
-		switch {
-		case e.IsDir:
-			name, st = "▸ "+name+"/", m.st.dir
-		case vault.IsNote(name):
-			name, date = "  "+strings.TrimSuffix(name, path.Ext(name)), shortDate(e.ModTime, now)
-		default:
-			name, st, date = "  "+name, m.st.muted, shortDate(e.ModTime, now)
-		}
-		if m.marks[e.Rel] {
-			st = m.st.marked
-		}
-		left := fit(m.markCell(e.Rel)+name, max(inner-8, 1))
-		right := fmt.Sprintf(" %6s ", date)
-		switch {
-		case i == m.listCur && m.focus == paneList:
-			body = append(body, m.st.selFocus.Render(fit(left+right, inner)))
-		case i == m.listCur:
-			body = append(body, m.st.selBlur.Render(fit(left+right, inner)))
-		default:
-			body = append(body, st.Render(left)+m.st.muted.Render(right))
-		}
-	}
-	return m.box(m.folderLabel(m.cwd), body, w, h, m.focus == paneList)
+	return m.box("Files", body, w, h, m.focus == paneFiles)
 }
 
 func (m *Model) notePane(w, h int) []string {
@@ -155,27 +125,20 @@ func (m *Model) notePane(w, h int) []string {
 	vis := h - 2
 	var body []string
 	title := ""
-	e, ok := m.selected()
 	switch {
-	case !ok:
-		body = []string{"", m.st.muted.Render("  Nothing here yet. n creates a note.")}
-	case e.IsDir:
-		title = e.Name + "/"
+	case m.notePath == "":
 		body = []string{
 			"",
-			"  " + m.st.dir.Render(e.Name+"/"),
-			"  " + m.st.muted.Render(m.dirInfo),
+			"  " + m.st.muted.Render("No note open."),
 			"",
-			"  " + m.st.muted.Render("enter opens it"),
+			"  " + m.st.muted.Render("enter on a note in Files opens it,"),
+			"  " + m.st.muted.Render("g goes to one by name, t to today's."),
 		}
 	case m.noteErr != nil:
-		title = e.Name
+		title = displayName(m.notePath)
 		body = []string{"", "  " + m.st.errText.Render("Can't read this note: "+m.noteErr.Error())}
-	case !m.isNote:
-		title = e.Name
-		body = []string{"", "  " + m.st.muted.Render("Not a markdown note, so there's nothing to preview.")}
 	default:
-		title = strings.TrimSuffix(e.Name, path.Ext(e.Name))
+		title = displayName(m.notePath)
 		for i := m.noteOff; i < min(len(m.lines), m.noteOff+vis); i++ {
 			line := " " + m.lines[i].Text
 			if m.hints != nil {
@@ -212,7 +175,7 @@ func (m *Model) statusLine() string {
 	if n := len(m.marks); n > 0 {
 		left += m.st.marked.Render(fmt.Sprintf("  ● %d marked", n))
 	}
-	if m.isNote && len(m.lines) > 0 {
+	if m.notePath != "" && len(m.lines) > 0 {
 		left += m.st.muted.Render("  " + m.scrollInfo())
 	}
 	right := m.st.muted.Render("/ search · e edit · f follow · b backlinks · q quit")
@@ -222,11 +185,17 @@ func (m *Model) statusLine() string {
 	return spread(left, right, m.width)
 }
 
+// location is the open note's path and modified date, or the current
+// folder when no note is open.
 func (m *Model) location() string {
-	if m.notePath != "" {
-		return m.notePath
+	if m.notePath == "" {
+		return m.folderLabel(m.cwd())
 	}
-	return m.folderLabel(m.cwd)
+	s := m.notePath
+	if e, ok := m.files.entry(m.notePath); ok && !e.ModTime.IsZero() {
+		s += " · " + shortDate(e.ModTime, m.opts.Now())
+	}
+	return s
 }
 
 // scrollInfo describes the note's scroll position the way vim does.

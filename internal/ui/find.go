@@ -43,7 +43,7 @@ type searchPanel struct {
 
 func (m *Model) openSearch() {
 	p := &searchPanel{}
-	if rel, ok := m.editTarget(); ok {
+	if rel, ok := m.subject(); ok {
 		p.rel = rel
 	}
 	last := m.lastSearch
@@ -425,7 +425,7 @@ func (m *Model) toggle(label string, on bool) string {
 func (m *Model) openSwitcher() {
 	c := &chooser{title: "Go to note", prompt: "name", empty: "No note by that name · enter creates it", verb: "open"}
 	open := ""
-	if m.isNote {
+	if m.notePath != "" {
 		open = m.notePath
 		c.items = append(c.items, choice{label: displayName(open), detail: "open now"})
 	} else {

@@ -118,39 +118,30 @@ func TestGIsInstantAndGGGoesToTop(t *testing.T) {
 	}
 	press(m, "esc")
 	inFilosofi(m)
-	last := len(m.entries) - 1
+	last := len(m.files.rows) - 1
 	press(m, "G")
-	if m.listCur != last {
-		t.Fatalf("G should go to the bottom: %d", m.listCur)
+	if m.files.cur != last {
+		t.Fatalf("G should go to the bottom: %d", m.files.cur)
 	}
 	press(m, "G")
-	if m.listCur != 0 {
-		t.Errorf("GG should go to the top: %d", m.listCur)
+	if m.files.cur != 0 {
+		t.Errorf("GG should go to the top: %d", m.files.cur)
 	}
 	press(m, "end", "home")
-	if m.listCur != 0 {
-		t.Errorf("home should go to the top: %d", m.listCur)
+	if m.files.cur != 0 {
+		t.Errorf("home should go to the top: %d", m.files.cur)
 	}
 	m.lastG = time.Now().Add(-time.Second) // a slow second G is just G
 	press(m, "G")
-	if m.listCur != last {
-		t.Errorf("a slow second G went to %d", m.listCur)
+	if m.files.cur != last {
+		t.Errorf("a slow second G went to %d", m.files.cur)
 	}
 }
 
 func TestGoToNoteEnterOnEmptyJustCloses(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "2", "G", "g") // Welcome is open
+	press(m, "g") // no note open yet
 	c := m.chooser
-	if c.items[c.matches[0]].label != "Welcome" {
-		t.Fatalf("first row = %+v, want the open note", c.items[c.matches[0]])
-	}
-	press(m, "enter")
-	if m.chooser != nil || m.notePath != "Welcome.md" || len(m.back) != 0 {
-		t.Fatal("enter on the open note should just close the list")
-	}
-	press(m, "home", "g") // a folder is selected: no note open
-	c = m.chooser
 	if c.items[c.matches[0]].label != "" {
 		t.Fatalf("with no note open the first row should be empty: %+v", c.items[c.matches[0]])
 	}
@@ -158,15 +149,24 @@ func TestGoToNoteEnterOnEmptyJustCloses(t *testing.T) {
 	if m.chooser != nil || m.notePath != "" {
 		t.Fatal("enter on the empty row should just close the list")
 	}
+	press(m, "G", "enter", "g") // Welcome is open
+	c = m.chooser
+	if c.items[c.matches[0]].label != "Welcome" {
+		t.Fatalf("first row = %+v, want the open note", c.items[c.matches[0]])
+	}
+	press(m, "enter")
+	if m.chooser != nil || m.notePath != "Welcome.md" || len(m.back) != 0 {
+		t.Fatal("enter on the open note should just close the list")
+	}
 	press(m, "g", "down", "enter")
-	if m.notePath == "" {
+	if m.notePath == "Welcome.md" {
 		t.Error("choosing another row should still open it")
 	}
 }
 
 func TestReplaceInThisNote(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "2", "G", "/", "alt+r", "alt+t")
+	press(m, "G", "/", "alt+r", "alt+t") // the cursor on Welcome in Files
 	p := m.search
 	if !p.replacing || !p.inNote || p.rel != "Welcome.md" {
 		t.Fatalf("alt+r, alt+t should replace in the selected note: %+v", p)

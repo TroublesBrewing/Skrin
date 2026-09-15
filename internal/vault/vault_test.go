@@ -47,6 +47,28 @@ func TestDirsAndFilesSkipHidden(t *testing.T) {
 	}
 }
 
+func TestEntriesListsFoldersAndFiles(t *testing.T) {
+	v := makeVault(t, "Welcome.md", "Filosofi/Stoa/Epiktetos.md", ".obsidian/app.json", "Daily/.draft.md")
+	es, err := v.Entries()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, e := range es {
+		s := e.Rel
+		if e.IsDir {
+			s += "/"
+		}
+		if e.ModTime.IsZero() || e.Name != filepath.Base(e.Rel) {
+			t.Errorf("entry %+v lacks a name or a time", e)
+		}
+		got = append(got, s)
+	}
+	if want := []string{"Daily/", "Filosofi/", "Filosofi/Stoa/", "Filosofi/Stoa/Epiktetos.md", "Welcome.md"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("Entries = %q, want %q", got, want)
+	}
+}
+
 func TestListFoldersFirst(t *testing.T) {
 	v := makeVault(t, "b.md", "A.md", "zeta/x.md", "Alpha/y.md", ".hidden.md")
 	entries, err := v.List("")

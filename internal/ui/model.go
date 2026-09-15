@@ -1,9 +1,12 @@
-// Package ui is Skrin's Bubble Tea front end: three panes (folder tree,
-// folder contents, note) between a header and a status line.
+// Package ui is Skrin's Bubble Tea front end: Files (the vault as one tree)
+// and the open note side by side, between a header and a status line.
 package ui
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
+	"os/exec"
 	"path"
 	"time"
 
@@ -13,6 +16,7 @@ import (
 	"github.com/lurioso/skrin/internal/index"
 	"github.com/lurioso/skrin/internal/logo"
 	"github.com/lurioso/skrin/internal/markdown"
+	"github.com/lurioso/skrin/internal/session"
 	"github.com/lurioso/skrin/internal/snapshot"
 	"github.com/lurioso/skrin/internal/theme"
 	"github.com/lurioso/skrin/internal/vault"
@@ -21,16 +25,15 @@ import (
 type pane int
 
 const (
-	paneTree pane = iota
-	paneList
+	paneFiles pane = iota
 	paneNote
 )
 
 const (
 	headerHeight = 3
 	statusHeight = 1
-	// Narrower than this, the tree pane only shows while it has focus.
-	treeAutoHideWidth = 100
+	// Narrower than this, Files only shows while it has focus.
+	filesAutoHideWidth = 80
 )
 
 // ThemeMsg carries the reloaded palette after Omarchy switches theme.
@@ -55,6 +58,10 @@ type Options struct {
 	// ExternalEditor is the command E runs; empty means $VISUAL, $EDITOR,
 	// then nvim.
 	ExternalEditor string
+	// Open hands a file or web address to the desktop; nil means xdg-open.
+	Open func(target string) error
+	// Session is where the last run in this vault left off.
+	Session session.State
 	// Now is the clock; tests pin it.
 	Now func() time.Time
 }
@@ -74,23 +81,17 @@ type Model struct {
 	width, height int
 	focus         pane
 
-	tree    tree
-	cwd     string // current folder, where new notes are created
-	entries []vault.Entry
-	listCur int
-	listOff int
+	files files // the Files pane; its cursor moves independently of the open note
 
-	notePath  string // selected file ("" when a folder is selected)
-	isNote    bool   // notePath is a markdown note
+	notePath  string // the open note, "" when none is
 	noteSrc   string
 	noteErr   error
-	dirInfo   string // summary shown when a folder is selected
 	lines     []markdown.Line
 	renderedW int // width lines were rendered at; 0 forces a re-render
 	noteOff   int
 	jumpSrc   int // after the next render, scroll to this source line; -1 for none
 
-	back, fwd []place // followed-link history
+	back, fwd []place // history of opened notes
 
 	lastG time.Time // when G was pressed, if it was the last key (for GG)
 
@@ -116,7 +117,7 @@ type Model struct {
 	flash string // one-shot status message, cleared by the next key
 }
 
-// New builds the model for vault v.
+// New builds the model for vault v, back where opts.Session left off.
 func New(v *vault.Vault, pal theme.Palette, opts Options) (*Model, error) {
 	if opts.Now == nil {
 		opts.Now = time.Now
@@ -124,18 +125,39 @@ func New(v *vault.Vault, pal theme.Palette, opts Options) (*Model, error) {
 	if opts.ObsidianOpen == nil {
 		opts.ObsidianOpen = func() bool { return false }
 	}
+	if opts.Open == nil {
+		opts.Open = xdgOpen
+	}
 	m := &Model{
-		vault: v, idx: index.New(), snaps: snapshot.Open(v.Root), keys: keymap(), tree: newTree(),
+		vault: v, idx: index.New(), snaps: snapshot.Open(v.Root), keys: keymap(), files: newFiles(),
 		opts: opts, marks: map[string]bool{}, jumpSrc: -1,
 	}
 	m.setPalette(pal)
 	if lines, w, err := logo.HalfBlock(headerHeight); err == nil {
 		m.logo, m.logoW = lines, w
 	}
+	for _, p := range opts.Session.Expanded {
+		m.files.expanded[p] = true
+	}
 	if err := m.reload(); err != nil {
 		return nil, err
 	}
+	m.files.selectPath(opts.Session.Cursor)
+	if rel := opts.Session.Open; vault.IsNote(rel) && m.vault.Exists(rel) {
+		m.showNote(rel)
+		m.noteOff = opts.Session.Offset // clamped once the note is rendered
+	}
 	return m, nil
+}
+
+// Session is where you are now, for the next run to pick up.
+func (m *Model) Session() session.State {
+	return session.State{
+		Expanded: m.files.openFolders(),
+		Cursor:   m.files.selected().Rel,
+		Open:     m.notePath,
+		Offset:   m.noteOff,
+	}
 }
 
 // Flash shows a one-shot message in the status line.
@@ -153,8 +175,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.renderedW = 0
 		m.flash = "theme: " + msg.Palette.Name
 	case VaultChangedMsg:
+		open := m.notePath
 		if err := m.reload(); err != nil {
 			m.flash = "refresh failed: " + err.Error()
+		} else if open != "" && m.notePath == "" {
+			m.flash = displayName(open) + " is gone: deleted or renamed outside Skrin"
 		}
 	case externalDoneMsg:
 		m.externalDone(msg)
@@ -215,19 +240,15 @@ func (m *Model) setPalette(p theme.Palette) {
 
 func (m *Model) do(a action) tea.Cmd {
 	switch a {
-	case actNextPane:
-		m.focus = (m.focus + 1) % 3
-	case actPrevPane:
-		m.focus = (m.focus + 2) % 3
-	case actLeft:
-		m.focus = max(m.focus-1, paneTree)
-	case actRight:
-		m.focus = min(m.focus+1, paneNote)
+	case actNextPane, actPrevPane:
+		if m.focus == paneFiles {
+			m.focus = paneNote
+		} else {
+			m.focus = paneFiles
+		}
 	case actPane1:
-		m.focus = paneTree
+		m.focus = paneFiles
 	case actPane2:
-		m.focus = paneList
-	case actPane3:
 		m.focus = paneNote
 	case actNewNote:
 		m.startCreate(promptNewNote)
@@ -273,10 +294,8 @@ func (m *Model) do(a action) tea.Cmd {
 		m.openSwitcher()
 	default:
 		switch m.focus {
-		case paneTree:
-			m.treeAction(a)
-		case paneList:
-			m.listAction(a)
+		case paneFiles:
+			m.filesAction(a)
 		case paneNote:
 			m.noteAction(a)
 		}
@@ -284,32 +303,24 @@ func (m *Model) do(a action) tea.Cmd {
 	return nil
 }
 
-func (m *Model) treeAction(a action) {
+func (m *Model) filesAction(a action) {
+	f := &m.files
 	switch a {
 	case actOpen:
-		m.tree.toggle()
-	case actParent:
-		m.goParent()
-	default:
-		if c := step(m.tree.cur, len(m.tree.rows), a, m.layout().bodyH-2); c != m.tree.cur {
-			m.tree.cur = c
-			m.setCwd(m.tree.rows[c].path)
+		m.openRow()
+	case actRight:
+		m.visual = nil // the rows are about to change under the range
+		if !f.in() {
+			m.openRow()
 		}
-	}
-}
-
-func (m *Model) listAction(a action) {
-	switch a {
-	case actOpen:
-		if e, ok := m.selected(); ok {
-			if e.IsDir {
-				m.enterDir(e.Rel, "")
-			} else {
-				m.focus = paneNote
-			}
-		}
+	case actLeft:
+		m.visual = nil
+		f.out()
 	case actParent:
-		m.goParent()
+		f.up()
+	case actCollapseAll:
+		m.visual = nil
+		f.collapseAll()
 	case actMark:
 		m.toggleMark()
 	case actVisual:
@@ -317,13 +328,29 @@ func (m *Model) listAction(a action) {
 	case actMarkAll:
 		m.markAll()
 	default:
-		if c := step(m.listCur, len(m.entries), a, m.layout().bodyH-2); c != m.listCur {
-			m.listCur = c
-			m.preview(false)
+		if c := step(f.cur, len(f.rows), a, m.layout().bodyH-2); c != f.cur {
+			f.cur = c
 			if m.visual != nil {
 				m.applyVisual()
 			}
 		}
+	}
+}
+
+// openRow opens what's under the cursor in Files: a folder opens or closes,
+// a note opens on the right, and any other file opens in its own app.
+func (m *Model) openRow() {
+	e := m.files.selected()
+	switch {
+	case e.IsDir:
+		m.visual = nil
+		m.files.toggle()
+	case e.Rel == m.notePath:
+		m.focus = paneNote
+	case vault.IsNote(e.Name):
+		m.open(e.Rel)
+	default:
+		m.openExternal(m.vault.Abs(e.Rel))
 	}
 }
 
@@ -344,12 +371,15 @@ func (m *Model) noteAction(a action) {
 		off = 0
 	case actBottom:
 		off = maxOff
+	case actLeft:
+		m.focus = paneFiles
+		return
 	case actOpen:
 		m.startHints(true)
 		return
 	case actParent:
 		if !m.goBack(false) {
-			m.focus = paneList
+			m.focus = paneFiles
 		}
 		return
 	}
@@ -375,135 +405,55 @@ func step(cur, n int, a action, page int) int {
 	return clamp(cur, 0, max(n-1, 0))
 }
 
-func (m *Model) goParent() {
-	if m.cwd == "" {
-		return
+// cwd is the current folder, where n and N create things. In Files it's the
+// folder under the cursor, or the one holding the file under it; in the
+// note pane it's the open note's folder.
+func (m *Model) cwd() string {
+	if m.focus == paneNote && m.notePath != "" {
+		return parentOf(m.notePath)
 	}
-	m.enterDir(parentOf(m.cwd), m.cwd)
+	return m.files.folder()
 }
 
-// enterDir makes dir the current folder, selecting entry sel if given.
-func (m *Model) enterDir(dir, sel string) {
-	m.tree.expandTo(dir)
-	m.tree.selectPath(dir)
-	m.setCwd(dir)
-	m.selectRel(sel)
-}
-
-// selectRel puts the list cursor on rel if it is in the current folder.
-func (m *Model) selectRel(rel string) {
-	for i, e := range m.entries {
-		if e.Rel == rel {
-			m.listCur = i
-			m.preview(false)
-			return
-		}
-	}
-}
-
-func (m *Model) setCwd(dir string) {
-	if dir == m.cwd {
-		return
-	}
-	m.cwd = dir
-	m.visual = nil
-	if err := m.loadEntries(false); err != nil {
-		m.flash = err.Error()
-	}
-}
-
-// reload rescans the vault after a change on disk, keeping the user's place.
-// If the current folder is gone, its nearest surviving parent takes over.
+// reload rescans the vault after a change on disk, keeping the user's place:
+// open folders, the cursor in Files and the open note with its scroll
+// position. An open note that is gone closes.
 func (m *Model) reload() error {
-	dirs, err := m.vault.Dirs()
+	entries, err := m.vault.Entries()
 	if err != nil {
 		return err
 	}
-	m.tree.setDirs(dirs, m.vault.Name())
-	for !m.tree.has(m.cwd) {
-		m.cwd = parentOf(m.cwd)
-	}
-	m.tree.expandTo(m.cwd)
-	m.tree.selectPath(m.cwd)
+	m.files.set(entries, m.vault.Name())
 	if err := m.idx.Update(m.vault); err != nil {
 		return err
 	}
 	for p := range m.marks {
-		if !m.vault.Exists(p) {
+		if _, ok := m.files.entry(p); !ok {
 			delete(m.marks, p)
 		}
 	}
-	return m.loadEntries(true)
-}
-
-// loadEntries re-reads the current folder. With keep, the cursor stays on
-// the same entry and the note keeps its scroll position.
-func (m *Model) loadEntries(keep bool) error {
-	var sel string
-	if e, ok := m.selected(); ok && keep {
-		sel = e.Rel
-	}
-	entries, err := m.vault.List(m.cwd)
-	if err != nil {
-		return err
-	}
-	m.entries, m.listCur = entries, 0
-	for i, e := range entries {
-		if e.Rel == sel {
-			m.listCur = i
-		}
-	}
-	if !keep {
-		m.listOff = 0
-	}
-	m.preview(keep)
+	m.loadNote()
 	return nil
 }
 
-func (m *Model) selected() (vault.Entry, bool) {
-	if m.listCur < len(m.entries) {
-		return m.entries[m.listCur], true
-	}
-	return vault.Entry{}, false
+// showNote puts note rel in the note pane, scrolled to the top.
+func (m *Model) showNote(rel string) {
+	m.notePath, m.noteOff, m.hints = rel, 0, nil
+	m.loadNote()
 }
 
-// preview loads whatever the list cursor is on into the note pane.
-func (m *Model) preview(keep bool) {
-	prev := m.notePath
-	m.notePath, m.isNote, m.noteSrc, m.noteErr, m.dirInfo, m.lines = "", false, "", nil, "", nil
-	m.renderedW = 0
-	m.hints = nil
-	e, ok := m.selected()
-	switch {
-	case !ok:
-	case e.IsDir:
-		m.dirInfo = m.describeDir(e.Rel)
-	case vault.IsNote(e.Name):
-		m.notePath, m.isNote = e.Rel, true
-		m.noteSrc, m.noteErr = m.vault.Read(e.Rel)
-	default:
-		m.notePath = e.Rel
+// loadNote reads the open note again. If it's gone, the note pane empties.
+func (m *Model) loadNote() {
+	m.noteSrc, m.noteErr, m.lines, m.renderedW = "", nil, nil, 0
+	if m.notePath == "" {
+		return
 	}
-	if !keep || m.notePath != prev {
-		m.noteOff = 0
+	src, err := m.vault.Read(m.notePath)
+	if errors.Is(err, fs.ErrNotExist) {
+		m.notePath, m.noteOff, m.hints = "", 0, nil
+		return
 	}
-}
-
-func (m *Model) describeDir(rel string) string {
-	entries, err := m.vault.List(rel)
-	if err != nil {
-		return "unreadable: " + err.Error()
-	}
-	notes, dirs := 0, 0
-	for _, e := range entries {
-		switch {
-		case e.IsDir:
-			dirs++
-		case vault.IsNote(e.Name):
-			notes++
-		}
-	}
-	return plural(notes, "note") + " · " + plural(dirs, "folder")
+	m.noteSrc, m.noteErr = src, err
 }
 
 func plural(n int, word string) string {
@@ -524,7 +474,7 @@ func (m *Model) settle() {
 	if m.editor != nil {
 		m.editor.SetSize(l.noteTextW(), vis)
 	}
-	if m.isNote && m.noteErr == nil && l.noteTextW() != m.renderedW {
+	if m.notePath != "" && m.noteErr == nil && l.noteTextW() != m.renderedW {
 		m.lines = markdown.Render(m.noteSrc, markdown.Options{Width: l.noteTextW(), Palette: m.pal, Resolve: m.resolve})
 		m.renderedW = l.noteTextW()
 	}
@@ -537,8 +487,7 @@ func (m *Model) settle() {
 		}
 		m.jumpSrc = -1
 	}
-	m.tree.off = scrollTo(m.tree.cur, m.tree.off, vis, len(m.tree.rows))
-	m.listOff = scrollTo(m.listCur, m.listOff, vis, len(m.entries))
+	m.files.off = scrollTo(m.files.cur, m.files.off, vis, len(m.files.rows))
 	m.noteOff = clamp(m.noteOff, 0, max(len(m.lines)-vis, 0))
 }
 
@@ -561,7 +510,7 @@ func (m *Model) resolve(target string) bool {
 	return ok
 }
 
-type layout struct{ treeW, listW, noteW, bodyH int }
+type layout struct{ filesW, noteW, bodyH int }
 
 // noteTextW is the width notes render at: the pane minus borders and a
 // one-cell margin on each side.
@@ -569,16 +518,25 @@ func (l layout) noteTextW() int { return l.noteW - 4 }
 
 func (m *Model) layout() layout {
 	l := layout{bodyH: max(m.height-headerHeight-statusHeight, 3)}
-	if m.width >= treeAutoHideWidth || m.focus == paneTree {
-		l.treeW = clamp(m.width*20/100, 18, 32)
+	if m.width >= filesAutoHideWidth || m.focus == paneFiles {
+		l.filesW = clamp(m.width*30/100, 24, 40)
 	}
-	l.listW = clamp(m.width*26/100, 22, 40)
-	l.noteW = m.width - l.treeW - l.listW
-	if l.noteW < 14 {
-		l.listW = max(m.width-l.treeW-14, 12)
-		l.noteW = m.width - l.treeW - l.listW
+	l.noteW = m.width - l.filesW
+	if l.filesW > 0 && l.noteW < 14 {
+		l.filesW = max(m.width-14, 12)
+		l.noteW = m.width - l.filesW
 	}
 	return l
+}
+
+// xdgOpen opens target with the desktop's app for it.
+func xdgOpen(target string) error {
+	c := exec.Command("xdg-open", target)
+	if err := c.Start(); err != nil {
+		return err
+	}
+	go c.Wait() // don't leave a zombie behind
+	return nil
 }
 
 func parentOf(p string) string {

@@ -16,9 +16,9 @@ const (
 	actPrevPane
 	actPane1
 	actPane2
-	actPane3
 	actOpen
 	actParent
+	actCollapseAll
 	actNewNote
 	actNewFolder
 	actRename
@@ -61,15 +61,15 @@ var defaultBindings = []binding{
 	{actBottom, []string{"G", "end"}, "go to bottom"},
 	{actHalfDown, []string{"ctrl+d", "pgdown"}, "half page down"},
 	{actHalfUp, []string{"ctrl+u", "pgup"}, "half page up"},
-	{actLeft, []string{"h", "left"}, "pane to the left"},
-	{actRight, []string{"l", "right"}, "pane to the right"},
-	{actNextPane, []string{"tab"}, "next pane"},
-	{actPrevPane, []string{"shift+tab"}, "previous pane"},
-	{actPane1, []string{"1"}, "folder tree"},
-	{actPane2, []string{"2"}, "folder contents"},
-	{actPane3, []string{"3"}, "note"},
-	{actOpen, []string{"enter"}, "expand folder / open / follow a link"},
-	{actParent, []string{"backspace"}, "parent folder / go back"},
+	{actLeft, []string{"h", "left"}, "Files: close the folder, or up one · note: back to Files"},
+	{actRight, []string{"l", "right"}, "Files: into the folder, or open the file"},
+	{actNextPane, []string{"tab"}, "switch panel"},
+	{actPrevPane, []string{"shift+tab"}, "switch panel"},
+	{actPane1, []string{"1"}, "Files"},
+	{actPane2, []string{"2"}, "the note"},
+	{actOpen, []string{"enter"}, "open/close a folder, open a file / follow a link"},
+	{actParent, []string{"backspace"}, "Files: up to the parent folder · note: go back"},
+	{actCollapseAll, []string{"H"}, "close all folders"},
 	{actNewNote, []string{"n"}, "new note in the current folder"},
 	{actNewFolder, []string{"N"}, "new folder in the current folder"},
 	{actRename, []string{"r"}, "rename"},
@@ -77,7 +77,7 @@ var defaultBindings = []binding{
 	{actDelete, []string{"d"}, "delete to the trash (the marked items, if any)"},
 	{actMark, []string{"space", " "}, "mark / unmark"},
 	{actVisual, []string{"v"}, "mark a range"},
-	{actMarkAll, []string{"ctrl+a"}, "mark everything in the folder"},
+	{actMarkAll, []string{"ctrl+a"}, "mark everything in the cursor's folder"},
 	{actEscape, []string{"esc"}, "clear marks"},
 	{actUndoOp, []string{"U"}, "undo the last file operation"},
 	{actDaily, []string{"t"}, "open or create today's daily note"},

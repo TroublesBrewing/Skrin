@@ -7,13 +7,14 @@ import (
 	"testing"
 )
 
-// inFilosofi puts the cursor in the Filosofi folder's list, on Antik/.
+// inFilosofi opens Filosofi in Files and puts the cursor on its first entry,
+// Antik/. One j further is Stoic.
 func inFilosofi(m *Model) { press(m, "1", "j", "j", "l") }
 
 func TestCreateNoteInCurrentFolderAndUndo(t *testing.T) {
 	m := newTestModel(t)
 	inFilosofi(m)
-	press(m, "n")
+	press(m, "j", "n")
 	if m.prompt == nil || !strings.Contains(m.prompt.label, "Filosofi/") {
 		t.Fatalf("prompt = %+v, want one naming Filosofi/", m.prompt)
 	}
@@ -26,8 +27,8 @@ func TestCreateNoteInCurrentFolderAndUndo(t *testing.T) {
 		t.Fatal("a new note should open in the editor")
 	}
 	press(m, "esc")
-	if e, _ := m.selected(); e.Rel != "Filosofi/Ny tanke.md" {
-		t.Errorf("cursor on %q, want the new note", e.Rel)
+	if got := m.files.selected().Rel; got != "Filosofi/Ny tanke.md" {
+		t.Errorf("cursor on %q, want the new note", got)
 	}
 
 	press(m, "n", "enter", "esc", "n", "enter", "esc")
@@ -40,28 +41,37 @@ func TestCreateNoteInCurrentFolderAndUndo(t *testing.T) {
 	}
 }
 
+func TestNewNoteOnAFolderGoesInside(t *testing.T) {
+	m := newTestModel(t)
+	inFilosofi(m) // on Antik/
+	press(m, "n")
+	if m.prompt == nil || !strings.Contains(m.prompt.label, "Filosofi/Antik/") {
+		t.Fatalf("prompt = %+v, want one naming Filosofi/Antik/", m.prompt)
+	}
+}
+
 func TestNewNoteInNewSubfolders(t *testing.T) {
 	m := newTestModel(t)
 	inFilosofi(m)
-	press(m, "n")
+	press(m, "j", "n")
 	typeText(m, "Stoa/Seneca/Brev")
 	press(m, "enter")
-	if !m.vault.Exists("Filosofi/Stoa/Seneca/Brev.md") || m.cwd != "Filosofi/Stoa/Seneca" {
-		t.Fatalf("nested create: cwd %q", m.cwd)
+	if !m.vault.Exists("Filosofi/Stoa/Seneca/Brev.md") || m.cwd() != "Filosofi/Stoa/Seneca" {
+		t.Fatalf("nested create: cwd %q", m.cwd())
 	}
 	press(m, "esc", "U")
 	if m.vault.Exists("Filosofi/Stoa") {
 		t.Error("undo should remove the folders it created too")
 	}
-	if m.cwd != "Filosofi" {
-		t.Errorf("after undo cwd = %q, want the nearest surviving folder", m.cwd)
+	if m.cwd() != "Filosofi" {
+		t.Errorf("after undo cwd = %q, want the nearest surviving folder", m.cwd())
 	}
 }
 
 func TestFolderSlashMakesUntitledNoteInside(t *testing.T) {
 	m := newTestModel(t)
 	inFilosofi(m)
-	press(m, "n")
+	press(m, "j", "n")
 	typeText(m, "Anteckningar/")
 	press(m, "enter")
 	if m.prompt != nil || !m.vault.Exists("Filosofi/Anteckningar/Untitled.md") || m.editor == nil {
@@ -101,14 +111,14 @@ func TestBadNameKeepsPromptOpen(t *testing.T) {
 func TestNewFolder(t *testing.T) {
 	m := newTestModel(t)
 	inFilosofi(m)
-	press(m, "N")
+	press(m, "j", "N")
 	typeText(m, "Arkiv")
 	press(m, "enter")
 	if !m.vault.IsDir("Filosofi/Arkiv") {
 		t.Fatal("folder not created")
 	}
-	if e, _ := m.selected(); e.Rel != "Filosofi/Arkiv" {
-		t.Errorf("cursor on %q", e.Rel)
+	if got := m.files.selected().Rel; got != "Filosofi/Arkiv" {
+		t.Errorf("cursor on %q", got)
 	}
 }
 
@@ -125,19 +135,25 @@ func TestRenameAndUndo(t *testing.T) {
 	if !m.vault.Exists("Filosofi/Stoa.md") || m.vault.Exists("Filosofi/Stoic.md") {
 		t.Fatal("rename failed")
 	}
+	if got := m.files.selected().Rel; got != "Filosofi/Stoa.md" {
+		t.Errorf("the cursor should follow the rename, got %q", got)
+	}
 	press(m, "U")
 	if !m.vault.Exists("Filosofi/Stoic.md") {
 		t.Error("undo didn't rename back")
 	}
 }
 
-func TestRenameCurrentFolderFromTree(t *testing.T) {
+func TestRenameFolderKeepsItOpen(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "1", "j", "j", "r", "ctrl+u")
+	press(m, "1", "j", "j", "l", "h", "r", "ctrl+u") // open Filosofi, back on it
 	typeText(m, "Philosophy")
 	press(m, "enter")
-	if !m.vault.IsDir("Philosophy") || m.cwd != "Philosophy" || m.tree.selected() != "Philosophy" {
-		t.Errorf("cwd %q, tree on %q", m.cwd, m.tree.selected())
+	if !m.vault.IsDir("Philosophy") || m.cwd() != "Philosophy" || m.files.selected().Rel != "Philosophy" {
+		t.Errorf("cwd %q, cursor on %q", m.cwd(), m.files.selected().Rel)
+	}
+	if !m.files.expanded["Philosophy"] {
+		t.Error("the renamed folder should stay open")
 	}
 }
 
@@ -156,6 +172,9 @@ func TestDeleteToTrashAndRestore(t *testing.T) {
 	if m.vault.Exists("Filosofi/Stoic.md") {
 		t.Fatal("note not deleted")
 	}
+	if got := m.files.selected().Rel; got != "Filosofi/Antik" {
+		t.Errorf("after the delete the cursor should be on its neighbour, got %q", got)
+	}
 	trashed := filepath.Join(os.Getenv("XDG_DATA_HOME"), "Trash", "files", "Stoic.md")
 	if _, err := os.Stat(trashed); err != nil {
 		t.Fatalf("note not in the system trash: %v", err)
@@ -164,8 +183,26 @@ func TestDeleteToTrashAndRestore(t *testing.T) {
 	if !m.vault.Exists("Filosofi/Stoic.md") {
 		t.Error("U didn't restore from the trash")
 	}
-	if e, _ := m.selected(); e.Rel != "Filosofi/Stoic.md" {
-		t.Errorf("cursor on %q, want the restored note", e.Rel)
+	if got := m.files.selected().Rel; got != "Filosofi/Stoic.md" {
+		t.Errorf("cursor on %q, want the restored note", got)
+	}
+}
+
+func TestDeleteOpenNoteClosesIt(t *testing.T) {
+	m := newTestModel(t)
+	onWelcome(m)
+	press(m, "d")
+	if m.confirm == nil || !strings.Contains(m.confirm.question, `"Welcome"`) {
+		t.Fatalf("in the note, d should ask about the open note: %+v", m.confirm)
+	}
+	press(m, "y")
+	if m.vault.Exists("Welcome.md") || m.notePath != "" {
+		t.Fatalf("deleted? open %q", m.notePath)
+	}
+	checkFrame(t, m, "no note after delete")
+	press(m, "U")
+	if !m.vault.Exists("Welcome.md") || m.files.selected().Rel != "Welcome.md" {
+		t.Errorf("U should restore it and put the cursor on it, cursor on %q", m.files.selected().Rel)
 	}
 }
 
@@ -176,8 +213,8 @@ func TestDeleteFolderAsksWithNoteCount(t *testing.T) {
 		t.Fatalf("question = %q", m.confirm.question)
 	}
 	press(m, "y")
-	if m.vault.Exists("Filosofi") || m.cwd != "" {
-		t.Errorf("folder deleted? cwd = %q", m.cwd)
+	if m.vault.Exists("Filosofi") || m.files.selected().Rel != "Templates" {
+		t.Errorf("folder deleted? cursor on %q, want the next folder", m.files.selected().Rel)
 	}
 }
 
@@ -203,6 +240,20 @@ func TestMarkMoveAndUndoAsOne(t *testing.T) {
 	}
 }
 
+func TestMovingTheOpenNoteKeepsItOpen(t *testing.T) {
+	m := newTestModel(t)
+	inFilosofi(m)
+	press(m, "j", "enter", "m") // in the note, m moves the open note
+	typeText(m, "daily")
+	press(m, "enter")
+	if !m.vault.Exists("Daily/Stoic.md") || m.notePath != "Daily/Stoic.md" {
+		t.Fatalf("moved? open %q", m.notePath)
+	}
+	if got := m.files.selected().Rel; got != "Filosofi/Antik" {
+		t.Errorf("the cursor should stay behind on the next row, got %q", got)
+	}
+}
+
 func TestMoveRefusesNameClash(t *testing.T) {
 	m := newTestModel(t)
 	if err := os.WriteFile(m.vault.Abs("Daily/Stoic.md"), []byte("other"), 0o644); err != nil {
@@ -219,7 +270,7 @@ func TestMoveRefusesNameClash(t *testing.T) {
 
 func TestVisualRangeAndMarkAll(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "2", "v", "j", "j", "v")
+	press(m, "j", "v", "j", "j", "v") // Daily, Filosofi, Templates
 	if len(m.marks) != 3 || m.visual != nil {
 		t.Fatalf("visual marks = %v", m.marks)
 	}
@@ -228,12 +279,19 @@ func TestVisualRangeAndMarkAll(t *testing.T) {
 		t.Error("esc should clear marks")
 	}
 	press(m, "ctrl+a")
-	if len(m.marks) != len(m.entries) {
-		t.Errorf("ctrl+a marked %d of %d", len(m.marks), len(m.entries))
+	if want := len(m.files.siblings()); len(m.marks) != want {
+		t.Errorf("ctrl+a marked %d of %d", len(m.marks), want)
 	}
 	press(m, "ctrl+a")
 	if len(m.marks) != 0 {
 		t.Error("second ctrl+a should unmark")
+	}
+	// A range can cross folders now: both daily notes, then Filosofi.
+	press(m, "home", "j", "l", "v", "j", "j", "v")
+	for _, p := range []string{"Daily/2026-09-11.md", "Daily/2026-09-13.md", "Filosofi"} {
+		if !m.marks[p] {
+			t.Errorf("%s not marked: %v", p, m.marks)
+		}
 	}
 }
 

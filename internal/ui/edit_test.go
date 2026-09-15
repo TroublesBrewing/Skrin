@@ -15,10 +15,10 @@ func read(m *Model, rel string) string {
 	return s
 }
 
-// openWelcome opens Welcome.md, the last entry of the vault root, in the editor.
+// openWelcome opens Welcome.md, the last row in Files, in the editor.
 func openWelcome(t *testing.T, m *Model) {
 	t.Helper()
-	press(m, "2", "G", "e")
+	press(m, "G", "e")
 	if m.editor == nil || m.edit.rel != "Welcome.md" {
 		t.Fatalf("editor open on %q", m.edit.rel)
 	}
@@ -151,7 +151,7 @@ func TestVimModeInEditor(t *testing.T) {
 
 func TestExternalEditorChangesAreUndoable(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "2", "G")
+	press(m, "G", "enter")
 	if err := os.WriteFile(m.vault.Abs("Welcome.md"), []byte("changed in nvim\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}

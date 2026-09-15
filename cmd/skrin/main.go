@@ -11,6 +11,7 @@ import (
 
 	"github.com/lurioso/skrin/internal/config"
 	"github.com/lurioso/skrin/internal/obsidian"
+	"github.com/lurioso/skrin/internal/session"
 	"github.com/lurioso/skrin/internal/theme"
 	"github.com/lurioso/skrin/internal/ui"
 	"github.com/lurioso/skrin/internal/vault"
@@ -65,6 +66,7 @@ func run(vaultArg string) error {
 		pal = theme.Default()
 	}
 	m, err := ui.New(v, pal, ui.Options{
+		Session:        session.Load(v.Root),
 		RolloverTodos:  cfg.RolloverTodos(),
 		Vim:            cfg.Editor.Vim,
 		ExternalEditor: cfg.Editor.External,
@@ -93,5 +95,8 @@ func run(vaultArg string) error {
 		m.Flash("live refresh off: " + err.Error())
 	}
 	_, err = p.Run()
+	if serr := session.Save(v.Root, m.Session()); serr != nil {
+		fmt.Fprintln(os.Stderr, "skrin: couldn't remember where you were:", serr)
+	}
 	return err
 }

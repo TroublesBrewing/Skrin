@@ -151,13 +151,36 @@ func (v *Vault) List(rel string) ([]Entry, error) {
 		}
 		entries = append(entries, e)
 	}
+	Sort(entries)
+	return entries, nil
+}
+
+// Sort orders entries the way Obsidian's file explorer does: folders first,
+// then files, each A→Z ignoring case.
+func Sort(entries []Entry) {
 	sort.SliceStable(entries, func(i, j int) bool {
 		if entries[i].IsDir != entries[j].IsDir {
 			return entries[i].IsDir
 		}
 		return strings.ToLower(entries[i].Name) < strings.ToLower(entries[j].Name)
 	})
-	return entries, nil
+}
+
+// Entries lists every visible folder and file below the root, with their
+// modification times, in one walk.
+func (v *Vault) Entries() ([]Entry, error) {
+	var out []Entry
+	err := v.walk(func(rel string, d fs.DirEntry) {
+		if rel == "" {
+			return
+		}
+		e := Entry{Name: d.Name(), Rel: rel, IsDir: d.IsDir()}
+		if info, err := d.Info(); err == nil {
+			e.ModTime = info.ModTime()
+		}
+		out = append(out, e)
+	})
+	return out, err
 }
 
 // Read returns a file's contents.

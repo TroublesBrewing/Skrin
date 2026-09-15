@@ -27,7 +27,14 @@ Go is pinned in `.mise.toml`. If `go` isn't on PATH, prefix commands with `mise 
 - `internal/index`: the vault-wide index of links, headings, aliases and block ids. It is incremental (it re-parses only notes whose mtime or size changed). It holds Obsidian-style link resolution (`Resolve`), backlinks, `LinkText` (Obsidian's `newLinkFormat`) and `Apply` for rewriting links. `ui.reload` keeps it current.
 - `internal/search`: the Obsidian-style query parser and matcher (`search.go`, over `search.Doc` values the index hands out), and plain-text `Find`/`Replace` (`replace.go`).
 - `internal/logo`: the embedded official Obsidian icon (`assets/obsidian-logo.png`), drawn with half-block characters.
-- `internal/ui`: the root model (`model.go`), rendering (`view.go`), file actions and marks (`ops.go`), editing, the save-conflict flow, `E` and `u` (`edit.go`), following links, history, backlinks, outline, `[[` completion and moving with link updates (`links.go`), the `/` search panel and Go to note (`find.go`) with the panel's replace mode (`replace.go`), the name prompt, the y/n question and the filterable chooser used for moves, backlinks and the outline (`modal.go`), the folder tree, and the keymap registry (`keys.go`). Every key goes through the registry, because the `?` manual will be generated from it.
+- `internal/session`: where you were in each vault (open folders, the Files cursor, the open note and its scroll position). It's saved on quit under `$XDG_STATE_HOME/skrin/session` and restored at start.
+- `internal/ui`: two panes, Files and the open note. The Files cursor and the open note are independent: moving the cursor never changes the note, and a note opens on Enter.
+  - `model.go` has the root model, `view.go` the rendering and `files.go` the Files tree.
+  - `ops.go` has file actions and marks. `edit.go` has editing, the save-conflict flow, `E` and `u`.
+  - `links.go` has opening notes, following links, history, backlinks, the outline, `[[` completion and moving with link updates.
+  - `find.go` has the `/` search panel and Go to note; `replace.go` has the panel's replace mode.
+  - `modal.go` has the name prompt, the y/n question and the filterable chooser used for moves, backlinks and the outline.
+  - `keys.go` has the keymap registry. Every key goes through it, because the `?` manual will be generated from it.
 
 ## Releases
 

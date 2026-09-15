@@ -3,7 +3,6 @@ package ui
 import (
 	"fmt"
 	"net/url"
-	"os/exec"
 	"path"
 	"sort"
 	"strings"
@@ -41,7 +40,7 @@ const hintKeys = "asdfghjklqwertyuiopzxcvbnm"
 // startHints labels the links in view with letters. With direct (Enter)
 // and only one link in view, it follows that link straight away.
 func (m *Model) startHints(direct bool) {
-	if !m.isNote {
+	if m.notePath == "" {
 		return
 	}
 	vis := m.layout().bodyH - 2
@@ -150,12 +149,9 @@ func (m *Model) follow(l markdown.Link) {
 	}
 }
 
-// goTo shows rel in the note pane, at #sub if given, and remembers where we
-// came from.
+// goTo opens note rel, at #sub if given.
 func (m *Model) goTo(rel, sub string) {
-	m.pushHistory()
-	m.reveal(rel)
-	m.focus = paneNote
+	m.open(rel)
 	if sub == "" {
 		return
 	}
@@ -166,21 +162,35 @@ func (m *Model) goTo(rel, sub string) {
 	}
 }
 
-// goToLine shows rel scrolled to a source line.
+// goToLine opens note rel scrolled to a source line.
 func (m *Model) goToLine(rel string, line int) {
-	m.pushHistory()
-	m.reveal(rel)
-	m.focus = paneNote
+	m.open(rel)
 	m.jumpSrc = line
 }
 
+// open shows note rel on the right and moves over to it, remembering the
+// note it replaces so Backspace can go back.
+func (m *Model) open(rel string) {
+	m.pushHistory()
+	m.showNote(rel)
+	m.show()
+}
+
+// show moves over to the open note. Files follows along only when Obsidian
+// is set to reveal the active file; otherwise its cursor stays where it was
+// left.
+func (m *Model) show() {
+	m.focus = paneNote
+	if obsidian.LoadSettings(m.vault.Root).RevealActiveFile {
+		m.files.reveal(m.notePath)
+	}
+}
+
 func (m *Model) openExternal(target string) {
-	c := exec.Command("xdg-open", target)
-	if err := c.Start(); err != nil {
+	if err := m.opts.Open(target); err != nil {
 		m.flash = "Couldn't open " + target + ": " + err.Error()
 		return
 	}
-	go c.Wait() // don't leave a zombie behind
 	m.flash = "Opened " + target
 }
 
@@ -214,9 +224,9 @@ func (m *Model) goBack(forward bool) bool {
 		m.flash = p.rel + " is gone"
 		return true
 	}
-	m.reveal(p.rel)
-	m.focus = paneNote
+	m.showNote(p.rel)
 	m.noteOff = p.off
+	m.show()
 	return true
 }
 
@@ -249,7 +259,6 @@ func (m *Model) offerCreate(target string) {
 		pill: " NEW NOTE ", question: fmt.Sprintf("%q doesn't exist yet. Create %s?", target, rel),
 		keys: "y/n", cancel: "Nothing created",
 		yes: func() {
-			m.pushHistory()
 			if err := m.createNoteAt(rel); err != nil {
 				m.flash = err.Error()
 			}
@@ -258,7 +267,7 @@ func (m *Model) offerCreate(target string) {
 }
 
 func (m *Model) showBacklinks() {
-	rel, ok := m.editTarget()
+	rel, ok := m.subject()
 	if !ok {
 		m.flash = "Select a note first"
 		return
@@ -279,7 +288,7 @@ func (m *Model) showBacklinks() {
 }
 
 func (m *Model) showOutline() {
-	rel, ok := m.editTarget()
+	rel, ok := m.subjectOpen()
 	if !ok {
 		m.flash = "Select a note first"
 		return
@@ -301,7 +310,7 @@ func (m *Model) showOutline() {
 
 // headingJump scrolls to the next (dir 1) or previous (dir -1) heading.
 func (m *Model) headingJump(dir int) {
-	if !m.isNote {
+	if m.notePath == "" {
 		return
 	}
 	for i := m.noteOff + dir; i >= 0 && i < len(m.lines); i += dir {
@@ -436,7 +445,7 @@ func (m *Model) completionBox() ([]string, int, int) {
 	box := m.box("", body, w, len(body)+2, true)
 	l := m.layout()
 	r, col := m.editor.CursorPos()
-	x := clamp(l.treeW+l.listW+2+col, 0, max(m.width-w, 0))
+	x := clamp(l.filesW+2+col, 0, max(m.width-w, 0))
 	y := headerHeight + 1 + r + 1
 	if y+len(box) > m.height-statusHeight {
 		y = max(headerHeight+1+r-len(box), 0)
@@ -495,11 +504,11 @@ func movedPath(p string, moves [][2]string) string {
 // relocate moves or renames files and folders as one undoable operation.
 // When links elsewhere point at them it first asks whether to update those
 // links, unless Obsidian is set to always update them.
-func (m *Model) relocate(moves [][2]string, desc string, done func(moved []string, relinked int, err error)) {
+func (m *Model) relocate(moves [][2]string, desc string, done func(moved [][2]string, relinked int, err error)) {
 	refs := m.referrers(moves)
 	run := func(update bool) {
 		var steps []vault.Step
-		var moved []string
+		var moved [][2]string
 		var failed error
 		for _, mv := range moves {
 			dirs, err := m.vault.Move(mv[0], mv[1])
@@ -509,7 +518,7 @@ func (m *Model) relocate(moves [][2]string, desc string, done func(moved []strin
 				break
 			}
 			steps = append(steps, vault.Step{Kind: vault.StepMoved, Rel: mv[1], From: mv[0]})
-			moved = append(moved, mv[0])
+			moved = append(moved, mv)
 			_ = m.snaps.Move(mv[0], mv[1]) // snapshots only help u; losing them loses no note text
 		}
 		relinked := 0

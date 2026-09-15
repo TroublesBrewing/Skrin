@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -53,6 +54,9 @@ func newTestModelWith(t *testing.T, opts Options) *Model {
 	}
 	if opts.Now == nil {
 		opts.Now = func() time.Time { return today }
+	}
+	if opts.Open == nil {
+		opts.Open = func(string) error { return nil } // never start real apps
 	}
 	m, err := New(v, theme.Default(), opts)
 	if err != nil {
@@ -119,14 +123,38 @@ func checkFrame(t *testing.T, m *Model, what string) {
 	}
 }
 
+var sizes = [][2]int{{140, 45}, {100, 30}, {80, 24}, {79, 24}, {50, 12}}
+
 func TestFrameFillsTerminalExactly(t *testing.T) {
 	m := newTestModel(t)
-	for _, size := range [][2]int{{140, 45}, {100, 30}, {80, 24}, {50, 12}} {
-		m.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
-		for _, focus := range []string{"1", "2", "3"} {
-			press(m, focus)
-			checkFrame(t, m, "focus "+focus)
+	check := func(what string) {
+		for _, size := range sizes {
+			m.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
+			for _, focus := range []string{"1", "2"} {
+				press(m, focus)
+				checkFrame(t, m, fmt.Sprintf("%s, %dx%d, focus %s", what, size[0], size[1], focus))
+			}
 		}
+	}
+	check("no note open")
+	press(m, "1", "G", "enter") // Welcome
+	check("Welcome open")
+}
+
+func TestFilesHideBelow80ColumnsUnlessFocused(t *testing.T) {
+	m := newTestModel(t)
+	m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	press(m, "2")
+	if m.layout().filesW == 0 {
+		t.Error("at 80 columns Files should still show")
+	}
+	m.Update(tea.WindowSizeMsg{Width: 79, Height: 24})
+	if m.layout().filesW != 0 {
+		t.Error("below 80 columns Files should hide while the note has focus")
+	}
+	press(m, "1")
+	if m.layout().filesW == 0 {
+		t.Error("focusing Files should bring it back")
 	}
 }
 
@@ -134,10 +162,13 @@ func TestModalsFillTerminalExactly(t *testing.T) {
 	m := newTestModel(t)
 	for _, size := range [][2]int{{120, 40}, {60, 16}} {
 		m.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
-		press(m, "2", "n")
+		press(m, "1", "home", "j", "n") // on Daily/
 		typeText(m, "a rather long name for a brand new note")
 		checkFrame(t, m, "new-note prompt")
 		press(m, "esc", "d")
+		if m.confirm == nil {
+			t.Fatal("d did not ask")
+		}
 		checkFrame(t, m, "delete confirm")
 		press(m, "n", "m")
 		if m.chooser == nil {
@@ -148,34 +179,55 @@ func TestModalsFillTerminalExactly(t *testing.T) {
 	}
 }
 
-func TestNavigateTreeListAndNote(t *testing.T) {
+func TestNavigateFilesAndNote(t *testing.T) {
 	m := newTestModel(t)
-
-	// Tree rows: vault root, Daily, Filosofi, Templates.
-	press(m, "1", "j", "j")
-	if m.cwd != "Filosofi" {
-		t.Fatalf("cwd = %q, want Filosofi", m.cwd)
+	// Rows: the vault, Daily/, Filosofi/, Templates/, Welcome.
+	press(m, "j", "j")
+	if m.cwd() != "Filosofi" {
+		t.Fatalf("cwd = %q, want Filosofi", m.cwd())
 	}
-	// Contents: Antik/ first, then Stoic.md, which previews on selection.
+	// l opens Filosofi and steps onto its first entry, Antik/.
 	press(m, "l", "j")
-	if m.notePath != "Filosofi/Stoic.md" || len(m.lines) == 0 {
-		t.Fatalf("preview = %q (%d lines)", m.notePath, len(m.lines))
+	if got := m.files.selected().Rel; got != "Filosofi/Stoic.md" {
+		t.Fatalf("cursor on %q", got)
+	}
+	if m.notePath != "" {
+		t.Fatalf("moving the cursor opened %q; notes open on enter", m.notePath)
 	}
 	press(m, "enter", "G")
-	if m.focus != paneNote || m.noteOff == 0 {
-		t.Errorf("focus %v, offset %d: want note pane scrolled to the bottom", m.focus, m.noteOff)
+	if m.notePath != "Filosofi/Stoic.md" || m.focus != paneNote || m.noteOff == 0 {
+		t.Fatalf("open %q, focus %v, offset %d: want Stoic open, scrolled to the bottom", m.notePath, m.focus, m.noteOff)
 	}
-	// Entering a subfolder from the list moves the tree along with it.
-	press(m, "h", "home", "enter")
-	if m.cwd != "Filosofi/Antik" || m.tree.selected() != "Filosofi/Antik" {
-		t.Errorf("cwd = %q, tree on %q", m.cwd, m.tree.selected())
+	// h goes back to Files, where the cursor was left; moving it keeps the note.
+	press(m, "h", "k")
+	if m.focus != paneFiles || m.files.selected().Rel != "Filosofi/Antik" || m.notePath != "Filosofi/Stoic.md" {
+		t.Errorf("focus %v, cursor on %q, open %q", m.focus, m.files.selected().Rel, m.notePath)
 	}
-	press(m, "backspace")
-	if m.cwd != "Filosofi" {
-		t.Errorf("backspace: cwd = %q", m.cwd)
+	// h climbs out of a closed folder, then closes the open one.
+	press(m, "h", "h")
+	if m.files.selected().Rel != "Filosofi" || m.files.expanded["Filosofi"] {
+		t.Errorf("h h: cursor on %q, Filosofi open %v", m.files.selected().Rel, m.files.expanded["Filosofi"])
 	}
-	if e, _ := m.selected(); e.Rel != "Filosofi/Antik" {
-		t.Errorf("after going up, cursor on %q, want the folder we came from", e.Rel)
+	press(m, "l", "l", "H") // into Filosofi, into Antik, then close everything
+	if got := m.files.openFolders(); len(got) != 0 || m.files.selected().Rel != "Filosofi" {
+		t.Errorf("H: open %q, cursor on %q", got, m.files.selected().Rel)
+	}
+	press(m, "l", "backspace")
+	if m.files.selected().Rel != "Filosofi" {
+		t.Errorf("backspace should go up to the folder, got %q", m.files.selected().Rel)
+	}
+}
+
+func TestEnterOnOtherFileOpensItsApp(t *testing.T) {
+	var opened string
+	m := newTestModelWith(t, Options{Open: func(target string) error { opened = target; return nil }})
+	if err := os.WriteFile(m.vault.Abs("zz.pdf"), []byte("%PDF"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m.Update(VaultChangedMsg{})
+	press(m, "G", "enter")
+	if opened != m.vault.Abs("zz.pdf") || m.notePath != "" || m.focus != paneFiles {
+		t.Errorf("opened %q, note %q, focus %v", opened, m.notePath, m.focus)
 	}
 }
 
@@ -186,11 +238,38 @@ func TestVaultChangeKeepsPlace(t *testing.T) {
 		t.Fatal(err)
 	}
 	m.Update(VaultChangedMsg{})
-	if e, _ := m.selected(); e.Rel != "Filosofi/Stoic.md" {
-		t.Errorf("cursor moved to %q after a new file appeared", e.Rel)
+	if got := m.files.selected().Rel; got != "Filosofi/Stoic.md" {
+		t.Errorf("cursor moved to %q after a new file appeared", got)
 	}
-	if len(m.entries) != 3 {
-		t.Errorf("new file not listed: %d entries", len(m.entries))
+	if n := len(m.files.siblings()); n != 3 {
+		t.Errorf("new file not listed: %d entries in Filosofi", n)
+	}
+}
+
+func TestOpenNoteGoneOutsideSkrin(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "G", "enter")
+	if err := os.Remove(m.vault.Abs("Welcome.md")); err != nil {
+		t.Fatal(err)
+	}
+	m.Update(VaultChangedMsg{})
+	if m.notePath != "" || !strings.Contains(m.flash, "Welcome is gone") {
+		t.Errorf("open %q, flash %q", m.notePath, m.flash)
+	}
+	checkFrame(t, m, "note gone")
+}
+
+func TestSessionIsRestored(t *testing.T) {
+	m := newTestModel(t)
+	inFilosofi(m)
+	press(m, "j", "enter", "ctrl+d")
+	s := m.Session()
+	if s.Open != "Filosofi/Stoic.md" || s.Cursor != "Filosofi/Stoic.md" || s.Offset == 0 || strings.Join(s.Expanded, ",") != "Filosofi" {
+		t.Fatalf("session = %+v", s)
+	}
+	again := newTestModelWith(t, Options{Session: s})
+	if again.notePath != s.Open || again.files.selected().Rel != s.Cursor || again.noteOff != s.Offset {
+		t.Errorf("restored: open %q, cursor %q, offset %d; want %+v", again.notePath, again.files.selected().Rel, again.noteOff, s)
 	}
 }
 

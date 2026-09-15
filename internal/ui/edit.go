@@ -42,17 +42,31 @@ type externalDoneMsg struct {
 	err         error
 }
 
-// editTarget is the note under the list cursor, if it is one.
-func (m *Model) editTarget() (string, bool) {
-	e, ok := m.selected()
-	if !ok || e.IsDir || !vault.IsNote(e.Name) {
+// subject is the note that e, E, u, Ctrl-r, b and o act on: the note under
+// the cursor while Files has focus, otherwise the open note.
+func (m *Model) subject() (string, bool) {
+	if m.focus == paneFiles {
+		if e := m.files.selected(); !e.IsDir && vault.IsNote(e.Name) {
+			return e.Rel, true
+		}
 		return "", false
 	}
-	return e.Rel, true
+	return m.notePath, m.notePath != ""
+}
+
+// subjectOpen is subject, opened on the right first if it isn't already,
+// for the keys that change or scroll what's on screen.
+func (m *Model) subjectOpen() (string, bool) {
+	rel, ok := m.subject()
+	if ok && rel != m.notePath {
+		m.pushHistory()
+		m.showNote(rel)
+	}
+	return rel, ok
 }
 
 func (m *Model) startEdit() {
-	rel, ok := m.editTarget()
+	rel, ok := m.subjectOpen()
 	if !ok {
 		m.flash = "Select a note to edit"
 		return
@@ -227,13 +241,10 @@ func (m *Model) takeTheirs() {
 }
 
 func (m *Model) closeEditor() {
-	row, rel := m.editor.TopRow(), m.edit.rel
+	row := m.editor.TopRow()
 	m.editor, m.conflict, m.edit = nil, nil, editSession{}
 	m.complete, m.noComplete = nil, false
-	if err := m.reload(); err != nil {
-		m.flash = err.Error()
-	}
-	m.selectRel(rel)
+	m.refresh()
 	m.jumpSrc = row
 }
 
@@ -309,7 +320,7 @@ func (m *Model) conflictLine() string {
 // startExternal hands the note to an external editor; Skrin pauses until it
 // exits.
 func (m *Model) startExternal() tea.Cmd {
-	rel, ok := m.editTarget()
+	rel, ok := m.subjectOpen()
 	if !ok {
 		m.flash = "Select a note to edit"
 		return nil
@@ -365,7 +376,7 @@ func (m *Model) externalDone(msg externalDoneMsg) {
 // restoreVersion is u (the note as it was before its last edit) and Ctrl-r
 // (take that back).
 func (m *Model) restoreVersion(redo bool) {
-	rel, ok := m.editTarget()
+	rel, ok := m.subjectOpen()
 	if !ok {
 		m.flash = "Select a note first"
 		return

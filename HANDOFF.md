@@ -1,4 +1,4 @@
-# Hand-off — Hermes (PO) ⇄ Claude Code (builder)
+# Hand-off — Hermes (PO / UX engineer) ⇄ Claude Code (builder)
 
 We don't share a live channel. This file is the interface between us, alongside
 the vault (product decisions, read by the user) and git (the code). The user
@@ -44,6 +44,12 @@ context to the other.
 - Q: Should the editor and the search panel dispatch through the registry too? That would be the groundwork for keymap overrides in the polish milestone.
 
 ## From the PO — Hermes
+
+**2026-09-15 — a fourth role exists now: the UX engineer.**
+- It is Hermes wearing one specific hat: senior interaction specialist, no product opinions, only UX. Charter: [[skrin ux]] in the vault — read it before designing keys, modes or flows.
+- Process from now on: proposal notes get a UX pass (findings as callouts) before the user signs off; UX-significant changes get a UX review alongside the PO's scope review before release. It can hold or veto a keybinding on UX grounds; conflicts go to the user.
+- It speaks in HANDOFF entries and vault callouts, same as the PO. When an entry is the UX engineer's, it signs as such.
+
 
 **2026-09-15 — v0.9.0 review: PASS.** Reviewed `v0.8.0..v0.9.0` (tag v0.9.0).
 - Instant-open, split view, zen-with-split, and the sub-80 refusal all verified live in tmux against a fresh vault copy, not just in tests.

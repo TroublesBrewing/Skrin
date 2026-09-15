@@ -6,7 +6,7 @@ The spec and milestone plan live in the user's vault at `~/Documents/vault-1/tui
 
 ## Roles
 
-There are three of us. You (Claude Code) are the **builder**. Hermes Agent is the **product owner**; its reviews and stories come with PO callouts in the vault notes and it holds the UX/keybinding-ergonomics bar. The user has the final word and signs off in `tui.md`. Practical points:
+There are four of us. You (Claude Code) are the **builder**. Hermes Agent is the **product owner**; its reviews and stories come with PO callouts in the vault notes and it holds the UX/keybinding-ergonomics bar. The **UX engineer** is a dedicated role Hermes also runs: a senior interaction specialist whose only loyalty is UX — it holds Skrin to the charter in `~/Documents/vault-1/skrin ux.md` (read it before designing keys or flows), runs UX passes on proposal notes before the user signs off and on UX-significant changes before release, and can hold or veto a keybinding on UX grounds. The user has the final word and signs off in `tui.md`. Practical points:
 
 - Before starting a milestone, read `tui.md`, `skrin backlog.md`, and any proposal note with an open sign-off box (e.g. [[skrin split view]]). Proposal notes define scope before a story is built.
 - The 13 stories tagged *(LLM-added …)* in the backlog were found by Hermes's code review of v0.5.4; they are triaged in the notes around them but not yet human verified. The stories tagged *Product owner, 2026-09-15* are from user feedback after daily use and reflect the user's current intent.

@@ -187,10 +187,19 @@ func (m *Model) submitPrompt() {
 }
 
 // createNote makes a note in the current folder. "sub/name" creates the
-// folders on the way, and an empty name becomes "Untitled", as in Obsidian.
+// folders on the way. An empty name becomes "Untitled", as in Obsidian, and
+// so does "sub/" with no name after the slash, inside sub.
 func (m *Model) createNote(input string) error {
-	if input == "" {
-		input = m.untitled(".md")
+	if i := strings.LastIndex(input, "/"); input == "" || (i >= 0 && strings.TrimSpace(input[i+1:]) == "") {
+		dir := m.cwd
+		if folder := strings.TrimSpace(strings.TrimSuffix(input, "/")); folder != "" {
+			d, err := joinUserPath(m.cwd, folder)
+			if err != nil {
+				return err
+			}
+			dir = d
+		}
+		return m.createNoteAt(path.Join(dir, m.untitledIn(dir, ".md")+".md"))
 	}
 	rel, err := joinUserPath(m.cwd, input)
 	if err != nil {
@@ -223,8 +232,9 @@ func (m *Model) createNoteAt(rel string) error {
 }
 
 func (m *Model) createFolder(input string) error {
+	input = strings.TrimSpace(strings.TrimRight(input, "/"))
 	if input == "" {
-		input = m.untitled("")
+		input = m.untitledIn(m.cwd, "")
 	}
 	rel, err := joinUserPath(m.cwd, input)
 	if err != nil {
@@ -566,14 +576,14 @@ func joinUserPath(dir, input string) (string, error) {
 	return path.Join(append([]string{dir}, parts...)...), nil
 }
 
-// untitled picks "Untitled", "Untitled 1", ... unused in the current folder.
-func (m *Model) untitled(ext string) string {
+// untitledIn picks "Untitled", "Untitled 1", ... unused in folder dir.
+func (m *Model) untitledIn(dir, ext string) string {
 	for n := 0; ; n++ {
 		name := "Untitled"
 		if n > 0 {
 			name = fmt.Sprintf("Untitled %d", n)
 		}
-		if !m.vault.Exists(path.Join(m.cwd, name+ext)) {
+		if !m.vault.Exists(path.Join(dir, name+ext)) {
 			return name
 		}
 	}

@@ -43,7 +43,7 @@ const (
 	actForward
 	actSearch
 	actSwitcher
-	actReplace
+	actG
 	actQuit
 )
 
@@ -58,7 +58,8 @@ type binding struct {
 var defaultBindings = []binding{
 	{actDown, []string{"j", "down"}, "move down / scroll"},
 	{actUp, []string{"k", "up"}, "move up / scroll"},
-	{actTop, []string{"g", "home"}, "go to top"},
+	{actTop, []string{"home"}, "go to top (gg too)"},
+	{actG, []string{"g"}, "go to note · gg: go to top"},
 	{actBottom, []string{"G", "end"}, "go to bottom"},
 	{actHalfDown, []string{"ctrl+d", "pgdown"}, "half page down"},
 	{actHalfUp, []string{"ctrl+u", "pgup"}, "half page up"},
@@ -93,9 +94,8 @@ var defaultBindings = []binding{
 	{actPrevHeading, []string{"{"}, "previous heading"},
 	{actBack, []string{"ctrl+o", "alt+left"}, "go back"},
 	{actForward, []string{"ctrl+i", "alt+right"}, "go forward"},
-	{actSearch, []string{"/"}, "search the vault"},
+	{actSearch, []string{"/"}, "search (alt+r in there: search & replace)"},
 	{actSwitcher, []string{"ctrl+p"}, "go to a note by name"},
-	{actReplace, []string{"R"}, "search & replace in this note or the vault"},
 	{actQuit, []string{"q", "ctrl+c"}, "quit"},
 }
 

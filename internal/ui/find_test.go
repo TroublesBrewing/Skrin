@@ -30,7 +30,35 @@ func TestVaultSearch(t *testing.T) {
 	press(m, "esc")
 }
 
-func TestSearchTagsAndProperties(t *testing.T) {
+func TestResultsAreGroupedWithGaps(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "/")
+	typeText(m, "stoic")
+	p := m.search
+	gaps := 0
+	for _, r := range p.rows {
+		if r.note < 0 {
+			gaps++
+		}
+	}
+	if gaps != 2 {
+		t.Errorf("%d gaps between 3 notes, want 2", gaps)
+	}
+	for i := 0; i < len(p.rows); i++ {
+		press(m, "down")
+		if p.rows[p.cur].note < 0 {
+			t.Fatal("the cursor stopped on a gap")
+		}
+	}
+	for i := 0; i < len(p.rows); i++ {
+		press(m, "up")
+		if p.rows[p.cur].note < 0 {
+			t.Fatal("the cursor stopped on a gap going up")
+		}
+	}
+}
+
+func TestSearchTagsPropertiesAndCase(t *testing.T) {
 	m := newTestModel(t)
 	press(m, "/")
 	typeText(m, "#start")
@@ -43,16 +71,21 @@ func TestSearchTagsAndProperties(t *testing.T) {
 		t.Errorf("[tags:stoa] found %+v", r)
 	}
 	press(m, "ctrl+u")
-	typeText(m, "Stoic")
+	typeText(m, "stoic")
 	n := len(m.search.results)
 	press(m, "alt+c")
-	if !m.search.matchCase {
-		t.Fatal("alt+c should turn on match case")
-	}
-	press(m, "ctrl+u")
-	typeText(m, "stoic")
 	if len(m.search.results) >= n {
 		t.Errorf("match case should find fewer notes for stoic: %d vs %d", len(m.search.results), n)
+	}
+}
+
+func TestSearchInThisNote(t *testing.T) {
+	m := newTestModel(t)
+	inFilosofi(m)
+	press(m, "j", "/", "alt+t")
+	typeText(m, "line")
+	if r := m.search.results; len(r) != 1 || r[0].rel != "Filosofi/Stoic.md" {
+		t.Errorf("searching just this note found %+v", r)
 	}
 }
 
@@ -76,12 +109,38 @@ func TestQuickSwitcher(t *testing.T) {
 	}
 }
 
+func TestGOpensGoToNoteAndGGGoesToTop(t *testing.T) {
+	m := newTestModel(t)
+	inFilosofi(m)
+	press(m, "j", "g")
+	if !m.gPending {
+		t.Fatal("g should wait for a second g")
+	}
+	m.Update(gTimeoutMsg{seq: m.gSeq})
+	if m.chooser == nil || m.chooser.title != "Go to note" {
+		t.Fatal("a lone g should open Go to note")
+	}
+	press(m, "esc", "g", "g")
+	if m.listCur != 0 || m.chooser != nil || m.gPending {
+		t.Errorf("gg should go to the top: cursor %d", m.listCur)
+	}
+	press(m, "g", "z")
+	if m.chooser == nil || m.chooser.in.value() != "z" {
+		t.Fatal("g and then a letter should open Go to note with the letter typed")
+	}
+	press(m, "esc")
+	m.Update(gTimeoutMsg{seq: m.gSeq})
+	if m.chooser != nil {
+		t.Error("a stale timeout must not open Go to note")
+	}
+}
+
 func TestReplaceInThisNote(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "2", "G", "R")
-	p := m.replace
-	if p == nil || p.vault || p.rel != "Welcome.md" {
-		t.Fatalf("R should start on the selected note: %+v", p)
+	press(m, "2", "G", "/", "alt+r", "alt+t")
+	p := m.search
+	if !p.replacing || !p.inNote || p.rel != "Welcome.md" {
+		t.Fatalf("alt+r, alt+t should replace in the selected note: %+v", p)
 	}
 	typeText(m, "Welcome")
 	press(m, "tab")
@@ -103,9 +162,9 @@ func TestReplaceInThisNote(t *testing.T) {
 
 func TestReplaceAcrossVaultWithOptionsAndSkips(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "2", "G", "R", "ctrl+t")
+	press(m, "/", "alt+r")
 	typeText(m, "stoic")
-	p := m.replace
+	p := m.search
 	if n, notes := p.active(); n != 4 || notes != 3 {
 		t.Fatalf("any case: %d matches in %d notes, want 4 in 3", n, notes)
 	}
@@ -145,7 +204,7 @@ func TestReplaceAcrossVaultWithOptionsAndSkips(t *testing.T) {
 
 func TestReplaceSkipsNotesChangedOnDisk(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "2", "G", "R", "ctrl+t")
+	press(m, "/", "alt+r")
 	typeText(m, "Welcome")
 	if err := os.WriteFile(m.vault.Abs("Welcome.md"), []byte("# Welcome, changed elsewhere\n"), 0o644); err != nil {
 		t.Fatal(err)

@@ -2,6 +2,20 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 8, once Skrin has held up in daily use.
 
+## v0.5.1 — 2026-09-15
+
+Fixes from the backlog note (`skrin backlog.md` in the vault).
+
+- `n` with `Folder/` creates the folder with an `Untitled` note inside, as an empty name does. `N` accepts a trailing `/`.
+- Search & replace moved into search:
+  - `R` is gone. In `/`, `Alt-r` switches replace on and off.
+  - All the panel's toggles are Alt keys: `Alt-t` this note / whole vault (now for plain search too), `Alt-c` case, `Alt-w` whole words.
+- Search results are easier to tell apart: every note starts with a full-width title bar (name, folder, match count), notes are separated by a gap, and matching lines sit under a `│` line-number gutter.
+- `g` opens Go to note after a 0.3 s wait for a second `g`.
+  - `gg` goes to the top, and so does `Home`.
+  - `g` followed by a letter opens Go to note with the letter typed.
+  - `Ctrl-p` still works.
+
 ## v0.5.0 — 2026-09-15
 
 Milestone 5: search & replace.

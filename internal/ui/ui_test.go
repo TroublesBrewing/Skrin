@@ -78,6 +78,8 @@ func key(k string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: tea.KeyDown}
 	case "end":
 		return tea.KeyPressMsg{Code: tea.KeyEnd}
+	case "home":
+		return tea.KeyPressMsg{Code: tea.KeyHome}
 	case "alt+left":
 		return tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModAlt}
 	case "alt+right":
@@ -164,7 +166,7 @@ func TestNavigateTreeListAndNote(t *testing.T) {
 		t.Errorf("focus %v, offset %d: want note pane scrolled to the bottom", m.focus, m.noteOff)
 	}
 	// Entering a subfolder from the list moves the tree along with it.
-	press(m, "h", "g", "enter")
+	press(m, "h", "g", "g", "enter")
 	if m.cwd != "Filosofi/Antik" || m.tree.selected() != "Filosofi/Antik" {
 		t.Errorf("cwd = %q, tree on %q", m.cwd, m.tree.selected())
 	}

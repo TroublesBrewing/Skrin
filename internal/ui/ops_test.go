@@ -58,6 +58,31 @@ func TestNewNoteInNewSubfolders(t *testing.T) {
 	}
 }
 
+func TestFolderSlashMakesUntitledNoteInside(t *testing.T) {
+	m := newTestModel(t)
+	inFilosofi(m)
+	press(m, "n")
+	typeText(m, "Anteckningar/")
+	press(m, "enter")
+	if m.prompt != nil || !m.vault.Exists("Filosofi/Anteckningar/Untitled.md") || m.editor == nil {
+		t.Fatalf("Anteckningar/ should give Anteckningar/Untitled.md, open in the editor (prompt %+v)", m.prompt)
+	}
+	press(m, "esc", "n", "enter", "esc")
+	if !m.vault.Exists("Filosofi/Anteckningar/Untitled 1.md") {
+		t.Error("a second untitled note in the same folder should be Untitled 1")
+	}
+	press(m, "U", "U")
+	if m.vault.Exists("Filosofi/Anteckningar") {
+		t.Error("undo should remove the new folder too")
+	}
+	press(m, "N")
+	typeText(m, "Arkiv/")
+	press(m, "enter")
+	if !m.vault.IsDir("Filosofi/Arkiv") {
+		t.Error("N with a trailing slash should still make the folder")
+	}
+}
+
 func TestBadNameKeepsPromptOpen(t *testing.T) {
 	m := newTestModel(t)
 	inFilosofi(m)

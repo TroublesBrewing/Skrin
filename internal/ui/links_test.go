@@ -93,7 +93,7 @@ func TestOutlineAndHeadingJumps(t *testing.T) {
 	if m.lines[m.noteOff].Heading != 1 {
 		t.Errorf("{ landed on %+v", m.lines[m.noteOff])
 	}
-	press(m, "g", "o")
+	press(m, "home", "o")
 	if m.chooser == nil || len(m.chooser.items) != 2 {
 		t.Fatalf("outline = %+v", m.chooser)
 	}

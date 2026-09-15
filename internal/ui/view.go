@@ -46,8 +46,6 @@ func (m *Model) render() string {
 		out = m.overlay(out, m.chooserBox())
 	case m.search != nil:
 		out = m.overlay(out, m.searchBox())
-	case m.replace != nil:
-		out = m.overlay(out, m.replaceBox())
 	case m.complete != nil && m.editor != nil:
 		box, x, y := m.completionBox()
 		out = m.overlayAt(out, box, x, y)

@@ -57,6 +57,9 @@ type Editor struct {
 	undo     []state
 	redo     []state
 	lastKind string // kind of the last edit, for grouping keystrokes into one undo step
+	sel      bool   // a selection runs from (srow, scol) to the cursor
+	srow     int
+	scol     int
 	saved    string
 	crlf     bool
 	st       styles
@@ -143,12 +146,16 @@ func (e *Editor) TopRow() int {
 	return len(e.lines) - 1
 }
 
-// Paste inserts pasted text in one undo step.
+// Paste inserts pasted text in one undo step, over the selection if there
+// is one.
 func (e *Editor) Paste(s string) {
 	if e.vim && e.mode == Normal {
 		e.mode = Insert
 	}
 	e.push("paste")
+	if e.sel {
+		e.deleteSel()
+	}
 	e.insertText(s)
 	e.goal = -1
 	e.scroll()
@@ -173,9 +180,27 @@ func (e *Editor) HandleKey(k tea.KeyPressMsg) Action {
 	if e.vim && e.mode == Normal {
 		return e.normalKey(k)
 	}
+	// Shift and a cursor key selects, from wherever the cursor was.
+	if base := strings.Replace(s, "shift+", "", 1); base != s && s != "shift+tab" {
+		row, col := e.row, e.col
+		if e.move(base) {
+			if !e.sel {
+				e.sel, e.srow, e.scol = true, row, col
+			}
+			if base != "up" && base != "down" && base != "pgup" && base != "pgdown" {
+				e.goal = -1
+			}
+			e.scroll()
+			return None
+		}
+	}
 	vertical := false
 	switch s {
 	case "esc":
+		if e.sel {
+			e.sel = false
+			break
+		}
 		if !e.vim {
 			return Close
 		}
@@ -184,13 +209,18 @@ func (e *Editor) HandleKey(k tea.KeyPressMsg) Action {
 		e.clampNormal()
 	case "enter":
 		e.push("newline")
+		e.dropSel()
 		e.newline()
 	case "backspace", "ctrl+h":
 		e.push("delete")
-		e.backspace()
+		if !e.dropSel() {
+			e.backspace()
+		}
 	case "delete":
 		e.push("delete")
-		e.deleteForward()
+		if !e.dropSel() {
+			e.deleteForward()
+		}
 	case "tab":
 		e.push("indent")
 		e.indent()
@@ -203,6 +233,7 @@ func (e *Editor) HandleKey(k tea.KeyPressMsg) Action {
 		e.redoEdit()
 	default:
 		if e.move(s) {
+			e.sel = false
 			vertical = s == "up" || s == "down" || s == "pgup" || s == "pgdown"
 			break
 		}
@@ -214,7 +245,11 @@ func (e *Editor) HandleKey(k tea.KeyPressMsg) Action {
 		if !e.vim && strings.TrimSpace(k.Text) == "" {
 			kind = "space"
 		}
+		if e.sel {
+			kind = "replace" // typing over a selection is its own undo step
+		}
 		e.push(kind)
+		e.dropSel()
 		e.insertText(k.Text)
 	}
 	if !vertical {
@@ -279,9 +314,30 @@ func (e *Editor) normalKey(k tea.KeyPressMsg) Action {
 		e.scroll()
 		return None
 	}
+	// Visual mode: motions stretch the selection, d or x deletes it, and
+	// anything else ends it first.
+	if e.sel {
+		switch s {
+		case "esc", "v":
+			e.sel = false
+			return None
+		case "d", "x":
+			e.push("cut")
+			e.deleteSel()
+			e.clampNormal()
+			e.scroll()
+			return None
+		case "h", "l", "j", "k", "ctrl+d", "ctrl+u", "w", "b", "e", "0", "^", "$", "G", "g",
+			"left", "right", "up", "down", "pgup", "pgdown", "home", "end":
+		default:
+			e.sel = false
+		}
+	}
 	switch s {
 	case "esc":
 		return Close
+	case "v":
+		e.sel, e.srow, e.scol = true, e.row, e.col
 	case "h":
 		e.left()
 	case "l":
@@ -416,7 +472,60 @@ func (e *Editor) snapshot() state {
 
 func (e *Editor) restore(s state) {
 	e.lines, e.row, e.col = s.lines, s.row, s.col
-	e.lastKind = ""
+	e.lastKind, e.sel = "", false
+}
+
+// --- selection -----------------------------------------------------------
+
+// Selection is the selected text, or "" when nothing is selected.
+func (e *Editor) Selection() string {
+	if !e.sel {
+		return ""
+	}
+	r1, c1, r2, c2 := e.selRange()
+	if r1 == r2 {
+		return string(e.lines[r1][c1:c2])
+	}
+	parts := []string{string(e.lines[r1][c1:])}
+	for r := r1 + 1; r < r2; r++ {
+		parts = append(parts, string(e.lines[r]))
+	}
+	return strings.Join(append(parts, string(e.lines[r2][:c2])), "\n")
+}
+
+// ClearSelection ends the selection, keeping the text.
+func (e *Editor) ClearSelection() { e.sel = false }
+
+// selRange is the selection in reading order, the end exclusive. In vim's
+// Normal mode the character under the cursor is included, as in vim.
+func (e *Editor) selRange() (r1, c1, r2, c2 int) {
+	r1, c1, r2, c2 = e.srow, e.scol, e.row, e.col
+	if r2 < r1 || (r2 == r1 && c2 < c1) {
+		r1, c1, r2, c2 = r2, c2, r1, c1
+	}
+	if e.vim && e.mode == Normal {
+		c2 = min(c2+1, len(e.lines[r2]))
+	}
+	return r1, c1, r2, c2
+}
+
+// deleteSel removes the selected text, leaving the cursor where it began.
+func (e *Editor) deleteSel() {
+	r1, c1, r2, c2 := e.selRange()
+	head := append([]rune(nil), e.lines[r1][:c1]...)
+	e.lines[r1] = append(head, e.lines[r2][c2:]...)
+	e.lines = append(e.lines[:r1+1], e.lines[r2+1:]...)
+	e.row, e.col, e.sel = r1, c1, false
+}
+
+// dropSel deletes the selection, if there is one, and reports whether it
+// did.
+func (e *Editor) dropSel() bool {
+	if !e.sel {
+		return false
+	}
+	e.deleteSel()
+	return true
 }
 
 func (e *Editor) undoEdit() {

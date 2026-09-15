@@ -43,6 +43,8 @@ const (
 	actForward
 	actSearch
 	actSwitcher
+	actClaude
+	actClaudeInput
 	actZen
 	actHelp
 	actQuit
@@ -62,6 +64,7 @@ const (
 	groupFiles  = "Files and folders"
 	groupNote   = "The note"
 	groupSearch = "Search"
+	groupClaude = "Claude"
 	groupSkrin  = "Skrin"
 )
 
@@ -89,7 +92,7 @@ var defaultBindings = []binding{
 	{actMove, []string{"m"}, "move (the marked items, if any)", groupFiles},
 	{actDelete, []string{"d"}, "delete to the trash (the marked items, if any)", groupFiles},
 	{actMark, []string{"space", " "}, "mark / unmark", groupFiles},
-	{actVisual, []string{"v"}, "mark a range", groupFiles},
+	{actVisual, []string{"v"}, "Files: mark a range · note: select whole lines", groupFiles},
 	{actMarkAll, []string{"ctrl+a"}, "mark everything in the cursor's folder", groupFiles},
 	{actEscape, []string{"esc"}, "clear marks; in zen mode, leave it", groupFiles},
 	{actUndoOp, []string{"U"}, "undo the last file operation", groupFiles},
@@ -105,6 +108,8 @@ var defaultBindings = []binding{
 	{actPrevHeading, []string{"{"}, "previous heading", groupNote},
 	{actSearch, []string{"/"}, "search (Alt-r in there: search & replace)", groupSearch},
 	{actSwitcher, []string{"g", "ctrl+p"}, "go to a note by name", groupSearch},
+	{actClaude, []string{"c"}, "open or hide the Claude drawer", groupClaude},
+	{actClaudeInput, []string{"C"}, "type to Claude, with the highlighted text if any", groupClaude},
 	{actZen, []string{"z"}, "zen mode: just the note, centred", groupSkrin},
 	{actHelp, []string{"?"}, "this manual", groupSkrin},
 	{actQuit, []string{"q", "ctrl+c"}, "quit", groupSkrin},

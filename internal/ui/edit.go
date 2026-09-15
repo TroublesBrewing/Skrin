@@ -94,6 +94,10 @@ func (m *Model) openEditor(rel string) {
 }
 
 func (m *Model) editorKey(k tea.KeyPressMsg) {
+	if k.String() == "ctrl+k" { // ask Claude, with the selection
+		m.openDrawer()
+		return
+	}
 	switch m.editor.HandleKey(k) {
 	case editor.Save:
 		m.saveEdit(false)
@@ -105,6 +109,8 @@ func (m *Model) editorKey(k tea.KeyPressMsg) {
 func (m *Model) paste(s string) {
 	switch {
 	case m.conflict != nil:
+	case m.focus == paneClaude:
+		m.drawer.input.Paste(s)
 	case m.editor != nil:
 		m.editor.Paste(s)
 		m.updateCompletion()

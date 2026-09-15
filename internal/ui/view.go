@@ -54,12 +54,21 @@ func (m *Model) panes() string {
 		cols = append(cols, m.filesPane(l.filesW, l.bodyH))
 	}
 	cols = append(cols, m.notePane(l.noteW, l.bodyH))
+	if l.drawerW > 0 {
+		cols = append(cols, m.drawerPane(l.drawerW, l.bodyH))
+	}
 	for i := 0; i < l.bodyH; i++ {
 		var b strings.Builder
 		for _, c := range cols {
 			b.WriteString(c[i])
 		}
 		rows = append(rows, b.String())
+	}
+	switch {
+	case l.drawerH == 1:
+		rows = append(rows, m.drawerLine())
+	case l.drawerH > 1:
+		rows = append(rows, m.drawerPane(m.width, l.drawerH)...)
 	}
 	rows = append(rows, m.statusLine())
 	return strings.Join(rows[:min(len(rows), m.height)], "\n")
@@ -82,7 +91,7 @@ func (m *Model) zenView() string {
 		rows = append(rows, fit(margin+s, m.width))
 	}
 	bottom := strings.Repeat(" ", m.width)
-	if m.prompt != nil || m.confirm != nil || m.hints != nil || m.conflict != nil || m.flash != "" {
+	if m.prompt != nil || m.confirm != nil || m.hints != nil || m.conflict != nil || m.flash != "" || len(m.proposals) > 0 {
 		bottom = m.statusLine()
 	}
 	return strings.Join(append(rows, bottom), "\n")
@@ -156,7 +165,7 @@ func (m *Model) filesPane(w, h int) []string {
 
 func (m *Model) notePane(w, h int) []string {
 	title, body := m.noteBody(w-2, h-2)
-	return m.box(title, body, w, h, m.focus == paneNote || m.editor != nil)
+	return m.box(title, body, w, h, m.focus == paneNote || (m.editor != nil && m.focus != paneClaude))
 }
 
 // noteBody is what the note pane shows, in w cells by at most vis rows,
@@ -164,6 +173,13 @@ func (m *Model) notePane(w, h int) []string {
 // open.
 func (m *Model) noteBody(w, vis int) (string, []string) {
 	switch {
+	case len(m.proposals) > 0:
+		p := m.proposals[0]
+		var body []string
+		for i := p.off; i < min(len(p.diff), p.off+vis); i++ {
+			body = append(body, " "+m.diffLine(p.diff[i]))
+		}
+		return p.title, body
 	case m.editor != nil:
 		return m.editorBody(vis)
 	case m.notePath == "":
@@ -174,6 +190,9 @@ func (m *Model) noteBody(w, vis int) (string, []string) {
 	var body []string
 	for i := m.noteOff; i < min(len(m.lines), m.noteOff+vis); i++ {
 		line := " " + m.lines[i].Text
+		if m.noteSel.covers(i) {
+			line = " " + m.st.selFocus.Render(ansi.Strip(m.lines[i].Text))
+		}
 		if m.hints != nil {
 			for _, ht := range m.hints.hints {
 				if ht.row == i {
@@ -215,6 +234,8 @@ func (m *Model) statusLine() string {
 	switch {
 	case m.conflict != nil:
 		return m.conflictLine()
+	case len(m.proposals) > 0:
+		return m.proposalLine()
 	case m.editor != nil:
 		return m.editLine()
 	case m.hints != nil:
@@ -225,7 +246,7 @@ func (m *Model) statusLine() string {
 		return m.confirmLine()
 	}
 	mode := " VIEW "
-	if m.visual != nil {
+	if m.visual != nil || m.noteSel != nil {
 		mode = " VISUAL "
 	}
 	left := m.st.pill.Render(mode) + " " + m.st.text.Render(m.location())
@@ -235,7 +256,7 @@ func (m *Model) statusLine() string {
 	if m.notePath != "" && len(m.lines) > 0 {
 		left += m.st.muted.Render("  " + m.scrollInfo())
 	}
-	right := m.st.muted.Render("? manual · / search · e edit · z zen · q quit")
+	right := m.st.muted.Render("? manual · / search · e edit · c claude · z zen · q quit")
 	if m.flash != "" {
 		right = m.st.flash.Render(m.flash)
 	}

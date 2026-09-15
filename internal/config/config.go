@@ -24,6 +24,18 @@ type Config struct {
 		Vim      bool   `toml:"vim"`      // vim-style keys in the built-in editor
 		External string `toml:"external"` // command for E; default $VISUAL, $EDITOR, nvim
 	} `toml:"editor"`
+	Assistant struct {
+		Enabled  *bool  `toml:"enabled"`  // unset means on
+		Position string `toml:"position"` // "bottom" (the default) or "right"
+		Model    string `toml:"model"`    // "" for Claude Code's default
+		Command  string `toml:"command"`  // the claude binary; default claude on $PATH
+	} `toml:"assistant"`
+}
+
+// AssistantEnabled reports whether the Claude drawer is available. It is on
+// unless turned off.
+func (c Config) AssistantEnabled() bool {
+	return c.Assistant.Enabled == nil || *c.Assistant.Enabled
 }
 
 // RolloverTodos reports whether `t` carries unfinished todos into a new

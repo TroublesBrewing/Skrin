@@ -511,30 +511,7 @@ func movedPath(p string, moves [][2]string) string {
 // links, unless Obsidian is set to always update them.
 func (m *Model) relocate(moves [][2]string, desc string, done func(moved [][2]string, relinked int, err error)) {
 	refs := m.referrers(moves)
-	run := func(update bool) {
-		var steps []vault.Step
-		var moved [][2]string
-		var failed error
-		for _, mv := range moves {
-			dirs, err := m.vault.Move(mv[0], mv[1])
-			steps = append(steps, createdSteps(dirs)...)
-			if err != nil {
-				failed = err
-				break
-			}
-			steps = append(steps, vault.Step{Kind: vault.StepMoved, Rel: mv[1], From: mv[0]})
-			moved = append(moved, mv)
-			_ = m.snaps.Move(mv[0], mv[1]) // snapshots only help u; losing them loses no note text
-		}
-		relinked := 0
-		if update && failed == nil {
-			var s []vault.Step
-			s, relinked, failed = m.relinkAfter(refs, moves)
-			steps = append(steps, s...)
-		}
-		m.journal.Record(vault.Op{Desc: desc, Steps: steps})
-		done(moved, relinked, failed)
-	}
+	run := func(update bool) { done(m.moveNow(moves, refs, desc, update)) }
 	switch {
 	case len(refs) == 0:
 		run(false)
@@ -554,6 +531,33 @@ func (m *Model) relocate(moves [][2]string, desc string, done func(moved [][2]st
 			no:       func() { run(false) },
 		}
 	}
+}
+
+// moveNow does the moves as one journal entry and, with update, rewrites
+// the links in refs to follow them. It reports what moved.
+func (m *Model) moveNow(moves [][2]string, refs []relink, desc string, update bool) ([][2]string, int, error) {
+	var steps []vault.Step
+	var moved [][2]string
+	var failed error
+	for _, mv := range moves {
+		dirs, err := m.vault.Move(mv[0], mv[1])
+		steps = append(steps, createdSteps(dirs)...)
+		if err != nil {
+			failed = err
+			break
+		}
+		steps = append(steps, vault.Step{Kind: vault.StepMoved, Rel: mv[1], From: mv[0]})
+		moved = append(moved, mv)
+		_ = m.snaps.Move(mv[0], mv[1]) // snapshots only help u; losing them loses no note text
+	}
+	relinked := 0
+	if update && failed == nil {
+		var s []vault.Step
+		s, relinked, failed = m.relinkAfter(refs, moves)
+		steps = append(steps, s...)
+	}
+	m.journal.Record(vault.Op{Desc: desc, Steps: steps})
+	return moved, relinked, failed
 }
 
 // relinkAfter rewrites the links in refs once the moves are done. Each

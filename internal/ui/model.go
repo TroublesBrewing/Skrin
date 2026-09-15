@@ -27,6 +27,7 @@ type pane int
 const (
 	paneFiles pane = iota
 	paneNote
+	paneClaude // typing in the Claude drawer
 )
 
 const (
@@ -64,6 +65,8 @@ type Options struct {
 	Open func(target string) error
 	// Session is where the last run in this vault left off.
 	Session session.State
+	// Assistant sets up the Claude drawer.
+	Assistant AssistantOptions
 	// Now is the clock; tests pin it.
 	Now func() time.Time
 }
@@ -120,6 +123,11 @@ type Model struct {
 
 	lastSearch *searchPanel // reopened by the next /
 
+	drawer    drawer
+	proposals []*proposal  // Claude's changes waiting for y or n, oldest first
+	noteSel   *lineSel     // v in the reading view
+	events    chan tea.Msg // from Claude and its tools, on other goroutines
+
 	flash string // one-shot status message, cleared by the next key
 }
 
@@ -136,7 +144,15 @@ func New(v *vault.Vault, pal theme.Palette, opts Options) (*Model, error) {
 	}
 	m := &Model{
 		vault: v, idx: index.New(), snaps: snapshot.Open(v.Root), keys: keymap(), files: newFiles(),
-		opts: opts, marks: map[string]bool{}, jumpSrc: -1,
+		opts: opts, marks: map[string]bool{}, jumpSrc: -1, events: make(chan tea.Msg, 256),
+	}
+	m.drawer.input = editor.New("", false, pal)
+	m.drawer.id, m.drawer.right = opts.Session.Claude, opts.Assistant.Right
+	switch opts.Session.Drawer {
+	case "right":
+		m.drawer.right, m.drawer.moved = true, true
+	case "bottom":
+		m.drawer.right, m.drawer.moved = false, true
 	}
 	m.setPalette(pal)
 	for _, p := range opts.Session.Expanded {
@@ -160,13 +176,15 @@ func (m *Model) Session() session.State {
 		Cursor:   m.files.selected().Rel,
 		Open:     m.notePath,
 		Offset:   m.noteOff,
+		Claude:   m.drawer.id,
+		Drawer:   m.drawerSide(),
 	}
 }
 
 // Flash shows a one-shot message in the status line.
 func (m *Model) Flash(s string) { m.flash = s }
 
-func (m *Model) Init() tea.Cmd { return nil }
+func (m *Model) Init() tea.Cmd { return m.listen() }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
@@ -184,6 +202,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else if open != "" && m.notePath == "" {
 			m.flash = displayName(open) + " is gone: deleted or renamed outside Skrin"
 		}
+	case claudeMsg:
+		m.claudeEvent(msg)
+		cmd = m.listen()
+	case toolMsg:
+		m.toolCall(msg)
+		cmd = m.listen()
 	case externalDoneMsg:
 		m.externalDone(msg)
 	case tea.PasteMsg:
@@ -195,6 +219,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case m.conflict != nil:
 			m.conflictKey(msg)
+		case len(m.proposals) > 0:
+			m.proposalKey(msg)
+		case m.focus == paneClaude:
+			m.drawerKey(msg)
 		case m.editor != nil:
 			if m.complete == nil || !m.completionKey(msg) {
 				m.editorKey(msg)
@@ -240,6 +268,12 @@ func (m *Model) setPalette(p theme.Palette) {
 	m.pal = p
 	m.st = newStyles(p)
 	m.logo, m.logoW = logo.Header(p)
+	if m.drawer.input != nil {
+		m.drawer.input.SetPalette(p)
+	}
+	for i := range m.drawer.msgs {
+		m.drawer.msgs[i].lines = nil // render again in the new colours
+	}
 	m.splash = m.splash[:0]
 	for scale := 1; scale <= 2; scale++ {
 		art, _ := logo.Splash(p, scale)
@@ -277,9 +311,12 @@ func (m *Model) do(a action) tea.Cmd {
 	case actDaily:
 		m.openDaily()
 	case actEscape:
-		if m.zen {
+		switch {
+		case m.noteSel != nil:
+			m.noteSel = nil
+		case m.zen:
 			m.zen = false
-		} else {
+		default:
 			m.escape()
 		}
 	case actZen:
@@ -312,6 +349,10 @@ func (m *Model) do(a action) tea.Cmd {
 		if !m.goBack(true) {
 			m.flash = "Nothing to go forward to"
 		}
+	case actClaude:
+		m.toggleDrawer()
+	case actClaudeInput:
+		m.openDrawer()
 	case actSearch:
 		m.openSearch()
 	case actSwitcher:
@@ -380,6 +421,13 @@ func (m *Model) openRow() {
 
 func (m *Model) noteAction(a action) {
 	vis := m.layout().bodyH - 2
+	if a == actVisual {
+		m.toggleNoteSel()
+		return
+	}
+	if m.noteSel != nil && m.moveNoteSel(a, vis) {
+		return
+	}
 	maxOff := max(len(m.lines)-vis, 0)
 	off := m.noteOff
 	switch a {
@@ -474,7 +522,7 @@ func (m *Model) reload() error {
 
 // showNote puts note rel in the note pane, scrolled to the top.
 func (m *Model) showNote(rel string) {
-	m.notePath, m.noteOff, m.hints = rel, 0, nil
+	m.notePath, m.noteOff, m.hints, m.noteSel = rel, 0, nil, nil
 	m.loadNote()
 }
 
@@ -526,6 +574,13 @@ func (m *Model) settle() {
 		}
 		m.jumpSrc = -1
 	}
+	if s := m.noteSel; s != nil {
+		if len(m.lines) == 0 {
+			m.noteSel = nil
+		} else {
+			s.anchor, s.cur = clamp(s.anchor, 0, len(m.lines)-1), clamp(s.cur, 0, len(m.lines)-1)
+		}
+	}
 	m.files.off = scrollTo(m.files.cur, m.files.off, vis, len(m.files.rows))
 	m.noteOff = clamp(m.noteOff, 0, max(len(m.lines)-vis, 0))
 }
@@ -549,7 +604,9 @@ func (m *Model) resolve(target string) bool {
 	return ok
 }
 
-type layout struct{ filesW, noteW, bodyH int }
+// layout is how the screen is shared out. drawerW is the Claude drawer on
+// the right; drawerH is its rows along the bottom (1 when folded).
+type layout struct{ filesW, noteW, bodyH, drawerW, drawerH int }
 
 // noteTextW is the width notes render at: the pane minus borders and a
 // one-cell margin on each side.
@@ -561,13 +618,26 @@ func (m *Model) layout() layout {
 		return layout{noteW: min(zenWidth, max(m.width-4, 10)) + 4, bodyH: max(m.height, 3)}
 	}
 	l := layout{bodyH: max(m.height-headerHeight-statusHeight, 3)}
-	if m.width >= filesAutoHideWidth || m.focus == paneFiles {
-		l.filesW = clamp(m.width*30/100, 24, 40)
+	w := m.width
+	if m.drawer.open {
+		switch {
+		case m.drawerRight():
+			l.drawerW = clamp(m.width*38/100, 32, 64)
+			w -= l.drawerW
+		case m.focus == paneClaude && l.bodyH >= 7:
+			l.drawerH = min(clamp(l.bodyH*45/100, 8, 20), l.bodyH-3)
+		default:
+			l.drawerH = 1 // folded while you're elsewhere
+		}
+		l.bodyH -= l.drawerH
 	}
-	l.noteW = m.width - l.filesW
+	if w >= filesAutoHideWidth || m.focus == paneFiles {
+		l.filesW = clamp(w*30/100, 24, 40)
+	}
+	l.noteW = w - l.filesW
 	if l.filesW > 0 && l.noteW < 14 {
-		l.filesW = max(m.width-14, 12)
-		l.noteW = m.width - l.filesW
+		l.filesW = max(w-14, 12)
+		l.noteW = w - l.filesW
 	}
 	return l
 }

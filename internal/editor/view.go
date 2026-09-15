@@ -20,6 +20,7 @@ const (
 	sBold
 	sMarker
 	sHeading // sHeading..sHeading+5 are h1..h6
+	sSel     = sHeading + 6
 )
 
 type styles struct {
@@ -29,7 +30,8 @@ type styles struct {
 
 func newStyles(p theme.Palette) styles {
 	s := lipgloss.NewStyle
-	st := styles{slot: make([]lipgloss.Style, sHeading+6)}
+	st := styles{slot: make([]lipgloss.Style, sSel+1)}
+	st.slot[sSel] = s().Background(p.Selection).Foreground(p.LightForeground)
 	st.slot[sText] = s().Foreground(p.Foreground)
 	st.slot[sMeta] = s().Foreground(p.DarkForeground)
 	st.slot[sCode] = s().Foreground(p.Code)
@@ -81,6 +83,7 @@ func (e *Editor) View() []string {
 			continue
 		}
 		slots := e.highlight(row, kinds[row])
+		e.markSel(row, slots)
 		for s := range starts {
 			if d >= e.top && len(out) < e.h {
 				out = append(out, e.renderSegment(row, starts, s, slots))
@@ -180,6 +183,27 @@ func (e *Editor) classify() []int {
 		}
 	}
 	return kinds
+}
+
+// markSel paints the selected part of row.
+func (e *Editor) markSel(row int, slots []int) {
+	if !e.sel {
+		return
+	}
+	r1, c1, r2, c2 := e.selRange()
+	if row < r1 || row > r2 {
+		return
+	}
+	a, b := 0, len(slots)
+	if row == r1 {
+		a = c1
+	}
+	if row == r2 {
+		b = c2
+	}
+	for i := a; i < b && i < len(slots); i++ {
+		slots[i] = sSel
+	}
 }
 
 // highlight gives each rune of a line its style slot.

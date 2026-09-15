@@ -2,6 +2,25 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.8.0 — 2026-09-15
+
+Milestone 8: the Claude drawer.
+
+- **Opening it:** `c` opens the Claude drawer, `C` jumps straight to typing, and `Ctrl-k` does the same from the editor. Replies stream in as Claude writes them, with a line for each file it reads or search it runs.
+- **Where it sits:** along the bottom by default, folded to one line while you're elsewhere, or on the right with `assistant.position = "right"`. `Alt-p` flips it, and Skrin remembers the side per vault.
+- **What Claude sees:** the open note, sent with your message whenever it has changed. Highlighted text goes into your message, with a new line below it to type on.
+- **New ways to highlight:**
+  - Shift and the arrows in the editor. Typing replaces the selection.
+  - `v` in vim mode.
+  - `v` with `j`/`k` for whole lines in the reading view.
+- **Claude can read the whole vault but changes nothing by itself.** A change it wants shows as a diff in the note panel. `y` applies it and `n` rejects it. `u` undoes an applied edit, and `U` a create, move or delete.
+- **Typing:** `Enter` sends, and `Alt-Enter` adds a line.
+- **Memory:** one conversation per vault, picked up again next time. `Alt-n` starts a fresh one.
+- **How it runs:**
+  - Skrin runs your Claude Code (`claude -p`, streaming JSON) with only Read, Glob and Grep.
+  - It adds Skrin's own tools, served by `skrin mcp` over a Unix socket: `vault_search`, `current_context` and the four `propose_` tools.
+- `assistant.enabled = false` turns the drawer off, and `assistant.model` picks a model.
+
 ## v0.7.0 — 2026-09-15
 
 Milestone 7: zen mode, the manual and the rebrand.

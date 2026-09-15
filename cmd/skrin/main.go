@@ -6,9 +6,11 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/lurioso/skrin/internal/assistant"
 	"github.com/lurioso/skrin/internal/config"
 	"github.com/lurioso/skrin/internal/obsidian"
 	"github.com/lurioso/skrin/internal/session"
@@ -19,6 +21,10 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "mcp" {
+		mcp(os.Args[2:])
+		return
+	}
 	flag.Usage = func() {
 		fmt.Fprint(os.Stderr, `Usage: skrin [vault]
 
@@ -38,6 +44,18 @@ Flags:
 	}
 	if err := run(flag.Arg(0)); err != nil {
 		fmt.Fprintln(os.Stderr, "skrin:", err)
+		os.Exit(1)
+	}
+}
+
+// mcp is `skrin mcp --socket PATH`, the MCP server Claude starts to reach
+// the tools of the running Skrin. It isn't meant to be run by hand.
+func mcp(args []string) {
+	fs := flag.NewFlagSet("mcp", flag.ExitOnError)
+	sock := fs.String("socket", "", "the socket of the running Skrin")
+	fs.Parse(args)
+	if err := assistant.RunMCP(os.Stdin, os.Stdout, *sock, version.Version); err != nil {
+		fmt.Fprintln(os.Stderr, "skrin mcp:", err)
 		os.Exit(1)
 	}
 }
@@ -65,6 +83,11 @@ func run(vaultArg string) error {
 	if themeErr != nil {
 		pal = theme.Default()
 	}
+	exe, err := os.Executable()
+	if err != nil {
+		exe = "skrin"
+	}
+	sock := filepath.Join(runtimeDir(), fmt.Sprintf("skrin-%d.sock", os.Getpid()))
 	m, err := ui.New(v, pal, ui.Options{
 		Session:        session.Load(v.Root),
 		RolloverTodos:  cfg.RolloverTodos(),
@@ -77,6 +100,15 @@ func run(vaultArg string) error {
 			reg, err := obsidian.LoadRegistry(config.ObsidianRegistry())
 			// Unsure means open: skipping a rollover beats doing it twice.
 			return err != nil || reg.IsOpen(v.Root)
+		},
+		Assistant: ui.AssistantOptions{
+			Enabled: cfg.AssistantEnabled(),
+			Right:   cfg.Assistant.Position == "right",
+			Claude: assistant.Options{
+				Command:   cfg.Assistant.Command,
+				Model:     cfg.Assistant.Model,
+				MCPConfig: assistant.MCPConfig(exe, sock),
+			},
 		},
 	})
 	if err != nil {
@@ -94,9 +126,25 @@ func run(vaultArg string) error {
 	if err := v.Watch(ctx, func() { p.Send(ui.VaultChangedMsg{}) }); err != nil {
 		m.Flash("live refresh off: " + err.Error())
 	}
+	if cfg.AssistantEnabled() {
+		if err := assistant.Serve(ctx, sock, m.ToolHandler()); err != nil {
+			m.Flash("Claude can't reach Skrin's tools: " + err.Error())
+		}
+		defer os.Remove(sock)
+	}
 	_, err = p.Run()
+	m.Close()
 	if serr := session.Save(v.Root, m.Session()); serr != nil {
 		fmt.Fprintln(os.Stderr, "skrin: couldn't remember where you were:", serr)
 	}
 	return err
+}
+
+// runtimeDir is where Skrin's socket goes: $XDG_RUNTIME_DIR, or else the
+// temp dir.
+func runtimeDir() string {
+	if d := os.Getenv("XDG_RUNTIME_DIR"); d != "" {
+		return d
+	}
+	return os.TempDir()
 }

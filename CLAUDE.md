@@ -22,18 +22,24 @@ Go is pinned in `.mise.toml`. If `go` isn't on PATH, prefix commands with `mise 
 - `internal/daily`: the daily-note path, moment.js date formatting, template variables and todo rollover, all mirroring Obsidian and the Rollover Daily Todos plugin.
 - `internal/theme`: builds the palette from Omarchy's `~/.local/state/omarchy/current/theme/colors.toml`, with an optional `skrin.toml` override. It live-reloads by watching `theme.name`.
 - `internal/markdown`: a line-oriented renderer. Every display `Line` carries its source line (`Src`) and heading level. Heading jumps and "open at line" depend on this, so keep it 1:n.
-- `internal/editor`: the built-in editor. `editor.go` has the buffer, keys, vim mode and soft-wrap layout. `view.go` has highlighting and rendering. It returns `Save` / `Close` actions and never touches disk itself.
+- `internal/editor`: the built-in editor. `editor.go` has the buffer, keys, vim mode and soft-wrap layout. `view.go` has highlighting and rendering. It returns `Save` / `Close` actions and never touches disk itself. It also keeps the selection (Shift+arrows, vim `v`).
 - `internal/snapshot`: per-note version stacks (undo/redo) under `$XDG_STATE_HOME/skrin/snapshots`, keyed by note path so they can follow moves. Every write Skrin makes over a note's previous content snapshots it first. That's what makes `u` safe.
 - `internal/index`: the vault-wide index of links, headings, aliases and block ids. It is incremental (it re-parses only notes whose mtime or size changed). It holds Obsidian-style link resolution (`Resolve`), backlinks, `LinkText` (Obsidian's `newLinkFormat`) and `Apply` for rewriting links. `ui.reload` keeps it current.
 - `internal/search`: the Obsidian-style query parser and matcher (`search.go`, over `search.Doc` values the index hands out), and plain-text `Find`/`Replace` (`replace.go`).
 - `internal/logo`: Skrin's own logo, a small chest drawn as pixel art in half-block characters and painted in the theme's colours. It comes in two sizes: one for the header, and one for the splash in the empty note pane and at the top of the manual.
 - `internal/session`: where you were in each vault (open folders, the Files cursor, the open note and its scroll position). It's saved on quit under `$XDG_STATE_HOME/skrin/session` and restored at start.
+- `internal/assistant`: Claude Code for the drawer.
+  - `claude.go` runs `claude -p` with stream-json both ways and turns its output into events.
+  - `mcp.go` is `skrin mcp`, a small hand-written MCP server on stdio, plus the Unix-socket bridge it uses to reach the running Skrin.
+  - `prompt.go` is the system prompt.
+  - Tests use a fake `claude` script, never the real one.
 - `internal/ui`: two panes, Files and the open note. The Files cursor and the open note are independent: moving the cursor never changes the note, and a note opens on Enter.
   - `model.go` has the root model, `view.go` the rendering (zen mode included) and `files.go` the Files tree.
   - `ops.go` has file actions and marks. `edit.go` has editing, the save-conflict flow, `E` and `u`.
   - `links.go` has opening notes, following links, history, backlinks, the outline, `[[` completion and moving with link updates.
   - `find.go` has the `/` search panel and Go to note; `replace.go` has the panel's replace mode.
   - `modal.go` has the name prompt, the y/n question and the filterable chooser used for moves, backlinks and the outline.
+  - `drawer.go` has the Claude drawer, `propose.go` Claude's tools and the y/n proposals, and `select.go` the line selection in the reading view.
   - `keys.go` has the keymap registry, and `help.go` the `?` manual. The manual's key tables are generated from the registry, so every key must be in it, with a help text and a group.
 
 ## Releases

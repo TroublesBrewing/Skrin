@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/lurioso/skrin/internal/logo"
 	"github.com/lurioso/skrin/internal/vault"
 	"github.com/lurioso/skrin/internal/version"
 )
@@ -24,6 +25,28 @@ func (m *Model) render() string {
 	if m.width == 0 || m.height == 0 {
 		return ""
 	}
+	if m.manual != nil {
+		return m.manualView()
+	}
+	out := m.panes()
+	if m.zen {
+		out = m.zenView()
+	}
+	switch {
+	case m.chooser != nil:
+		out = m.overlay(out, m.chooserBox())
+	case m.search != nil:
+		out = m.overlay(out, m.searchBox())
+	case m.complete != nil && m.editor != nil:
+		box, x, y := m.completionBox()
+		out = m.overlayAt(out, box, x, y)
+	}
+	return out
+}
+
+// panes is the usual screen: the header, Files and the note, and the
+// status line.
+func (m *Model) panes() string {
 	l := m.layout()
 	rows := m.header()
 	var cols [][]string
@@ -39,23 +62,36 @@ func (m *Model) render() string {
 		rows = append(rows, b.String())
 	}
 	rows = append(rows, m.statusLine())
-	out := strings.Join(rows[:min(len(rows), m.height)], "\n")
-	switch {
-	case m.chooser != nil:
-		out = m.overlay(out, m.chooserBox())
-	case m.search != nil:
-		out = m.overlay(out, m.searchBox())
-	case m.complete != nil && m.editor != nil:
-		box, x, y := m.completionBox()
-		out = m.overlayAt(out, box, x, y)
+	return strings.Join(rows[:min(len(rows), m.height)], "\n")
+}
+
+// zenView is the note alone, centred at a readable width under its name.
+// The bottom row shows the status line only when there's something to say
+// or to answer.
+func (m *Model) zenView() string {
+	l := m.layout()
+	vis := l.bodyH - 2
+	title, body := m.noteBody(l.noteW-2, vis)
+	margin := strings.Repeat(" ", max((m.width-l.noteTextW())/2-1, 0))
+	rows := []string{fit(strings.Repeat(" ", max((m.width-ansi.StringWidth(title))/2, 0))+m.st.muted.Render(title), m.width)}
+	for i := 0; i < vis; i++ {
+		s := ""
+		if i < len(body) {
+			s = body[i]
+		}
+		rows = append(rows, fit(margin+s, m.width))
 	}
-	return out
+	bottom := strings.Repeat(" ", m.width)
+	if m.prompt != nil || m.confirm != nil || m.hints != nil || m.conflict != nil || m.flash != "" {
+		bottom = m.statusLine()
+	}
+	return strings.Join(append(rows, bottom), "\n")
 }
 
 func (m *Model) header() []string {
 	left := []string{
 		m.st.brand.Render("Skrin") + m.st.muted.Render(" v"+version.Version+" · ") + m.st.bold.Render(m.vault.Name()),
-		m.st.muted.Render("unofficial TUI for Obsidian vaults"),
+		m.st.muted.Render("a terminal home for your vault"),
 		m.st.muted.Render(tildePath(m.vault.Root)),
 	}
 	right := []string{m.st.muted.Render("◐ " + m.pal.Name), "", ""}
@@ -119,39 +155,60 @@ func (m *Model) filesPane(w, h int) []string {
 }
 
 func (m *Model) notePane(w, h int) []string {
-	if m.editor != nil {
-		return m.editorPane(w, h)
-	}
-	vis := h - 2
-	var body []string
-	title := ""
+	title, body := m.noteBody(w-2, h-2)
+	return m.box(title, body, w, h, m.focus == paneNote || m.editor != nil)
+}
+
+// noteBody is what the note pane shows, in w cells by at most vis rows,
+// and its title: the editor, the open note, or the splash when nothing is
+// open.
+func (m *Model) noteBody(w, vis int) (string, []string) {
 	switch {
+	case m.editor != nil:
+		return m.editorBody(vis)
 	case m.notePath == "":
-		body = []string{
-			"",
-			"  " + m.st.muted.Render("No note open."),
-			"",
-			"  " + m.st.muted.Render("enter on a note in Files opens it,"),
-			"  " + m.st.muted.Render("g goes to one by name, t to today's."),
-		}
+		return "", m.splashBody(w, vis)
 	case m.noteErr != nil:
-		title = displayName(m.notePath)
-		body = []string{"", "  " + m.st.errText.Render("Can't read this note: "+m.noteErr.Error())}
-	default:
-		title = displayName(m.notePath)
-		for i := m.noteOff; i < min(len(m.lines), m.noteOff+vis); i++ {
-			line := " " + m.lines[i].Text
-			if m.hints != nil {
-				for _, ht := range m.hints.hints {
-					if ht.row == i {
-						line = m.withLabel(line, 1+ht.link.Col, ht.label)
-					}
+		return displayName(m.notePath), []string{"", "  " + m.st.errText.Render("Can't read this note: "+m.noteErr.Error())}
+	}
+	var body []string
+	for i := m.noteOff; i < min(len(m.lines), m.noteOff+vis); i++ {
+		line := " " + m.lines[i].Text
+		if m.hints != nil {
+			for _, ht := range m.hints.hints {
+				if ht.row == i {
+					line = m.withLabel(line, 1+ht.link.Col, ht.label)
 				}
 			}
-			body = append(body, line)
+		}
+		body = append(body, line)
+	}
+	return displayName(m.notePath), body
+}
+
+// splashBody fills the note pane when no note is open: the chest, Skrin's
+// name and a few hints, centred. The chest shrinks, then goes, when the
+// pane is too small for it.
+func (m *Model) splashBody(w, vis int) []string {
+	text := []string{
+		m.st.brand.Render("Skrin"),
+		"",
+		m.st.text.Render("enter on a note in Files opens it"),
+		m.st.muted.Render("g goes to a note · t opens today's · ? manual"),
+	}
+	var lines []string
+	for scale := 2; scale >= 1; scale-- {
+		if lw, lh := logo.SplashSize(scale); lw <= w && lh+1+len(text) <= vis {
+			lines = append(append(lines, m.splash[scale-1]...), "")
+			break
 		}
 	}
-	return m.box(title, body, w, h, m.focus == paneNote)
+	lines = append(lines, text...)
+	out := make([]string, max((vis-len(lines))/3, 0), vis)
+	for _, l := range lines {
+		out = append(out, strings.Repeat(" ", max((w-ansi.StringWidth(l))/2, 0))+l)
+	}
+	return out
 }
 
 func (m *Model) statusLine() string {
@@ -178,7 +235,7 @@ func (m *Model) statusLine() string {
 	if m.notePath != "" && len(m.lines) > 0 {
 		left += m.st.muted.Render("  " + m.scrollInfo())
 	}
-	right := m.st.muted.Render("/ search · e edit · f follow · b backlinks · q quit")
+	right := m.st.muted.Render("? manual · / search · e edit · z zen · q quit")
 	if m.flash != "" {
 		right = m.st.flash.Render(m.flash)
 	}

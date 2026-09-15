@@ -2,6 +2,24 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.7.0 — 2026-09-15
+
+Milestone 7: zen mode, the manual and the rebrand.
+
+- **Zen mode:** `z` shows only the open note, centred at 80 columns, without Files, the header or the status line.
+  - It works while editing too. The status line only comes back to ask something or show a message.
+  - `z` or `Esc` leaves zen mode. `Tab`, `1` or `h` leave it too and go to Files.
+- **The manual:** `?` opens a full-screen manual.
+  - Keys, generated from the keymap so the list stays true, plus the editor's keys and the vim keys.
+  - Search syntax, links, undo and the config file.
+  - `/` filters it, `j`/`k` scroll, and `Esc` closes it.
+- **Rebrand:** Skrin has its own logo, a small chest drawn in the theme's colours. It recolours when the Omarchy theme changes.
+  - The Obsidian icon and "unofficial TUI for Obsidian vaults" are gone. The header now reads "a terminal home for your vault".
+  - With no note open, the note panel shows the chest large, the name and a few hints. That's the splash; there's nothing to wait for or dismiss.
+  - The chest also opens the manual.
+  - The chest is drawn with half-block characters everywhere, not sixel. As pixel art it's already sharp that way, and no image can linger on screen.
+- The status line hints now include `?` and `z`.
+
 ## v0.6.0 — 2026-09-15
 
 Milestone 6: two panels, like Obsidian (`skrin two panels.md` in the vault).

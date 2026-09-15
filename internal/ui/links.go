@@ -445,10 +445,15 @@ func (m *Model) completionBox() ([]string, int, int) {
 	box := m.box("", body, w, len(body)+2, true)
 	l := m.layout()
 	r, col := m.editor.CursorPos()
-	x := clamp(l.filesW+2+col, 0, max(m.width-w, 0))
-	y := headerHeight + 1 + r + 1
+	// Where the editor's text starts on screen.
+	ox, oy := l.filesW+2, headerHeight+1
+	if m.zen {
+		ox, oy = (m.width-l.noteTextW())/2, 1
+	}
+	x := clamp(ox+col, 0, max(m.width-w, 0))
+	y := oy + r + 1
 	if y+len(box) > m.height-statusHeight {
-		y = max(headerHeight+1+r-len(box), 0)
+		y = max(oy+r-len(box), 0)
 	}
 	return box, x, y
 }

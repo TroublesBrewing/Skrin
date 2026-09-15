@@ -273,6 +273,30 @@ func TestSessionIsRestored(t *testing.T) {
 	}
 }
 
+func TestSkrinsOwnBrandingAndSplash(t *testing.T) {
+	m := newTestModel(t)
+	frame := ansi.Strip(m.render())
+	if strings.Contains(frame, "Obsidian") || strings.Contains(frame, "unofficial") {
+		t.Errorf("Obsidian branding on screen:\n%s", frame)
+	}
+	if !strings.Contains(frame, "a terminal home for your vault") || !strings.Contains(frame, "enter on a note in Files opens it") {
+		t.Fatalf("header tagline or splash missing:\n%s", frame)
+	}
+	art := 0
+	for _, l := range strings.Split(frame, "\n") {
+		if strings.ContainsAny(l, "▀▄") {
+			art++
+		}
+	}
+	if art <= headerHeight {
+		t.Errorf("only %d rows of logo; the splash chest is missing", art)
+	}
+	press(m, "G", "enter")
+	if strings.Contains(ansi.Strip(m.render()), "enter on a note in Files opens it") {
+		t.Error("an open note should replace the splash")
+	}
+}
+
 func TestUnresolvedLinksUseIndex(t *testing.T) {
 	m := newTestModel(t)
 	if !m.resolve("Stoic") || !m.resolve("filosofi/stoic") {

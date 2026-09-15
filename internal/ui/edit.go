@@ -108,6 +108,10 @@ func (m *Model) paste(s string) {
 	case m.editor != nil:
 		m.editor.Paste(s)
 		m.updateCompletion()
+	case m.manual != nil:
+		if m.manual.filtering {
+			m.manual.in.insert(s)
+		}
 	case m.prompt != nil:
 		m.prompt.in.insert(s)
 	case m.chooser != nil:
@@ -256,7 +260,8 @@ func diffLines(disk, mine string) []string {
 	return strings.Split(strings.TrimRight(u, "\n"), "\n")
 }
 
-func (m *Model) editorPane(w, h int) []string {
+// editorBody is the editor's title and lines, or the conflict diff.
+func (m *Model) editorBody(vis int) (string, []string) {
 	title := displayName(m.edit.rel)
 	if m.editor.Dirty() {
 		title += " ●"
@@ -264,7 +269,7 @@ func (m *Model) editorPane(w, h int) []string {
 	var body []string
 	if c := m.conflict; c != nil && c.diff != nil {
 		title = "on disk → yours"
-		for i := c.off; i < min(len(c.diff), c.off+h-2); i++ {
+		for i := c.off; i < min(len(c.diff), c.off+vis); i++ {
 			body = append(body, " "+m.diffLine(c.diff[i]))
 		}
 	} else {
@@ -272,7 +277,7 @@ func (m *Model) editorPane(w, h int) []string {
 			body = append(body, " "+l)
 		}
 	}
-	return m.box(title, body, w, h, true)
+	return title, body
 }
 
 func (m *Model) diffLine(l string) string {

@@ -34,6 +34,8 @@ const (
 	statusHeight = 1
 	// Narrower than this, Files only shows while it has focus.
 	filesAutoHideWidth = 80
+	// zenWidth is the widest a note runs in zen mode, for easy reading.
+	zenWidth = 80
 )
 
 // ThemeMsg carries the reloaded palette after Omarchy switches theme.
@@ -77,9 +79,12 @@ type Model struct {
 	opts  Options
 	logo  []string
 	logoW int
+	// splash is the large logo at scale 1 and 2, for the empty note pane.
+	splash [][]string
 
 	width, height int
 	focus         pane
+	zen           bool // z: only the note, centred at a readable width
 
 	files files // the Files pane; its cursor moves independently of the open note
 
@@ -111,6 +116,7 @@ type Model struct {
 	confirm *confirm
 	chooser *chooser
 	search  *searchPanel
+	manual  *manual
 
 	lastSearch *searchPanel // reopened by the next /
 
@@ -133,9 +139,6 @@ func New(v *vault.Vault, pal theme.Palette, opts Options) (*Model, error) {
 		opts: opts, marks: map[string]bool{}, jumpSrc: -1,
 	}
 	m.setPalette(pal)
-	if lines, w, err := logo.HalfBlock(headerHeight); err == nil {
-		m.logo, m.logoW = lines, w
-	}
 	for _, p := range opts.Session.Expanded {
 		m.files.expanded[p] = true
 	}
@@ -197,6 +200,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.editorKey(msg)
 				m.updateCompletion()
 			}
+		case m.manual != nil:
+			m.manualKey(msg)
 		case m.confirm != nil:
 			m.confirmKey(msg)
 		case m.hints != nil:
@@ -230,15 +235,26 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// setPalette recolours everything, the logo included.
 func (m *Model) setPalette(p theme.Palette) {
 	m.pal = p
 	m.st = newStyles(p)
+	m.logo, m.logoW = logo.Header(p)
+	m.splash = m.splash[:0]
+	for scale := 1; scale <= 2; scale++ {
+		art, _ := logo.Splash(p, scale)
+		m.splash = append(m.splash, art)
+	}
 	if m.editor != nil {
 		m.editor.SetPalette(p)
 	}
 }
 
 func (m *Model) do(a action) tea.Cmd {
+	// Asking for Files leaves zen mode.
+	if m.zen && (a == actPane1 || a == actNextPane || a == actPrevPane || (a == actLeft && m.focus == paneNote)) {
+		m.zen = false
+	}
 	switch a {
 	case actNextPane, actPrevPane:
 		if m.focus == paneFiles {
@@ -261,7 +277,15 @@ func (m *Model) do(a action) tea.Cmd {
 	case actDaily:
 		m.openDaily()
 	case actEscape:
-		m.escape()
+		if m.zen {
+			m.zen = false
+		} else {
+			m.escape()
+		}
+	case actZen:
+		m.toggleZen()
+	case actHelp:
+		m.openManual()
 	case actEdit:
 		m.startEdit()
 	case actEditExternal:
@@ -386,6 +410,18 @@ func (m *Model) noteAction(a action) {
 	m.noteOff = clamp(off, 0, maxOff)
 }
 
+// toggleZen shows the open note alone, centred, or brings the panels back.
+func (m *Model) toggleZen() {
+	switch {
+	case m.zen:
+		m.zen = false
+	case m.notePath == "":
+		m.flash = "Open a note first: zen mode shows just the note"
+	default:
+		m.zen, m.focus = true, paneNote
+	}
+}
+
 // step moves a cursor over n rows; page is the visible height.
 func step(cur, n int, a action, page int) int {
 	switch a {
@@ -469,6 +505,9 @@ func (m *Model) settle() {
 	if m.width == 0 {
 		return
 	}
+	if m.zen && m.notePath == "" && m.editor == nil {
+		m.zen = false // the note closed under us
+	}
 	l := m.layout()
 	vis := l.bodyH - 2
 	if m.editor != nil {
@@ -517,6 +556,10 @@ type layout struct{ filesW, noteW, bodyH int }
 func (l layout) noteTextW() int { return l.noteW - 4 }
 
 func (m *Model) layout() layout {
+	if m.zen {
+		// A title row above the note and a spare row below it.
+		return layout{noteW: min(zenWidth, max(m.width-4, 10)) + 4, bodyH: max(m.height, 3)}
+	}
 	l := layout{bodyH: max(m.height-headerHeight-statusHeight, 3)}
 	if m.width >= filesAutoHideWidth || m.focus == paneFiles {
 		l.filesW = clamp(m.width*30/100, 24, 40)

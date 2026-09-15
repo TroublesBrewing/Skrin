@@ -1,34 +1,60 @@
 package logo
 
 import (
+	"image/color"
+	"strings"
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
+
+	"github.com/lurioso/skrin/internal/theme"
 )
 
-func TestHalfBlockSize(t *testing.T) {
-	for _, rows := range []int{3, 8} {
-		lines, w, err := HalfBlock(rows)
-		if err != nil {
-			t.Fatal(err)
+func TestBitmapsAreWellFormed(t *testing.T) {
+	for _, bm := range [][]string{small, large} {
+		if len(bm)%2 != 0 {
+			t.Errorf("%d pixel rows; they must pair up into cells", len(bm))
 		}
-		if len(lines) != rows {
-			t.Fatalf("got %d rows, want %d", len(lines), rows)
+		for _, r := range bm {
+			if len(r) != len(bm[0]) || strings.Trim(r, ".ADL") != "" {
+				t.Errorf("bad row %q", r)
+			}
 		}
-		if w < rows/2 || w > rows*3 {
-			t.Errorf("width %d looks wrong for %d rows", w, rows)
+	}
+}
+
+func TestSizes(t *testing.T) {
+	p := theme.Default()
+	check := func(what string, lines []string, w, wantW, wantH int) {
+		t.Helper()
+		if len(lines) != wantH || w != wantW {
+			t.Fatalf("%s: %d×%d cells, want %d×%d", what, w, len(lines), wantW, wantH)
 		}
-		drawn := false
 		for _, l := range lines {
 			if got := ansi.StringWidth(l); got != w {
-				t.Errorf("row is %d cells, want %d", got, w)
-			}
-			if ansi.Strip(l) != "" && len(ansi.Strip(l)) > 0 {
-				drawn = true
+				t.Errorf("%s: row is %d cells, want %d", what, got, w)
 			}
 		}
-		if !drawn {
-			t.Error("logo rendered nothing")
+	}
+	lines, w := Header(p)
+	check("header", lines, w, 8, 3)
+	for scale := 1; scale <= 2; scale++ {
+		lines, w := Splash(p, scale)
+		sw, sh := SplashSize(scale)
+		check("splash", lines, w, sw, sh)
+		if sw != 20*scale || sh != 7*scale {
+			t.Errorf("SplashSize(%d) = %d×%d", scale, sw, sh)
 		}
+	}
+}
+
+func TestFollowsTheTheme(t *testing.T) {
+	a := theme.Default()
+	b := a
+	b.Accent = color.NRGBA{0xff, 0, 0, 0xff}
+	la, _ := Header(a)
+	lb, _ := Header(b)
+	if strings.Join(la, "\n") == strings.Join(lb, "\n") {
+		t.Error("the logo ignored the theme's accent colour")
 	}
 }

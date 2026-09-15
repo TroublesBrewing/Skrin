@@ -1,0 +1,308 @@
+package ui
+
+import (
+	"strings"
+
+	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
+
+	"github.com/lurioso/skrin/internal/version"
+)
+
+// manual is the ? overlay: Skrin's manual, full screen and scrollable. Its
+// key tables come from the keymap registry, so they can't drift from what
+// the keys do.
+type manual struct {
+	in        lineInput // the / filter
+	filtering bool      // typing into the filter
+	off       int
+}
+
+// manualLine is one line of the manual. Level 1 is a section heading and 2
+// a sub-heading; a filter keeps the headings above every line it matches.
+type manualLine struct {
+	plain, styled string
+	level         int
+}
+
+// manualKeyW is the width of the key column in the key tables.
+const manualKeyW = 18
+
+func (m *Model) openManual() { m.manual = &manual{} }
+
+// manualWidth is the manual's text width: a readable column.
+func (m *Model) manualWidth() int { return max(min(88, m.width-6), 20) }
+
+func (m *Model) manualKey(k tea.KeyPressMsg) {
+	h := m.manual
+	if h.filtering {
+		switch k.String() {
+		case "esc":
+			h.filtering = false
+			h.in.set("")
+		case "enter":
+			h.filtering = false
+		default:
+			h.in.handle(k)
+		}
+		h.off = 0
+		return
+	}
+	vis := m.height - 3
+	maxOff := max(len(m.manualLines(m.manualWidth()))-vis, 0)
+	switch k.String() {
+	case "esc":
+		if h.in.value() != "" {
+			h.in.set("")
+			h.off = 0
+			return
+		}
+		m.manual = nil
+		return
+	case "?", "q":
+		m.manual = nil
+		return
+	case "/":
+		h.filtering = true
+	case "j", "down":
+		h.off++
+	case "k", "up":
+		h.off--
+	case "ctrl+d", "pgdown", "space":
+		h.off += max(vis/2, 1)
+	case "ctrl+u", "pgup":
+		h.off -= max(vis/2, 1)
+	case "home", "g":
+		h.off = 0
+	case "G", "end":
+		h.off = maxOff
+	}
+	h.off = clamp(h.off, 0, maxOff)
+}
+
+func (m *Model) manualView() string {
+	h := m.manual
+	w := m.manualWidth()
+	lines := m.manualLines(w)
+	vis := m.height - 3
+	margin := strings.Repeat(" ", max((m.width-2-w)/2, 1))
+	var body []string
+	for i := h.off; i < min(len(lines), h.off+vis); i++ {
+		body = append(body, margin+lines[i].styled)
+	}
+	if len(lines) == 0 {
+		body = append(body, "", margin+m.st.muted.Render("Nothing in the manual matches."))
+	}
+	out := m.box("Manual", body, m.width, m.height-1, true)
+	var status string
+	switch {
+	case h.filtering:
+		status = spread(m.st.pill.Render(" FILTER ")+" "+h.in.view(m.st.text, m.st.cursor), m.st.muted.Render("enter keep · esc clear"), m.width)
+	default:
+		left := m.st.pill.Render(" MANUAL ")
+		if q := h.in.value(); q != "" {
+			left += " " + m.st.text.Render("matching “"+q+"” · esc shows everything")
+		}
+		status = spread(left, m.st.muted.Render("j/k scroll · / filter · esc close"), m.width)
+	}
+	return strings.Join(append(out, status), "\n")
+}
+
+// manualLines is the manual as shown at text width w: all of it, or with a
+// filter only the matching lines, under their headings.
+func (m *Model) manualLines(w int) []manualLine {
+	all := m.manualText(w)
+	q := strings.ToLower(strings.TrimSpace(m.manual.in.value()))
+	if q == "" {
+		return all
+	}
+	var out []manualLine
+	var sec, sub *manualLine
+	for i := range all {
+		l := &all[i]
+		switch l.level {
+		case 1:
+			sec, sub = l, nil
+			continue
+		case 2:
+			sub = l
+			continue
+		}
+		if l.plain == "" || !strings.Contains(strings.ToLower(l.plain), q) {
+			continue
+		}
+		if sec != nil {
+			if len(out) > 0 {
+				out = append(out, manualLine{})
+			}
+			out = append(out, *sec)
+			sec = nil
+		}
+		if sub != nil {
+			out = append(out, *sub)
+			sub = nil
+		}
+		out = append(out, *l)
+	}
+	return out
+}
+
+// manualText is the whole manual at text width w.
+func (m *Model) manualText(w int) []manualLine {
+	var out []manualLine
+	add := func(level int, plain, styled string) { out = append(out, manualLine{plain, styled, level}) }
+	blank := func() { add(0, "", "") }
+	head := func(s string) {
+		if len(out) > 0 {
+			blank()
+		}
+		add(1, s, m.st.titleFocus.Render(s))
+	}
+	sub := func(s string) {
+		blank()
+		add(2, s, m.st.bold.Render(s))
+	}
+	para := func(s string) {
+		for _, l := range wrap(s, w) {
+			add(0, l, m.st.text.Render(l))
+		}
+	}
+	code := func(s string) { add(0, "  "+s, "  "+m.st.muted.Render(s)) }
+	key := func(k, desc string) {
+		for i, d := range wrap(desc, max(w-manualKeyW-3, 10)) {
+			if i > 0 {
+				k = ""
+			}
+			k = k + strings.Repeat(" ", max(manualKeyW-ansi.StringWidth(k), 0))
+			add(0, "  "+k+" "+d, "  "+m.st.flash.Render(k)+" "+m.st.text.Render(d))
+		}
+	}
+
+	// The chest and the name open the manual.
+	pad := func(s string) string { return strings.Repeat(" ", max((w-ansi.StringWidth(s))/2, 0)) + s }
+	for _, l := range m.splash[0] {
+		add(0, "", pad(l))
+	}
+	blank()
+	add(0, "", pad(m.st.brand.Render("Skrin")+m.st.muted.Render(" v"+version.Version)))
+	add(0, "", pad(m.st.muted.Render("a terminal home for your vault")))
+
+	head("Keys")
+	group := ""
+	for _, b := range defaultBindings {
+		if b.group != group {
+			group = b.group
+			sub(group)
+		}
+		key(keyLabel(b.keys), b.help)
+	}
+	sub("In the editor")
+	key("Ctrl-s", "save")
+	key("Esc Ctrl-c", "leave the editor, saving first")
+	key("Ctrl-z Ctrl-y", "undo / redo typing")
+	key("Tab Shift-Tab", "indent / outdent")
+	key("Ctrl-l", "make the line a to-do, or tick it off")
+	key("[[", "link completion: note names and aliases; add # for headings")
+	key("Ctrl-← Ctrl-→", "a word left / right")
+	key("Ctrl-Home Ctrl-End", "start / end of the note")
+	sub("Vim keys in the editor (editor.vim = true)")
+	key("i a I A o O", "insert")
+	key("h j k l w b e", "move")
+	key("0 ^ $ gg G", "line start, first letter, line end, top, bottom")
+	key("x D J dd", "delete a letter, the rest of the line, join, delete the line")
+	key("yy p P", "copy the line, paste below / above")
+	key("u Ctrl-r", "undo / redo")
+	key("Esc", "to normal mode; from normal mode, leave the editor")
+
+	head("Files and the note")
+	para("Files holds the vault's folders and files. A note opens on Enter and stays open while you move around Files.")
+	para("In Files, keys act on the row under the cursor; in the note, on the open note. When anything is marked, m and d act on the marks.")
+	para("n and N create things in the current folder: the folder under the cursor, or the folder of the file under it. In the note it's the open note's folder.")
+	para("t opens today's daily note, made from Obsidian's daily-notes settings, with the unfinished todos of the last one carried over.")
+	para("Following a link, a search hit or Go to note leaves the Files cursor where it was, unless Obsidian's “Automatically reveal current file” is on.")
+
+	head("Search")
+	para("/ searches as you type. In there: Alt-t this note or the whole vault, Alt-c match case, Alt-r replace, and when replacing Alt-w whole words.")
+	key("word word", "all words must appear")
+	key(`"exact phrase"`, "the words in this order")
+	key("-word", "leave out notes with it")
+	key("a OR b", "either")
+	key("#tag  tag:#tag", "a tag; #a finds #a/b too")
+	key("[key] [key:value]", "a frontmatter property")
+	key("path:Daily", "notes in that folder")
+	key("file:stoic", "notes by name")
+	para("Enter opens the note at the hit, and the next / brings the query back. When replacing, every change is listed first: Space skips one, Ctrl-s replaces after a y/n, and ⚠ marks matches inside [[links]].")
+
+	head("Links")
+	para("[[Note]], [[Note|alias]], [[Note#Heading]], [[Note#^block]], ![[embeds]] and markdown [text](path) links all work, and resolve the way Obsidian resolves them.")
+	para("f puts a letter on each link in view; type it to follow. Enter follows the link when there's only one in view.")
+	para("A link to a note that doesn't exist yet is dimmed; following it offers to create the note.")
+	para("Backspace or Ctrl-o goes back, Ctrl-i goes forward, and b lists the notes linking here.")
+	para("Renaming or moving offers to update the links to what moved, as Obsidian does.")
+
+	head("Undo")
+	para("u puts the note back as it was before its last edit, whether you made it here, in $EDITOR, or with a replace. Ctrl-r takes that back.")
+	para("U undoes the last file operation: a create, rename, move, delete (back from the trash) or replace.")
+	para("In the editor, Ctrl-z undoes typing.")
+	para("Earlier versions of each note are kept in ~/.local/state/skrin/snapshots, the last 20 per note.")
+
+	head("Config")
+	para("~/.config/skrin/config.toml:")
+	blank()
+	code(`vault = "~/notes"        # the vault to open; else Obsidian's own list`)
+	code(`[daily]`)
+	code(`rollover_todos = true   # t carries unfinished todos over`)
+	code(`[editor]`)
+	code(`vim = false             # vim keys in the built-in editor`)
+	code(`external = "nvim"       # what E runs; else $VISUAL, $EDITOR, nvim`)
+	blank()
+	para("Colours come from the Omarchy theme and follow it live. A skrin.toml next to the theme's colors.toml can override them.")
+	para("Where you were (open folders, the cursor, the open note) is kept per vault in ~/.local/state/skrin/session.")
+	return out
+}
+
+// keyLabel names keys the way the manual shows them: "ctrl+d" as Ctrl-d,
+// "left" as ←, and each key once.
+func keyLabel(keys []string) string {
+	names := map[string]string{
+		"left": "←", "right": "→", "up": "↑", "down": "↓", "enter": "Enter", "backspace": "Backspace",
+		"space": "Space", " ": "Space", "tab": "Tab", "esc": "Esc", "home": "Home", "end": "End",
+		"pgup": "PgUp", "pgdown": "PgDn", "ctrl": "Ctrl", "alt": "Alt", "shift": "Shift",
+	}
+	var out []string
+	seen := map[string]bool{}
+	for _, k := range keys {
+		parts := strings.Split(k, "+")
+		if k == " " {
+			parts = []string{" "}
+		}
+		for i, p := range parts {
+			if n, ok := names[p]; ok {
+				parts[i] = n
+			}
+		}
+		if s := strings.Join(parts, "-"); !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	return strings.Join(out, " ")
+}
+
+// wrap breaks s into lines of at most w cells, at spaces.
+func wrap(s string, w int) []string {
+	var out []string
+	line := ""
+	for _, word := range strings.Fields(s) {
+		switch {
+		case line == "":
+			line = word
+		case ansi.StringWidth(line)+1+ansi.StringWidth(word) <= w:
+			line += " " + word
+		default:
+			out = append(out, line)
+			line = word
+		}
+	}
+	return append(out, line)
+}

@@ -1,110 +1,91 @@
-// Package logo draws the official Obsidian logo in the terminal.
+// Package logo draws Skrin's logo, a small chest, in the terminal. It is
+// pixel art painted in the theme's colours and drawn with half-block
+// characters: each cell stacks two pixels (▀ / ▄), so the pixels come out
+// square and sharp in any terminal.
 package logo
 
 import (
-	"bytes"
-	"image"
 	"image/color"
-	_ "image/png"
-	"math"
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	"golang.org/x/image/draw"
 
-	"github.com/lurioso/skrin/assets"
+	"github.com/lurioso/skrin/internal/theme"
 )
 
-// opaque is the alpha at which a scaled pixel counts as drawn.
-const opaque = 110
-
-// HalfBlock renders the logo rows cells tall. Each cell stacks two pixels
-// (▀ / ▄), so pixels come out roughly square, and transparent pixels are
-// left to the terminal background. It returns one string per row and the
-// width in cells.
-func HalfBlock(rows int) ([]string, int, error) {
-	img, err := scaled(rows * 2)
-	if err != nil {
-		return nil, 0, err
+// The same chest at two sizes. Pixels: '.' clear, 'A' the theme's accent,
+// 'D' the accent darkened toward the background, 'L' the text colour (the
+// clasp). Heights are even, so pixel rows pair up into cells.
+var (
+	small = []string{
+		".DDDDDD.",
+		"DAAAAAAD",
+		"DDDLLDDD",
+		"DAALLAAD",
+		"DAAAAAAD",
+		"DDDDDDDD",
 	}
-	w := img.Bounds().Dx()
-	lines := make([]string, rows)
-	for y := range lines {
+	large = []string{
+		"....DDDDDDDDDDDD....",
+		"..DDDAAAAAAAAAADDD..",
+		".DAADAAAAAAAAAADAAD.",
+		".DAADAAAAAAAAAADAAD.",
+		"DDDDDDDDDDDDDDDDDDDD",
+		"DAAADAAALLLLAAADAAAD",
+		"DAAADAAALDDLAAADAAAD",
+		"DAAADAAALDDLAAADAAAD",
+		"DAAADAAALLLLAAADAAAD",
+		"DAAADAAAAAAAAAADAAAD",
+		"DAAADAAAAAAAAAADAAAD",
+		"DAAADAAAAAAAAAADAAAD",
+		"DDDDDDDDDDDDDDDDDDDD",
+		".DD..............DD.",
+	}
+)
+
+// Header is the small chest for the header: three rows, and its width.
+func Header(p theme.Palette) ([]string, int) { return draw(small, 1, p) }
+
+// Splash is the large chest, each pixel scale×scale, and its width. At
+// scale 1 it is seven rows tall.
+func Splash(p theme.Palette, scale int) ([]string, int) { return draw(large, scale, p) }
+
+// SplashSize is the width and height in cells of Splash at scale.
+func SplashSize(scale int) (int, int) { return len(large[0]) * scale, len(large) * scale / 2 }
+
+func draw(bm []string, scale int, p theme.Palette) ([]string, int) {
+	ink := map[byte]color.Color{'A': p.Accent, 'D': mix(p.Accent, p.Background, 0.45), 'L': p.Foreground}
+	px := func(x, y int) color.Color { return ink[bm[y/scale][x/scale]] } // nil when clear
+	w, h := len(bm[0])*scale, len(bm)*scale
+	lines := make([]string, h/2)
+	for row := range lines {
 		var b strings.Builder
 		for x := 0; x < w; x++ {
-			b.WriteString(cell(img.NRGBAAt(x, 2*y), img.NRGBAAt(x, 2*y+1)))
+			b.WriteString(cell(px(x, 2*row), px(x, 2*row+1)))
 		}
-		lines[y] = b.String()
+		lines[row] = b.String()
 	}
-	return lines, w, nil
+	return lines, w
 }
 
-// scaled returns the gem, cropped and resized to h pixels tall.
-func scaled(h int) (*image.NRGBA, error) {
-	src, _, err := image.Decode(bytes.NewReader(assets.ObsidianLogo))
-	if err != nil {
-		return nil, err
-	}
-	gem := isolateGem(src)
-	box := opaqueBounds(gem)
-	w := max(1, int(math.Round(float64(h)*float64(box.Dx())/float64(box.Dy()))))
-	img := image.NewNRGBA(image.Rect(0, 0, w, h))
-	draw.CatmullRom.Scale(img, img.Bounds(), gem, box, draw.Src, nil)
-	return img, nil
-}
-
-// isolateGem keeps only the purple crystal. The packaged icon puts it on a
-// dark grey rounded tile, which at terminal sizes would become a dark block
-// around a tiny gem, so dark grey pixels are made transparent. The gem's
-// pale highlight is bright, not dark, so it survives.
-func isolateGem(src image.Image) *image.NRGBA {
-	b := src.Bounds()
-	out := image.NewNRGBA(b)
-	for y := b.Min.Y; y < b.Max.Y; y++ {
-		for x := b.Min.X; x < b.Max.X; x++ {
-			c := color.NRGBAModel.Convert(src.At(x, y)).(color.NRGBA)
-			hi, lo := max(c.R, c.G, c.B), min(c.R, c.G, c.B)
-			if hi-lo < 24 && hi < 0x60 {
-				c.A = 0
-			}
-			out.SetNRGBA(x, y, c)
-		}
-	}
-	return out
-}
-
-func cell(top, bot color.NRGBA) string {
+// cell draws two stacked pixels; a clear one shows the terminal background.
+func cell(top, bot color.Color) string {
 	st := lipgloss.NewStyle()
-	switch t, b := top.A >= opaque, bot.A >= opaque; {
-	case t && b:
-		return st.Foreground(solid(top)).Background(solid(bot)).Render("▀")
-	case t:
-		return st.Foreground(solid(top)).Render("▀")
-	case b:
-		return st.Foreground(solid(bot)).Render("▄")
+	switch {
+	case top != nil && bot != nil:
+		return st.Foreground(top).Background(bot).Render("▀")
+	case top != nil:
+		return st.Foreground(top).Render("▀")
+	case bot != nil:
+		return st.Foreground(bot).Render("▄")
 	}
 	return " "
 }
 
-func solid(c color.NRGBA) color.Color {
-	c.A = 255
-	return c
-}
-
-// opaqueBounds is the smallest rectangle holding every visible pixel.
-func opaqueBounds(img image.Image) image.Rectangle {
-	b := img.Bounds()
-	minX, minY, maxX, maxY := b.Max.X, b.Max.Y, b.Min.X, b.Min.Y
-	for y := b.Min.Y; y < b.Max.Y; y++ {
-		for x := b.Min.X; x < b.Max.X; x++ {
-			if _, _, _, a := img.At(x, y).RGBA(); a > 0x1000 {
-				minX, minY = min(minX, x), min(minY, y)
-				maxX, maxY = max(maxX, x+1), max(maxY, y+1)
-			}
-		}
-	}
-	if maxX <= minX || maxY <= minY {
-		return b
-	}
-	return image.Rect(minX, minY, maxX, maxY)
+// mix blends a toward b by t.
+func mix(a, b color.Color, t float64) color.Color {
+	ar, ag, ab, _ := a.RGBA()
+	br, bg, bb, _ := b.RGBA()
+	l := func(x, y uint32) uint8 { return uint8((float64(x)*(1-t) + float64(y)*t) / 257) }
+	return color.NRGBA{l(ar, br), l(ag, bg), l(ab, bb), 255}
 }

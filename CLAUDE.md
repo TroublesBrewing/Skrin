@@ -12,6 +12,7 @@ There are three of us. You (Claude Code) are the **builder**. Hermes Agent is th
 - The 13 stories tagged *(LLM-added …)* in the backlog were found by Hermes's code review of v0.5.4; they are triaged in the notes around them but not yet human verified. The stories tagged *Product owner, 2026-09-15* are from user feedback after daily use and reflect the user's current intent.
 - When a review story conflicts with a milestone in flight, fix the story into the milestone's scope rather than deferring it.
 - Hermes reviews builds against the spec, the acceptance criteria, and the keymap rules (lowercase = local, uppercase = global/bigger; first letter of the action; every key in the registry with context-aware help text; no prefix keys unless the spec demands one).
+- The hand-off between us lives in `HANDOFF.md`. Read it at the start of every session and follow its rules: append dated entries to your section, update the State line when your work is done, set `Turn:` to say whose move is next, and list what needs review (commit range or tag). It is operational state between us; product decisions stay in the vault notes.
 - Release versions are the PO's and user's call: propose, don't decide.
 
 ## Commands

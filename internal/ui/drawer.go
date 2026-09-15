@@ -104,8 +104,13 @@ func (m *Model) Close() {
 }
 
 // drawerRight reports whether the drawer is on the right now. It needs a
-// wide terminal; narrower, it goes along the bottom.
-func (m *Model) drawerRight() bool { return m.drawer.right && m.width >= 100 }
+// wide terminal, and room left for a split if there is one; otherwise it
+// goes along the bottom.
+func (m *Model) drawerRight() bool {
+	return m.drawer.right && m.width >= 100 && (m.split == nil || m.width-drawerWidth(m.width) >= splitMinWidth)
+}
+
+func drawerWidth(w int) int { return clamp(w*38/100, 32, 64) }
 
 // drawerSide is the side Alt-p chose, for the session; "" if it wasn't used.
 func (m *Model) drawerSide() string {
@@ -157,38 +162,41 @@ func (m *Model) leaveDrawer() {
 	}
 }
 
+// drawerKey handles a key typed in the drawer. The drawer's own keys come
+// from the keymap registry; the rest go to the input.
 func (m *Model) drawerKey(k tea.KeyPressMsg) {
 	d := &m.drawer
-	switch k.String() {
-	case "enter":
+	switch actionIn(inDrawer, k.String()) {
+	case actSend:
 		m.sendToClaude()
-		return
-	case "alt+enter", "shift+enter":
+	case actNewLine:
 		d.input.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
-		return
-	case "alt+p":
+	case actLeaveDrawer:
+		if d.input.Selection() != "" {
+			d.input.ClearSelection()
+		} else {
+			m.leaveDrawer()
+		}
+	case actFlipDrawer:
 		d.right, d.moved = !d.right, true
 		switch {
 		case !d.right:
 			m.flash = "Drawer along the bottom · alt+p moves it back"
-		case m.width < 100:
-			m.flash = "The drawer goes on the right from 100 columns; until then it stays at the bottom"
+		case !m.drawerRight():
+			m.flash = "The drawer goes on the right when there's room: from 100 columns, more with a split"
 		default:
 			m.flash = "Drawer on the right · alt+p moves it back"
 		}
-		return
-	case "alt+n":
+	case actNewChat:
 		m.newConversation()
-		return
-	case "pgup":
+	case actScrollBack:
 		d.scroll += 5
-		return
-	case "pgdown":
+	case actScrollOn:
 		d.scroll = max(d.scroll-5, 0)
-		return
-	}
-	if d.input.HandleKey(k) == editor.Close {
-		m.leaveDrawer()
+	default:
+		if d.input.HandleKey(k) == editor.Close {
+			m.leaveDrawer()
+		}
 	}
 }
 

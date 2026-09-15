@@ -94,7 +94,7 @@ func (m *Model) openEditor(rel string) {
 }
 
 func (m *Model) editorKey(k tea.KeyPressMsg) {
-	if k.String() == "ctrl+k" { // ask Claude, with the selection
+	if actionIn(inEditor, k.String()) == actAskClaude {
 		m.openDrawer()
 		return
 	}

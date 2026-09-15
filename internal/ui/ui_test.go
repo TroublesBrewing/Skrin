@@ -90,6 +90,8 @@ func key(k string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModAlt}
 	case "shift+right":
 		return tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift}
+	case "shift+left":
+		return tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModShift}
 	case "alt+enter":
 		return tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModAlt}
 	case "pgup":
@@ -192,13 +194,17 @@ func TestNavigateFilesAndNote(t *testing.T) {
 	if m.cwd() != "Filosofi" {
 		t.Fatalf("cwd = %q, want Filosofi", m.cwd())
 	}
-	// l opens Filosofi and steps onto its first entry, Antik/.
+	if m.notePath != "" {
+		t.Fatalf("a folder under the cursor opened %q", m.notePath)
+	}
+	// l opens Filosofi and steps onto its first entry, Antik/; j lands on
+	// Stoic, which opens at once.
 	press(m, "l", "j")
 	if got := m.files.selected().Rel; got != "Filosofi/Stoic.md" {
 		t.Fatalf("cursor on %q", got)
 	}
-	if m.notePath != "" {
-		t.Fatalf("moving the cursor opened %q; notes open on enter", m.notePath)
+	if m.notePath != "Filosofi/Stoic.md" || m.focus != paneFiles {
+		t.Fatalf("open %q, focus %v: the note under the cursor should open, focus staying in Files", m.notePath, m.focus)
 	}
 	press(m, "enter", "G")
 	if m.notePath != "Filosofi/Stoic.md" || m.focus != paneNote || m.noteOff == 0 {
@@ -285,7 +291,7 @@ func TestSkrinsOwnBrandingAndSplash(t *testing.T) {
 	if strings.Contains(frame, "Obsidian") || strings.Contains(frame, "unofficial") {
 		t.Errorf("Obsidian branding on screen:\n%s", frame)
 	}
-	if !strings.Contains(frame, "a terminal home for your vault") || !strings.Contains(frame, "enter on a note in Files opens it") {
+	if !strings.Contains(frame, "a terminal home for your vault") || !strings.Contains(frame, "move onto a note in Files to open it") {
 		t.Fatalf("header tagline or splash missing:\n%s", frame)
 	}
 	art := 0
@@ -298,7 +304,7 @@ func TestSkrinsOwnBrandingAndSplash(t *testing.T) {
 		t.Errorf("only %d rows of logo; the splash chest is missing", art)
 	}
 	press(m, "G", "enter")
-	if strings.Contains(ansi.Strip(m.render()), "enter on a note in Files opens it") {
+	if strings.Contains(ansi.Strip(m.render()), "move onto a note in Files to open it") {
 		t.Error("an open note should replace the splash")
 	}
 }

@@ -2,6 +2,7 @@ package vault
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 )
@@ -33,7 +34,14 @@ type Op struct {
 }
 
 // Journal is the session's stack of undoable operations.
-type Journal struct{ ops []Op }
+type Journal struct {
+	ops []Op
+	// Keep, when set, saves a note's current text before an undo writes
+	// over it, so a change made on disk in between can still be brought
+	// back; Skrin hands it the snapshot store. If Keep fails, the note is
+	// left as it is.
+	Keep func(rel, disk string) error
+}
 
 const maxOps = 200
 
@@ -62,14 +70,14 @@ func (j *Journal) Undo(v *Vault, trashOption string) (Op, bool, error) {
 	j.ops = j.ops[:len(j.ops)-1]
 	var errs []error
 	for i := len(op.Steps) - 1; i >= 0; i-- {
-		if err := undoStep(v, op.Steps[i], trashOption); err != nil {
+		if err := undoStep(v, op.Steps[i], trashOption, j.Keep); err != nil {
 			errs = append(errs, err)
 		}
 	}
 	return op, true, errors.Join(errs...)
 }
 
-func undoStep(v *Vault, s Step, trashOption string) error {
+func undoStep(v *Vault, s Step, trashOption string, keep func(rel, disk string) error) error {
 	switch s.Kind {
 	case StepCreated:
 		fi, err := os.Stat(v.Abs(s.Rel))
@@ -96,6 +104,11 @@ func undoStep(v *Vault, s Step, trashOption string) error {
 	case StepTrashed:
 		return v.Restore(s.Trash)
 	case StepModified:
+		if cur, err := v.Read(s.Rel); keep != nil && err == nil && cur != s.Content {
+			if err := keep(s.Rel, cur); err != nil {
+				return fmt.Errorf("left %s as it is: couldn't keep its current text first: %w", s.Rel, err)
+			}
+		}
 		return v.Write(s.Rel, s.Content)
 	}
 	return nil

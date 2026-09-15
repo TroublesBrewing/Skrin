@@ -44,14 +44,18 @@ Go is pinned in `.mise.toml`. If `go` isn't on PATH, prefix commands with `mise 
   - `mcp.go` is `skrin mcp`, a small hand-written MCP server on stdio, plus the Unix-socket bridge it uses to reach the running Skrin.
   - `prompt.go` is the system prompt.
   - Tests use a fake `claude` script, never the real one.
-- `internal/ui`: two panes, Files and the open note. The Files cursor and the open note are independent: moving the cursor never changes the note, and a note opens on Enter.
+- `internal/ui`: Files and the open note, or two notes in a split.
+  - The note under the Files cursor is the open note: moving the cursor opens notes (`peek`, called from `settle`), and opening a note any other way reveals it in Files.
   - `model.go` has the root model, `view.go` the rendering (zen mode included) and `files.go` the Files tree.
   - `ops.go` has file actions and marks. `edit.go` has editing, the save-conflict flow, `E` and `u`.
   - `links.go` has opening notes, following links, history, backlinks, the outline, `[[` completion and moving with link updates.
   - `find.go` has the `/` search panel and Go to note; `replace.go` has the panel's replace mode.
   - `modal.go` has the name prompt, the y/n question and the filterable chooser used for moves, backlinks and the outline.
   - `drawer.go` has the Claude drawer, `propose.go` Claude's tools and the y/n proposals, and `select.go` the line selection in the reading view.
-  - `keys.go` has the keymap registry, and `help.go` the `?` manual. The manual's key tables are generated from the registry, so every key must be in it, with a help text and a group.
+  - `split.go` has the split view. The other pane waits in `m.split`; `swapPanes` trades it with the focused one, so all the note code keeps working on `m.notePath`.
+  - `keys.go` has the keymap registry. It holds every key, with the context it works in (`inMain`, `inEditor`, `inList`, `inDrawer`, …) and help text for that context.
+    - `actionIn` looks a key up in its context, and `help.go`'s `?` manual is generated from the same table.
+    - Keys a component handles itself (the editor, the search panel) are registered with `actNone`, so the manual still lists them. A new key must go in the registry.
 
 ## Releases
 

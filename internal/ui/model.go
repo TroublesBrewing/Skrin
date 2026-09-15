@@ -37,6 +37,10 @@ const (
 	filesAutoHideWidth = 80
 	// zenWidth is the widest a note runs in zen mode, for easy reading.
 	zenWidth = 80
+	// splitMinWidth is the narrowest terminal a split view fits in.
+	splitMinWidth = 80
+	// splitFilesW is Files' width while the view is split: its minimum.
+	splitFilesW = 24
 )
 
 // ThemeMsg carries the reloaded palette after Omarchy switches theme.
@@ -78,7 +82,6 @@ type Model struct {
 	snaps *snapshot.Store
 	pal   theme.Palette
 	st    styles
-	keys  map[string]action
 	opts  Options
 	logo  []string
 	logoW int
@@ -89,8 +92,9 @@ type Model struct {
 	focus         pane
 	zen           bool // z: only the note, centred at a readable width
 
-	files files // the Files pane; its cursor moves independently of the open note
+	files files // the Files pane; its cursor sits on the open note
 
+	// The focused note pane. With a split, the other pane waits in split.
 	notePath  string // the open note, "" when none is
 	noteSrc   string
 	noteErr   error
@@ -98,6 +102,9 @@ type Model struct {
 	renderedW int // width lines were rendered at; 0 forces a re-render
 	noteOff   int
 	jumpSrc   int // after the next render, scroll to this source line; -1 for none
+
+	split     *noteView // the other note of a split view
+	splitLeft bool      // the other note sits left of the focused one
 
 	back, fwd []place // history of opened notes
 
@@ -143,9 +150,10 @@ func New(v *vault.Vault, pal theme.Palette, opts Options) (*Model, error) {
 		opts.Open = xdgOpen
 	}
 	m := &Model{
-		vault: v, idx: index.New(), snaps: snapshot.Open(v.Root), keys: keymap(), files: newFiles(),
+		vault: v, idx: index.New(), snaps: snapshot.Open(v.Root), files: newFiles(),
 		opts: opts, marks: map[string]bool{}, jumpSrc: -1, events: make(chan tea.Msg, 256),
 	}
+	m.journal.Keep = m.snaps.Save // U keeps what's on disk before it restores
 	m.drawer.input = editor.New("", false, pal)
 	m.drawer.id, m.drawer.right = opts.Session.Claude, opts.Assistant.Right
 	switch opts.Session.Drawer {
@@ -169,7 +177,8 @@ func New(v *vault.Vault, pal theme.Palette, opts Options) (*Model, error) {
 	return m, nil
 }
 
-// Session is where you are now, for the next run to pick up.
+// Session is where you are now, for the next run to pick up. A split isn't
+// kept: the focused note is.
 func (m *Model) Session() session.State {
 	return session.State{
 		Expanded: m.files.openFolders(),
@@ -194,6 +203,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ThemeMsg:
 		m.setPalette(msg.Palette)
 		m.renderedW = 0
+		if m.split != nil {
+			m.split.renderedW = 0
+		}
 		m.flash = "theme: " + msg.Palette.Name
 	case VaultChangedMsg:
 		open := m.notePath
@@ -251,7 +263,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.lastG = time.Now()
 			}
-			if act, ok := m.keys[key]; ok {
+			if act := actionIn(inMain, key); act != actNone {
 				if act == actQuit {
 					return m, tea.Quit
 				}
@@ -314,6 +326,8 @@ func (m *Model) do(a action) tea.Cmd {
 		switch {
 		case m.noteSel != nil:
 			m.noteSel = nil
+		case m.split != nil && m.focus == paneNote:
+			m.closePane()
 		case m.zen:
 			m.zen = false
 		default:
@@ -402,20 +416,29 @@ func (m *Model) filesAction(a action) {
 	}
 }
 
-// openRow opens what's under the cursor in Files: a folder opens or closes,
-// a note opens on the right, and any other file opens in its own app.
+// openRow is Enter in Files: a folder opens or closes, a note (already open
+// under the cursor) gets the focus, and any other file opens in its own app.
 func (m *Model) openRow() {
 	e := m.files.selected()
 	switch {
 	case e.IsDir:
 		m.visual = nil
 		m.files.toggle()
-	case e.Rel == m.notePath:
-		m.focus = paneNote
 	case vault.IsNote(e.Name):
-		m.open(e.Rel)
+		if e.Rel != m.notePath {
+			m.showNote(e.Rel)
+		}
+		m.focus = paneNote
 	default:
 		m.openExternal(m.vault.Abs(e.Rel))
+	}
+}
+
+// peek opens the note under the Files cursor: notes follow the cursor. A
+// folder, or a file that isn't a note, leaves the open note as it is.
+func (m *Model) peek() {
+	if e := m.files.selected(); !e.IsDir && vault.IsNote(e.Name) && e.Rel != m.notePath {
+		m.showNote(e.Rel)
 	}
 }
 
@@ -443,6 +466,12 @@ func (m *Model) noteAction(a action) {
 		off = 0
 	case actBottom:
 		off = maxOff
+	case actPaneLeft, actPaneRight:
+		// Move to the other pane when it lies that way.
+		if m.split != nil && (a == actPaneLeft) == m.splitLeft {
+			m.swapPanes()
+		}
+		return
 	case actLeft:
 		m.focus = paneFiles
 		return
@@ -459,6 +488,7 @@ func (m *Model) noteAction(a action) {
 }
 
 // toggleZen shows the open note alone, centred, or brings the panels back.
+// A split's other note is closed rather than hidden.
 func (m *Model) toggleZen() {
 	switch {
 	case m.zen:
@@ -466,6 +496,10 @@ func (m *Model) toggleZen() {
 	case m.notePath == "":
 		m.flash = "Open a note first: zen mode shows just the note"
 	default:
+		if m.split != nil {
+			m.flash = "Zen: closed " + displayName(m.split.path)
+			m.split = nil
+		}
 		m.zen, m.focus = true, paneNote
 	}
 }
@@ -500,8 +534,8 @@ func (m *Model) cwd() string {
 }
 
 // reload rescans the vault after a change on disk, keeping the user's place:
-// open folders, the cursor in Files and the open note with its scroll
-// position. An open note that is gone closes.
+// open folders, the cursor in Files and the open notes with their scroll
+// positions. An open note that is gone closes.
 func (m *Model) reload() error {
 	entries, err := m.vault.Entries()
 	if err != nil {
@@ -517,6 +551,7 @@ func (m *Model) reload() error {
 		}
 	}
 	m.loadNote()
+	m.loadSplit()
 	return nil
 }
 
@@ -547,11 +582,20 @@ func plural(n int, word string) string {
 	return fmt.Sprintf("%d %ss", n, word)
 }
 
-// settle re-renders the note when its pane width changed and keeps every
-// cursor inside its scroll window. It runs after every update.
+// settle keeps things in step after every update: the note under the Files
+// cursor is open, a split closes when it no longer fits, notes are
+// re-rendered when their pane width changed, and every cursor stays inside
+// its scroll window.
 func (m *Model) settle() {
 	if m.width == 0 {
 		return
+	}
+	if m.focus == paneFiles && m.editor == nil {
+		m.peek()
+	}
+	if m.split != nil && m.width < splitMinWidth {
+		m.flash = "No room for a split: closed " + displayName(m.split.path)
+		m.split = nil
 	}
 	if m.zen && m.notePath == "" && m.editor == nil {
 		m.zen = false // the note closed under us
@@ -564,6 +608,13 @@ func (m *Model) settle() {
 	if m.notePath != "" && m.noteErr == nil && l.noteTextW() != m.renderedW {
 		m.lines = markdown.Render(m.noteSrc, markdown.Options{Width: l.noteTextW(), Palette: m.pal, Resolve: m.resolve})
 		m.renderedW = l.noteTextW()
+	}
+	if s := m.split; s != nil {
+		if w := l.splitW - 4; s.err == nil && w != s.renderedW {
+			s.lines = markdown.Render(s.src, markdown.Options{Width: w, Palette: m.pal, Resolve: m.resolveFrom(s.path)})
+			s.renderedW = w
+		}
+		s.off = clamp(s.off, 0, max(len(s.lines)-vis, 0))
 	}
 	if m.jumpSrc >= 0 && m.editor == nil {
 		for i, ln := range m.lines {
@@ -598,15 +649,24 @@ func scrollTo(cur, off, vis, n int) int {
 	return clamp(off, 0, max(n-vis, 0))
 }
 
-// resolve reports whether a wikilink in the shown note leads anywhere.
+// resolve reports whether a wikilink in the open note leads anywhere.
 func (m *Model) resolve(target string) bool {
 	_, ok := m.idx.Resolve(target, m.notePath)
 	return ok
 }
 
-// layout is how the screen is shared out. drawerW is the Claude drawer on
-// the right; drawerH is its rows along the bottom (1 when folded).
-type layout struct{ filesW, noteW, bodyH, drawerW, drawerH int }
+// resolveFrom is resolve for links in note from.
+func (m *Model) resolveFrom(from string) func(string) bool {
+	return func(target string) bool {
+		_, ok := m.idx.Resolve(target, from)
+		return ok
+	}
+}
+
+// layout is how the screen is shared out. splitW is the other note of a
+// split view; drawerW is the Claude drawer on the right, and drawerH its
+// rows along the bottom (1 when folded).
+type layout struct{ filesW, noteW, splitW, bodyH, drawerW, drawerH int }
 
 // noteTextW is the width notes render at: the pane minus borders and a
 // one-cell margin on each side.
@@ -622,7 +682,7 @@ func (m *Model) layout() layout {
 	if m.drawer.open {
 		switch {
 		case m.drawerRight():
-			l.drawerW = clamp(m.width*38/100, 32, 64)
+			l.drawerW = drawerWidth(m.width)
 			w -= l.drawerW
 		case m.focus == paneClaude && l.bodyH >= 7:
 			l.drawerH = min(clamp(l.bodyH*45/100, 8, 20), l.bodyH-3)
@@ -630,6 +690,13 @@ func (m *Model) layout() layout {
 			l.drawerH = 1 // folded while you're elsewhere
 		}
 		l.bodyH -= l.drawerH
+	}
+	if m.split != nil {
+		// Files shrinks to its minimum and the notes share the rest.
+		l.filesW = splitFilesW
+		l.splitW = (w - l.filesW) / 2
+		l.noteW = w - l.filesW - l.splitW
+		return l
 	}
 	if w >= filesAutoHideWidth || m.focus == paneFiles {
 		l.filesW = clamp(w*30/100, 24, 40)

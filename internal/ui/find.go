@@ -423,23 +423,24 @@ func (m *Model) toggle(label string, on bool) string {
 // one. The first row is the note already open (or an empty row when none
 // is), so Enter straight away just closes the list.
 func (m *Model) openSwitcher() {
-	c := &chooser{title: "Go to note", prompt: "name", empty: "No note by that name · enter creates it", verb: "open"}
+	c := &chooser{title: "Go to note", prompt: "name", empty: "No note by that name · enter creates it", verb: "open · shift+←/→ split"}
 	open := ""
 	if m.notePath != "" {
 		open = m.notePath
-		c.items = append(c.items, choice{label: displayName(open), detail: "open now"})
+		c.items = append(c.items, choice{label: displayName(open), detail: "open now", rel: open})
 	} else {
 		c.items = append(c.items, choice{detail: "stay here"})
 	}
 	for _, rel := range m.idx.Notes() {
 		if rel != open {
-			c.items = append(c.items, choice{label: displayName(rel), detail: parentOf(rel), do: func() { m.goTo(rel, "") }})
+			c.items = append(c.items, choice{label: displayName(rel), detail: parentOf(rel), rel: rel, do: func() { m.goTo(rel, "") }})
 		}
 		for _, a := range m.idx.Aliases(rel) {
-			c.items = append(c.items, choice{label: a, detail: "alias of " + displayName(rel), do: func() { m.goTo(rel, "") }})
+			c.items = append(c.items, choice{label: a, detail: "alias of " + displayName(rel), rel: rel, do: func() { m.goTo(rel, "") }})
 		}
 	}
 	c.none = m.offerCreate
+	c.split = m.openSplit
 	m.openChooser(c)
 }
 

@@ -295,6 +295,47 @@ func TestVisualRangeAndMarkAll(t *testing.T) {
 	}
 }
 
+func TestUKeepsWhatChangedOnDisk(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "/", "alt+r")
+	typeText(m, "Welcome")
+	press(m, "tab")
+	typeText(m, "Hello")
+	press(m, "ctrl+s", "y")
+	if !strings.HasPrefix(read(m, "Welcome.md"), "# Hello") {
+		t.Fatal("replace failed")
+	}
+	if err := os.WriteFile(m.vault.Abs("Welcome.md"), []byte("changed elsewhere\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	press(m, "U")
+	if got := read(m, "Welcome.md"); got != welcome {
+		t.Fatalf("U: %q", got)
+	}
+	press(m, "G", "enter", "u")
+	if got := read(m, "Welcome.md"); got != "changed elsewhere\n" {
+		t.Errorf("u should bring back what U wrote over: %q", got)
+	}
+}
+
+func TestDailyTidyIsUndoableWithU(t *testing.T) {
+	m := newTestModel(t)
+	settings := `{"templateHeading":"### Todo's","deleteOnComplete":true,"removeEmptyTodos":true,"rolloverChildren":true,"doneStatusMarkers":"xX-"}`
+	if err := os.WriteFile(m.vault.Abs(".obsidian/plugins/obsidian-rollover-daily-todos/data.json"), []byte(settings), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	press(m, "t")
+	if strings.Contains(read(m, "Daily/2026-09-13.md"), "call mum") {
+		t.Fatal("yesterday's todos should have been tidied away")
+	}
+	press(m, "g")
+	typeText(m, "2026-09-13")
+	press(m, "enter", "u")
+	if !strings.Contains(read(m, "Daily/2026-09-13.md"), "call mum") {
+		t.Error("u should bring back yesterday's note as it was")
+	}
+}
+
 const wantDaily = "# Tuesday 15 September\n### Todo's\n- [ ] call mum\n  - about sunday\n* [ ] star task\n\n### Notes\n"
 
 func TestDailyNoteWithRollover(t *testing.T) {

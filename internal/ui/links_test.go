@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"os"
 	"strings"
 	"testing"
 )
@@ -157,20 +156,24 @@ func TestMoveKeepsPlainLinksThatStillWork(t *testing.T) {
 	}
 }
 
-func TestLinksLeaveFilesCursorUnlessObsidianReveals(t *testing.T) {
+func TestLinksMoveTheFilesCursor(t *testing.T) {
 	m := newTestModel(t)
 	onWelcome(m)
 	press(m, "f", "a") // to Stoic
-	if m.notePath != "Filosofi/Stoic.md" || m.files.selected().Rel != "Welcome.md" {
-		t.Fatalf("open %q, cursor on %q: following a link shouldn't move the cursor", m.notePath, m.files.selected().Rel)
+	if m.notePath != "Filosofi/Stoic.md" || m.files.selected().Rel != "Filosofi/Stoic.md" || !m.files.expanded["Filosofi"] {
+		t.Fatalf("open %q, cursor on %q: the cursor should follow to the note", m.notePath, m.files.selected().Rel)
 	}
-	ws := `{"left":{"type":"split","children":[{"type":"leaf","state":{"type":"file-explorer","state":{"autoReveal":true}}}]}}`
-	if err := os.WriteFile(m.vault.Abs(".obsidian/workspace.json"), []byte(ws), 0o644); err != nil {
-		t.Fatal(err)
+	press(m, "backspace")
+	if m.notePath != "Welcome.md" || m.files.selected().Rel != "Welcome.md" {
+		t.Errorf("back: open %q, cursor on %q", m.notePath, m.files.selected().Rel)
 	}
-	press(m, "backspace", "alt+right")
-	if m.files.selected().Rel != "Filosofi/Stoic.md" || !m.files.expanded["Filosofi"] {
-		t.Errorf("with autoReveal on, the cursor should follow to the note, got %q", m.files.selected().Rel)
+}
+
+func TestFWithNoNoteSaysSo(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "f")
+	if m.hints != nil || !strings.Contains(m.flash, "No links in view") {
+		t.Errorf("f with no note open: hints %v, flash %q", m.hints != nil, m.flash)
 	}
 }
 

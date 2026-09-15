@@ -93,6 +93,10 @@ func TestAddTodosAndRemoveLines(t *testing.T) {
 	if got := AddTodos(note, todos, "## Missing"); got != note+"\n- [ ] a\n  - b" {
 		t.Errorf("heading not found: %q", got)
 	}
+	mention := "# Day\nDiscussed ### Todo's yesterday\n### Todo's\n"
+	if got := AddTodos(mention, todos, "### Todo's"); got != "# Day\nDiscussed ### Todo's yesterday\n### Todo's\n- [ ] a\n  - b\n" {
+		t.Errorf("a sentence mentioning the heading took the todos: %q", got)
+	}
 	if got := RemoveLines("x\n- [ ] a\ny\n  - b", todos); got != "x\ny" {
 		t.Errorf("RemoveLines = %q", got)
 	}

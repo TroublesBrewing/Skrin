@@ -16,14 +16,32 @@ context to the other.
 
 ## State
 
-- Version: v0.8.0 (released)
+- Version: v0.9.0 (tagged, awaiting the PO's review)
 - In flight: nothing
-- Turn: **User** — sign-off on [[skrin split view]] in the vault
-- Next: v0.9.0 = instant-open + split view, once the note is signed off
+- Turn: **PO**: review `v0.8.0..v0.9.0`
+- Next: polish toward v1.0 (keymap overrides, narrow layout, `go install`, launcher, and the review stories you deferred)
 
 ## From the builder — Claude Code
 
-*(empty — first entry comes at the end of the next build session)*
+**2026-09-15: v0.9.0 is built and ready for review.** Review `v0.8.0..v0.9.0` (tag `v0.9.0`).
+- **Instant-open is back.** The note under the Files cursor opens, and on a folder the last note stays open. Links, search, Go to note, `t` and going back reveal the note in Files. The v0.6 `autoReveal` reading is gone.
+- **Split view, per [[skrin split view]]:**
+  - `Shift+←/→` in Go to note opens a split, and the same keys in the note move the focus.
+  - `Esc` closes the focused pane and `z` closes the other. A split is refused below 80 columns.
+  - Two things the note didn't cover: an open split that stops fitting closes with a flash, and the drawer on the right drops to the bottom when it and a split don't both fit.
+- **Keymap registry:**
+  - Every key has a context (`inMain`, `inEditor`, `inList`, `inSearch`, `inDrawer`, `inProposal`, `inHints`, `inAsk`, `inConflict`, `inManual`) and help text for that context.
+  - The `?` manual's key tables are generated from it, and the drawer, proposal and list keys dispatch through `actionIn`.
+  - Editor, search, prompt, conflict, hint and manual keys are registered with `actNone`: documented there, but their components still dispatch them.
+  - A test checks that no key means two things in one context.
+- **Your priority 2:** both snapshot gaps are closed.
+  - The journal has a `Keep` hook, so `U` snapshots the text on disk first, and refuses if it can't.
+  - `openDaily` snapshots yesterday's note before the tidy.
+- **Your priority 3:** the `AddTodos` whole-line match, CRLF in `editor.Reset`, the `f` flash, the `vault.Remove("")` guard and `~` in `editor.external`. Each story has a "Fixed in v0.9.0" callout in the backlog.
+- **Your priority 4** is untouched, as you asked.
+- **Verified:** `go vet` and every test, including frame tests at 140/100/81/80/79/50 with and without a split, plus a tmux smoke test on a fresh vault copy.
+- Q: `Ctrl-k` (ask Claude from the editor) isn't the first letter of its action; it follows the Cursor editor's convention. `C` isn't clearly the "bigger" `c`. Keep them, or rename?
+- Q: Should the editor and the search panel dispatch through the registry too? That would be the groundwork for keymap overrides in the polish milestone.
 
 ## From the PO — Hermes
 

@@ -504,7 +504,11 @@ func (m *Model) openDaily() {
 	}
 	steps = append(steps, vault.Step{Kind: vault.StepCreated, Rel: rel, Content: content})
 	if len(remove) > 0 {
-		if err := m.vault.Write(prev, daily.RemoveLines(prevSrc, remove)); err != nil {
+		// Snapshot yesterday's note first, as every write does, so u can
+		// bring it back even after a restart.
+		if err := m.snaps.Save(prev, prevSrc); err != nil {
+			notes = append(notes, "left "+prev+" untidied: couldn't keep a snapshot first ("+err.Error()+")")
+		} else if err := m.vault.Write(prev, daily.RemoveLines(prevSrc, remove)); err != nil {
 			notes = append(notes, "couldn't tidy "+prev+": "+err.Error())
 		} else {
 			steps = append(steps, vault.Step{Kind: vault.StepModified, Rel: prev, Content: prevSrc})
@@ -542,6 +546,9 @@ func (m *Model) refresh() {
 // cursor, the Files cursor along with items that moved.
 func (m *Model) followMoves(moves [][2]string, cursor bool) {
 	m.notePath = movedPath(m.notePath, moves)
+	if m.split != nil {
+		m.split.path = movedPath(m.split.path, moves)
+	}
 	for _, h := range [][]place{m.back, m.fwd} {
 		for i := range h {
 			h[i].rel = movedPath(h[i].rel, moves)

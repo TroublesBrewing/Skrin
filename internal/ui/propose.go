@@ -222,8 +222,8 @@ func (m *Model) propose(tool string, arg func(string) string) (*proposal, error)
 // proposalKey is y or n on the proposal in view, or j/k to scroll its diff.
 func (m *Model) proposalKey(k tea.KeyPressMsg) {
 	p := m.proposals[0]
-	switch k.String() {
-	case "y", "Y":
+	switch actionIn(inProposal, k.String()) {
+	case actApply:
 		m.proposals = m.proposals[1:]
 		done, err := p.apply()
 		if err != nil {
@@ -235,14 +235,14 @@ func (m *Model) proposalKey(k tea.KeyPressMsg) {
 		p.reply <- assistant.Response{Text: "The user approved it, and it's done: " + done}
 		m.drawer.add("info", "✓ "+done)
 		m.flash = done + " · " + p.undo + " undoes it"
-	case "n", "N", "esc":
+	case actReject:
 		m.proposals = m.proposals[1:]
 		p.reply <- assistant.Response{Text: "The user rejected this change."}
 		m.drawer.add("info", "✗ rejected: "+strings.TrimPrefix(p.title, "Claude wants to "))
 		m.flash = "Rejected Claude's change"
-	case "j", "down":
+	case actDown:
 		p.off = min(p.off+1, max(len(p.diff)-1, 0))
-	case "k", "up":
+	case actUp:
 		p.off = max(p.off-1, 0)
 	}
 }

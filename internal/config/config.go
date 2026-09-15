@@ -55,6 +55,7 @@ func Load() (Config, error) {
 		return c, fmt.Errorf("reading %s: %w", path, err)
 	}
 	c.Vault = expandHome(c.Vault)
+	c.Editor.External = expandHome(c.Editor.External)
 	return c, nil
 }
 

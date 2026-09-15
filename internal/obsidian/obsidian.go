@@ -123,7 +123,6 @@ type Settings struct {
 	NewLinkFormat     string // "shortest", "relative" or "absolute"
 	NewFileLocation   string // where notes created from links go: "root", "current" or "folder"
 	NewFileFolderPath string // the folder for NewFileLocation "folder"
-	RevealActiveFile  bool   // the file explorer follows the open note ("autoReveal")
 	Daily             DailyNotes
 	Rollover          Rollover
 }
@@ -162,15 +161,6 @@ func LoadSettings(root string) Settings {
 		}
 		s.AlwaysUpdateLinks = app.AlwaysUpdateLinks
 		s.NewFileFolderPath = strings.Trim(app.NewFileFolderPath, "/")
-	}
-
-	// The file explorer's options live in the workspace layout, inside
-	// whichever pane holds it.
-	var ws any
-	if readJSON(filepath.Join(dir, "workspace.json"), &ws) {
-		if st, ok := findView(ws, "file-explorer"); ok {
-			s.RevealActiveFile, _ = st["autoReveal"].(bool)
-		}
 	}
 
 	var dn struct {
@@ -215,30 +205,6 @@ func LoadSettings(root string) Settings {
 		}
 	}
 	return s
-}
-
-// findView finds the state of the first view of type kind anywhere in
-// Obsidian's workspace layout.
-func findView(n any, kind string) (map[string]any, bool) {
-	switch n := n.(type) {
-	case map[string]any:
-		if n["type"] == kind {
-			st, ok := n["state"].(map[string]any)
-			return st, ok
-		}
-		for _, v := range n {
-			if st, ok := findView(v, kind); ok {
-				return st, true
-			}
-		}
-	case []any:
-		for _, v := range n {
-			if st, ok := findView(v, kind); ok {
-				return st, true
-			}
-		}
-	}
-	return nil, false
 }
 
 func readJSON(path string, v any) bool {

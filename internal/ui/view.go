@@ -53,7 +53,14 @@ func (m *Model) panes() string {
 	if l.filesW > 0 {
 		cols = append(cols, m.filesPane(l.filesW, l.bodyH))
 	}
-	cols = append(cols, m.notePane(l.noteW, l.bodyH))
+	switch {
+	case m.split == nil:
+		cols = append(cols, m.notePane(l.noteW, l.bodyH))
+	case m.splitLeft:
+		cols = append(cols, m.splitPane(l.splitW, l.bodyH), m.notePane(l.noteW, l.bodyH))
+	default:
+		cols = append(cols, m.notePane(l.noteW, l.bodyH), m.splitPane(l.splitW, l.bodyH))
+	}
 	if l.drawerW > 0 {
 		cols = append(cols, m.drawerPane(l.drawerW, l.bodyH))
 	}
@@ -124,8 +131,7 @@ func (m *Model) markCell(rel string) string {
 }
 
 // filesPane draws the tree. The open note is highlighted, as Obsidian
-// highlights the active file; the cursor bar only shows while Files has
-// focus.
+// highlights the active file; the cursor bar shows while Files has focus.
 func (m *Model) filesPane(w, h int) []string {
 	inner, vis := w-2, h-2
 	f := &m.files
@@ -212,7 +218,7 @@ func (m *Model) splashBody(w, vis int) []string {
 	text := []string{
 		m.st.brand.Render("Skrin"),
 		"",
-		m.st.text.Render("enter on a note in Files opens it"),
+		m.st.text.Render("move onto a note in Files to open it"),
 		m.st.muted.Render("g goes to a note · t opens today's · ? manual"),
 	}
 	var lines []string
@@ -272,6 +278,9 @@ func (m *Model) location() string {
 	s := m.notePath
 	if e, ok := m.files.entry(m.notePath); ok && !e.ModTime.IsZero() {
 		s += " · " + shortDate(e.ModTime, m.opts.Now())
+	}
+	if m.split != nil {
+		s += " · split"
 	}
 	return s
 }

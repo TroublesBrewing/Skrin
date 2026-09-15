@@ -41,6 +41,7 @@ const hintKeys = "asdfghjklqwertyuiopzxcvbnm"
 // and only one link in view, it follows that link straight away.
 func (m *Model) startHints(direct bool) {
 	if m.notePath == "" {
+		m.flash = "No links in view: no note is open"
 		return
 	}
 	vis := m.layout().bodyH - 2
@@ -176,14 +177,11 @@ func (m *Model) open(rel string) {
 	m.show()
 }
 
-// show moves over to the open note. Files follows along only when Obsidian
-// is set to reveal the active file; otherwise its cursor stays where it was
-// left.
+// show moves over to the open note and puts the Files cursor on it,
+// opening its folders on the way: the cursor and the open note go together.
 func (m *Model) show() {
 	m.focus = paneNote
-	if obsidian.LoadSettings(m.vault.Root).RevealActiveFile {
-		m.files.reveal(m.notePath)
-	}
+	m.files.reveal(m.notePath)
 }
 
 func (m *Model) openExternal(target string) {

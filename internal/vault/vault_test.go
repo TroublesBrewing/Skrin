@@ -69,6 +69,16 @@ func TestEntriesListsFoldersAndFiles(t *testing.T) {
 	}
 }
 
+func TestRemoveRefusesTheRoot(t *testing.T) {
+	v := makeVault(t)
+	if err := v.Remove(""); err == nil {
+		t.Error("Remove(\"\") should refuse the vault root")
+	}
+	if _, err := os.Stat(v.Root); err != nil {
+		t.Errorf("the vault root is gone: %v", err)
+	}
+}
+
 func TestListFoldersFirst(t *testing.T) {
 	v := makeVault(t, "b.md", "A.md", "zeta/x.md", "Alpha/y.md", ".hidden.md")
 	entries, err := v.List("")

@@ -164,16 +164,18 @@ func (m *Model) confirmLine() string {
 type choice struct {
 	label, detail string
 	do            func()
+	rel           string // the note the row stands for, in Go to note
 }
 
 // chooser is a filterable list in a floating box: move destinations,
 // backlinks, the outline.
 type chooser struct {
 	title   string
-	prompt  string             // before the filter field
-	empty   string             // when nothing matches
-	verb    string             // what enter does, for the footer
-	none    func(query string) // what enter does when nothing matches, if anything
+	prompt  string                      // before the filter field
+	empty   string                      // when nothing matches
+	verb    string                      // what enter does, for the footer
+	none    func(query string)          // what enter does when nothing matches, if anything
+	split   func(rel string, left bool) // Shift+←/→: open the row's note in a split
 	items   []choice
 	in      lineInput
 	matches []int // indexes into items, best first
@@ -203,12 +205,21 @@ func (m *Model) openChooser(c *chooser) {
 	m.chooser = c
 }
 
+// chooserKey handles a key in a list. The list's keys come from the keymap
+// registry; the rest edit the filter.
 func (m *Model) chooserKey(k tea.KeyPressMsg) {
 	c := m.chooser
-	switch k.String() {
-	case "esc", "ctrl+c":
+	switch a := actionIn(inList, k.String()); a {
+	case actCancel:
 		m.chooser = nil
-	case "enter":
+	case actSplitLeft, actSplitRight:
+		if c.split == nil || len(c.matches) == 0 {
+			return
+		}
+		it := c.items[c.matches[c.cur]]
+		m.chooser = nil
+		c.split(it.rel, a == actSplitLeft)
+	case actPick:
 		q := strings.TrimSpace(c.in.value())
 		switch {
 		case len(c.matches) > 0:
@@ -221,9 +232,9 @@ func (m *Model) chooserKey(k tea.KeyPressMsg) {
 			m.chooser = nil
 			c.none(q)
 		}
-	case "up", "ctrl+p", "shift+tab":
+	case actUp:
 		c.cur = max(c.cur-1, 0)
-	case "down", "ctrl+n", "tab":
+	case actDown:
 		c.cur = min(c.cur+1, max(len(c.matches)-1, 0))
 	default:
 		if c.in.handle(k) {

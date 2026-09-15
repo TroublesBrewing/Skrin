@@ -24,6 +24,14 @@ var (
 
 func letter(r rune) tea.KeyPressMsg { return tea.KeyPressMsg{Code: r, Text: string(r)} }
 
+func TestResetKeepsLineEndings(t *testing.T) {
+	e := New("a\nb", false, theme.Default())
+	e.Reset("x\r\ny")
+	if got := e.Text(); got != "x\r\ny" {
+		t.Errorf("after Reset: %q, want the CRLF endings kept", got)
+	}
+}
+
 func TestShiftArrowsSelect(t *testing.T) {
 	e := New("one two\nthree four", false, theme.Default())
 	selKey(e, shiftRight, shiftRight, shiftRight)

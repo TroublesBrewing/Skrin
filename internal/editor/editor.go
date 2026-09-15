@@ -67,7 +67,7 @@ type Editor struct {
 
 // New opens text for editing. With vim it starts in Normal mode.
 func New(text string, vim bool, pal theme.Palette) *Editor {
-	e := &Editor{goal: -1, w: 40, h: 10, vim: vim, crlf: strings.Contains(text, "\r\n")}
+	e := &Editor{goal: -1, w: 40, h: 10, vim: vim}
 	e.SetPalette(pal)
 	e.load(text)
 	e.saved = e.Text()
@@ -78,6 +78,7 @@ func New(text string, vim bool, pal theme.Palette) *Editor {
 }
 
 func (e *Editor) load(text string) {
+	e.crlf = strings.Contains(text, "\r\n") // Text writes the endings back as they came
 	parts := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
 	e.lines = make([][]rune, len(parts))
 	for i, p := range parts {

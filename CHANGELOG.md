@@ -2,6 +2,29 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.9.0 — 2026-09-15
+
+Milestone 9: instant-open and split view, from the product owner's and the user's notes (`skrin split view.md` in the vault).
+
+- **Notes open under the cursor again.** Moving onto a note in Files opens it straight away, as before v0.6, so `j`/`k` skims the vault. On a folder, the last note stays open, and `Enter` moves over to the note. This was the user's decision after daily use.
+- Following a link, a search hit, Go to note, `t` and going back all move the Files cursor to the note they open. The `autoReveal` setting that v0.6 read isn't needed any more.
+- **Split view:**
+  - In Go to note, `Shift+→` opens the note beside the one you're reading, on the right, and `Shift+←` on the left. `Enter` still opens it in place.
+  - In the note, `Shift+←`/`Shift+→` move between the two panes. `Esc` closes the pane you're in, and `z` closes the other.
+  - Two is the most, so a new split replaces the older one.
+  - Below 80 columns there's no room: a new split is refused, and one that no longer fits closes with a message.
+  - Splits aren't remembered across restarts.
+  - The Claude drawer and every note key act on the focused pane.
+- **Every key is in the keymap registry, with the context it works in:** Files and the note, the editor, lists, search, the drawer, proposals, prompts, save conflicts and the manual. The manual's key tables are generated from it, one section per context, and the drawer, proposal and list keys work through it.
+- **Fixes from Hermes's review of v0.5.4**, which the product owner triaged into v0.9:
+  - `U` keeps what's on disk first. Undoing a change to a note snapshots its current text, so `u` can bring back an edit made elsewhere in between. If that snapshot can't be kept, the note is left alone.
+  - When `t` tidies yesterday's note (the Rollover plugin's "delete todos from previous day"), it snapshots the note first, so `u` restores it, even after a restart.
+  - Rolled-over todos only land under a line that *is* the heading, never in a sentence that mentions it.
+  - Notes with Windows line endings keep them through the save-conflict flow.
+  - `vault.Remove` refuses the vault root, like the other deletes.
+  - `editor.external` accepts a `~/…` path.
+  - `f` with no note open says so instead of doing nothing.
+
 ## v0.8.0 — 2026-09-15
 
 Milestone 8: the Claude drawer.

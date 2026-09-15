@@ -144,8 +144,14 @@ func (v *Vault) Write(rel, content string) error {
 	return os.Rename(tmp.Name(), abs)
 }
 
-// Remove deletes a file or an empty folder for good.
-func (v *Vault) Remove(rel string) error { return os.Remove(v.Abs(rel)) }
+// Remove deletes a file or an empty folder for good. Like every delete, it
+// refuses the vault root.
+func (v *Vault) Remove(rel string) error {
+	if rel == "" {
+		return errors.New("refusing to delete the vault root")
+	}
+	return os.Remove(v.Abs(rel))
+}
 
 // RemoveAll deletes rel and everything under it for good. It is only used
 // when Obsidian is set to delete without a trash.

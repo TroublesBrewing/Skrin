@@ -188,6 +188,7 @@ func (m *Model) manualText(w int) []manualLine {
 	add(0, "", pad(m.st.muted.Render("a terminal home for your vault")))
 
 	head("Keys")
+	para("Every key Skrin knows, by where it works. The list comes from the keymap itself, so it can't fall behind it.")
 	group := ""
 	for _, b := range defaultBindings {
 		if b.group != group {
@@ -196,50 +197,27 @@ func (m *Model) manualText(w int) []manualLine {
 		}
 		key(keyLabel(b.keys), b.help)
 	}
-	sub("In the editor")
-	key("Ctrl-s", "save")
-	key("Shift-← → ↑ ↓", "select text; typing replaces it")
-	key("Ctrl-k", "ask Claude, with the selection")
-	key("Esc Ctrl-c", "leave the editor, saving first")
-	key("Ctrl-z Ctrl-y", "undo / redo typing")
-	key("Tab Shift-Tab", "indent / outdent")
-	key("Ctrl-l", "make the line a to-do, or tick it off")
-	key("[[", "link completion: note names and aliases; add # for headings")
-	key("Ctrl-← Ctrl-→", "a word left / right")
-	key("Ctrl-Home Ctrl-End", "start / end of the note")
-	sub("Vim keys in the editor (editor.vim = true)")
-	key("i a I A o O", "insert")
-	key("h j k l w b e", "move")
-	key("0 ^ $ gg G", "line start, first letter, line end, top, bottom")
-	key("x D J dd", "delete a letter, the rest of the line, join, delete the line")
-	key("yy p P", "copy the line, paste below / above")
-	key("u Ctrl-r", "undo / redo")
-	key("v", "select; d or x deletes the selection")
-	key("Esc", "to normal mode; from normal mode, leave the editor")
-	sub("In the Claude drawer")
-	key("Enter", "send")
-	key("Alt-Enter", "a new line")
-	key("Esc", "back to where you were")
-	key("Alt-p", "move the drawer: along the bottom or on the right")
-	key("Alt-n", "start a new conversation")
-	key("PgUp PgDn", "scroll the conversation")
-	key("y n", "apply or reject a change Claude proposes")
 
 	head("Files and the note")
-	para("Files holds the vault's folders and files. A note opens on Enter and stays open while you move around Files.")
+	para("Files holds the vault's folders and files. The note under the cursor opens at once, so j and k skim through your notes; on a folder, the last note stays open. Enter moves over to the note.")
+	para("Following a link, a search hit, Go to note, t and going back all move the Files cursor to the note they open.")
 	para("In Files, keys act on the row under the cursor; in the note, on the open note. When anything is marked, m and d act on the marks.")
 	para("n and N create things in the current folder: the folder under the cursor, or the folder of the file under it. In the note it's the open note's folder.")
 	para("t opens today's daily note, made from Obsidian's daily-notes settings, with the unfinished todos of the last one carried over.")
-	para("Following a link, a search hit or Go to note leaves the Files cursor where it was, unless Obsidian's “Automatically reveal current file” is on.")
+
+	head("Split view")
+	para("In Go to note, Shift+→ opens the note beside the one you're reading, on the right, and Shift+← on the left. Enter still opens it in place.")
+	para("In the note, Shift+← and Shift+→ move between the two panes; keys act on the one with the bright border. Esc closes the pane you're in, and z (zen) closes the other.")
+	para("Two is the most, so a new split replaces the older one. Below 80 columns there's no room for one, and splits aren't remembered when you quit.")
 
 	head("Claude")
 	para("c opens the Claude drawer and C puts you straight into typing; Ctrl-k does it from the editor. The drawer sits along the bottom, or on the right with Alt-p or assistant.position = \"right\".")
-	para("Claude sees the open note, sent along with your message whenever it has changed. Highlight text first (v and j/k in the note, Shift and the arrows in the editor) and it goes into your message.")
+	para("Claude sees the open note (the focused one, in a split), sent along with your message whenever it has changed. Highlight text first (v and j/k in the note, Shift and the arrows in the editor) and it goes into your message.")
 	para("Claude can read the whole vault but can't change anything by itself. A change it wants shows as a diff in the note panel: y applies it, n rejects it. u undoes an applied edit, and U a create, move or delete.")
 	para("The conversation carries on after you quit, one per vault; Alt-n starts a fresh one. assistant.enabled = false turns the drawer off.")
 
 	head("Search")
-	para("/ searches as you type. In there: Alt-t this note or the whole vault, Alt-c match case, Alt-r replace, and when replacing Alt-w whole words.")
+	para("/ searches as you type, over the whole vault or just this note. The syntax is a subset of Obsidian's:")
 	key("word word", "all words must appear")
 	key(`"exact phrase"`, "the words in this order")
 	key("-word", "leave out notes with it")
@@ -248,7 +226,7 @@ func (m *Model) manualText(w int) []manualLine {
 	key("[key] [key:value]", "a frontmatter property")
 	key("path:Daily", "notes in that folder")
 	key("file:stoic", "notes by name")
-	para("Enter opens the note at the hit, and the next / brings the query back. When replacing, every change is listed first: Space skips one, Ctrl-s replaces after a y/n, and ⚠ marks matches inside [[links]].")
+	para("With Alt-r it becomes search & replace: every change is listed first, ⚠ marks matches inside [[links]], a note that changed on disk meanwhile is skipped, and one U undoes the whole replace.")
 
 	head("Links")
 	para("[[Note]], [[Note|alias]], [[Note#Heading]], [[Note#^block]], ![[embeds]] and markdown [text](path) links all work, and resolve the way Obsidian resolves them.")
@@ -258,7 +236,7 @@ func (m *Model) manualText(w int) []manualLine {
 	para("Renaming or moving offers to update the links to what moved, as Obsidian does.")
 
 	head("Undo")
-	para("u puts the note back as it was before its last edit, whether you made it here, in $EDITOR, or with a replace. Ctrl-r takes that back.")
+	para("u puts the note back as it was before its last edit, whether you made it here, in $EDITOR, with a replace, or through Claude. Ctrl-r takes that back.")
 	para("U undoes the last file operation: a create, rename, move, delete (back from the trash) or replace.")
 	para("In the editor, Ctrl-z undoes typing.")
 	para("Earlier versions of each note are kept in ~/.local/state/skrin/snapshots, the last 20 per note.")
@@ -278,7 +256,7 @@ func (m *Model) manualText(w int) []manualLine {
 	code(`model = ""              # else Claude Code's default, e.g. "sonnet"`)
 	blank()
 	para("Colours come from the Omarchy theme and follow it live. A skrin.toml next to the theme's colors.toml can override them.")
-	para("Where you were (open folders, the cursor, the open note) is kept per vault in ~/.local/state/skrin/session.")
+	para("Where you were (open folders, the cursor, the open note, the Claude conversation) is kept per vault in ~/.local/state/skrin/session.")
 	return out
 }
 

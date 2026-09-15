@@ -163,11 +163,18 @@ func DropEmpty(todos []string) []string {
 // AddTodos puts todos right after the first occurrence of heading, or at
 // the end of the note when heading is "none" or not found.
 func AddTodos(note string, todos []string, heading string) string {
-	block := "\n" + strings.Join(todos, "\n")
-	if heading != "" && heading != "none" && strings.Contains(note, heading) {
-		return strings.Replace(note, heading, heading+block, 1)
+	if heading != "" && heading != "none" {
+		// Only a line that is the heading counts, never a sentence that
+		// happens to mention it.
+		lines := strings.Split(note, "\n")
+		for i, l := range lines {
+			if strings.TrimSpace(l) == strings.TrimSpace(heading) {
+				lines = append(lines[:i+1], append(append([]string(nil), todos...), lines[i+1:]...)...)
+				return strings.Join(lines, "\n")
+			}
+		}
 	}
-	return note + block
+	return note + "\n" + strings.Join(todos, "\n")
 }
 
 // RemoveLines deletes every line equal to one of lines, which is what the

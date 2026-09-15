@@ -420,11 +420,21 @@ func (m *Model) toggle(label string, on bool) string {
 }
 
 // openSwitcher is Go to note: jump to a note by name or alias, or create
-// one.
+// one. The first row is the note already open (or an empty row when none
+// is), so Enter straight away just closes the list.
 func (m *Model) openSwitcher() {
 	c := &chooser{title: "Go to note", prompt: "name", empty: "No note by that name · enter creates it", verb: "open"}
+	open := ""
+	if m.isNote {
+		open = m.notePath
+		c.items = append(c.items, choice{label: displayName(open), detail: "open now"})
+	} else {
+		c.items = append(c.items, choice{detail: "stay here"})
+	}
 	for _, rel := range m.idx.Notes() {
-		c.items = append(c.items, choice{label: displayName(rel), detail: parentOf(rel), do: func() { m.goTo(rel, "") }})
+		if rel != open {
+			c.items = append(c.items, choice{label: displayName(rel), detail: parentOf(rel), do: func() { m.goTo(rel, "") }})
+		}
 		for _, a := range m.idx.Aliases(rel) {
 			c.items = append(c.items, choice{label: a, detail: "alias of " + displayName(rel), do: func() { m.goTo(rel, "") }})
 		}

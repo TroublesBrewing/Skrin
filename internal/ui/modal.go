@@ -214,7 +214,9 @@ func (m *Model) chooserKey(k tea.KeyPressMsg) {
 		case len(c.matches) > 0:
 			it := c.items[c.matches[c.cur]]
 			m.chooser = nil
-			it.do()
+			if it.do != nil { // rows without an action just close the list
+				it.do()
+			}
 		case c.none != nil && q != "":
 			m.chooser = nil
 			c.none(q)

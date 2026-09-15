@@ -2,6 +2,10 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 8, once Skrin has held up in daily use.
 
+## v0.5.4 — 2026-09-15
+
+- Go to note: the first row is the note already open, or an empty row when none is. So `Enter` on an empty field just closes the list, with no need to reach for `Esc`. From the backlog.
+
 ## v0.5.3 — 2026-09-15
 
 - `g` opens Go to note instantly; there's no more wait for a second `g`.

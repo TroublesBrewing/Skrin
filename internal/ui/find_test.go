@@ -138,6 +138,32 @@ func TestGIsInstantAndGGGoesToTop(t *testing.T) {
 	}
 }
 
+func TestGoToNoteEnterOnEmptyJustCloses(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "2", "G", "g") // Welcome is open
+	c := m.chooser
+	if c.items[c.matches[0]].label != "Welcome" {
+		t.Fatalf("first row = %+v, want the open note", c.items[c.matches[0]])
+	}
+	press(m, "enter")
+	if m.chooser != nil || m.notePath != "Welcome.md" || len(m.back) != 0 {
+		t.Fatal("enter on the open note should just close the list")
+	}
+	press(m, "home", "g") // a folder is selected: no note open
+	c = m.chooser
+	if c.items[c.matches[0]].label != "" {
+		t.Fatalf("with no note open the first row should be empty: %+v", c.items[c.matches[0]])
+	}
+	press(m, "enter")
+	if m.chooser != nil || m.notePath != "" {
+		t.Fatal("enter on the empty row should just close the list")
+	}
+	press(m, "g", "down", "enter")
+	if m.notePath == "" {
+		t.Error("choosing another row should still open it")
+	}
+}
+
 func TestReplaceInThisNote(t *testing.T) {
 	m := newTestModel(t)
 	press(m, "2", "G", "/", "alt+r", "alt+t")

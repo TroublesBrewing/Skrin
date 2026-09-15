@@ -2,6 +2,11 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 8, once Skrin has held up in daily use.
 
+## v0.5.3 — 2026-09-15
+
+- `g` opens Go to note instantly; there's no more wait for a second `g`.
+- `G` / `End` go to the bottom, and `GG` (a second `G` within 0.4 s) or `Home` go to the top. Neither key waits: `G` jumps right away, and a quick second `G` takes it to the top.
+
 ## v0.5.2 — 2026-09-15
 
 - `Ctrl-l` in the editor, the same key as Obsidian's "Toggle checkbox", from the backlog:

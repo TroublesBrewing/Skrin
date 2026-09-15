@@ -166,7 +166,7 @@ func TestNavigateTreeListAndNote(t *testing.T) {
 		t.Errorf("focus %v, offset %d: want note pane scrolled to the bottom", m.focus, m.noteOff)
 	}
 	// Entering a subfolder from the list moves the tree along with it.
-	press(m, "h", "g", "g", "enter")
+	press(m, "h", "home", "enter")
 	if m.cwd != "Filosofi/Antik" || m.tree.selected() != "Filosofi/Antik" {
 		t.Errorf("cwd = %q, tree on %q", m.cwd, m.tree.selected())
 	}

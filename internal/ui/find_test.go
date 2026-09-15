@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestVaultSearch(t *testing.T) {
@@ -109,29 +110,31 @@ func TestQuickSwitcher(t *testing.T) {
 	}
 }
 
-func TestGOpensGoToNoteAndGGGoesToTop(t *testing.T) {
+func TestGIsInstantAndGGGoesToTop(t *testing.T) {
 	m := newTestModel(t)
-	inFilosofi(m)
-	press(m, "j", "g")
-	if !m.gPending {
-		t.Fatal("g should wait for a second g")
-	}
-	m.Update(gTimeoutMsg{seq: m.gSeq})
+	press(m, "g")
 	if m.chooser == nil || m.chooser.title != "Go to note" {
-		t.Fatal("a lone g should open Go to note")
-	}
-	press(m, "esc", "g", "g")
-	if m.listCur != 0 || m.chooser != nil || m.gPending {
-		t.Errorf("gg should go to the top: cursor %d", m.listCur)
-	}
-	press(m, "g", "z")
-	if m.chooser == nil || m.chooser.in.value() != "z" {
-		t.Fatal("g and then a letter should open Go to note with the letter typed")
+		t.Fatal("g should open Go to note at once")
 	}
 	press(m, "esc")
-	m.Update(gTimeoutMsg{seq: m.gSeq})
-	if m.chooser != nil {
-		t.Error("a stale timeout must not open Go to note")
+	inFilosofi(m)
+	last := len(m.entries) - 1
+	press(m, "G")
+	if m.listCur != last {
+		t.Fatalf("G should go to the bottom: %d", m.listCur)
+	}
+	press(m, "G")
+	if m.listCur != 0 {
+		t.Errorf("GG should go to the top: %d", m.listCur)
+	}
+	press(m, "end", "home")
+	if m.listCur != 0 {
+		t.Errorf("home should go to the top: %d", m.listCur)
+	}
+	m.lastG = time.Now().Add(-time.Second) // a slow second G is just G
+	press(m, "G")
+	if m.listCur != last {
+		t.Errorf("a slow second G went to %d", m.listCur)
 	}
 }
 

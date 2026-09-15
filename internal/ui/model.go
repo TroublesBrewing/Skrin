@@ -39,12 +39,9 @@ type ThemeMsg struct{ Palette theme.Palette }
 // VaultChangedMsg reports that files changed on disk.
 type VaultChangedMsg struct{}
 
-// gTimeoutMsg ends the wait for a second g.
-type gTimeoutMsg struct{ seq int }
-
-// gWait is how long g waits for a second g (gg: go to top) before it opens
-// Go to note.
-const gWait = 300 * time.Millisecond
+// ggWait is how soon a second G must follow the first to make it GG: the
+// top instead of the bottom.
+const ggWait = 400 * time.Millisecond
 
 // Options tune behaviour that depends on the world outside the vault.
 type Options struct {
@@ -95,8 +92,7 @@ type Model struct {
 
 	back, fwd []place // followed-link history
 
-	gPending bool // g was pressed and is waiting for a second g
-	gSeq     int  // which g press the pending timeout belongs to
+	lastG time.Time // when G was pressed, if it was the last key (for GG)
 
 	journal vault.Journal
 	marks   map[string]bool // marked items by vault path; may span folders
@@ -162,15 +158,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case externalDoneMsg:
 		m.externalDone(msg)
-	case gTimeoutMsg:
-		if m.gPending && msg.seq == m.gSeq {
-			m.gPending = false
-			m.openSwitcher()
-		}
 	case tea.PasteMsg:
 		m.paste(msg.Content)
 	case tea.KeyPressMsg:
 		m.flash = ""
+		lastG := m.lastG
+		m.lastG = time.Time{}
 		switch {
 		case m.conflict != nil:
 			m.conflictKey(msg)
@@ -189,9 +182,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.chooserKey(msg)
 		case m.search != nil:
 			m.searchKey(msg)
-		case m.gPending && m.afterG(msg):
 		default:
-			if act, ok := m.keys[msg.String()]; ok {
+			key := msg.String()
+			if key == "G" {
+				// G goes to the bottom at once; a second G right after
+				// makes it GG, which goes to the top.
+				if !lastG.IsZero() && time.Since(lastG) < ggWait {
+					cmd = m.do(actTop)
+					break
+				}
+				m.lastG = time.Now()
+			}
+			if act, ok := m.keys[key]; ok {
 				if act == actQuit {
 					return m, tea.Quit
 				}
@@ -269,11 +271,6 @@ func (m *Model) do(a action) tea.Cmd {
 		m.openSearch()
 	case actSwitcher:
 		m.openSwitcher()
-	case actG:
-		m.gPending = true
-		m.gSeq++
-		seq := m.gSeq
-		return tea.Tick(gWait, func(time.Time) tea.Msg { return gTimeoutMsg{seq} })
 	default:
 		switch m.focus {
 		case paneTree:
@@ -285,24 +282,6 @@ func (m *Model) do(a action) tea.Cmd {
 		}
 	}
 	return nil
-}
-
-// afterG handles the key that follows a g: a second g goes to the top, a
-// letter opens Go to note with that letter typed. It reports false for any
-// other key, which then does its usual job (and the g is dropped).
-func (m *Model) afterG(k tea.KeyPressMsg) bool {
-	m.gPending = false
-	switch {
-	case k.String() == "g":
-		m.do(actTop)
-	case k.Text != "" && k.Mod&(tea.ModCtrl|tea.ModAlt) == 0:
-		m.openSwitcher()
-		m.chooser.in.insert(k.Text)
-		m.chooser.filter()
-	default:
-		return false
-	}
-	return true
 }
 
 func (m *Model) treeAction(a action) {

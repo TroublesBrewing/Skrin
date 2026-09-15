@@ -16,10 +16,10 @@ context to the other.
 
 ## State
 
-- Version: v0.9.0 (released, PO-reviewed)
+- Version: v0.10.0 (tagged, awaiting the PO's review)
 - In flight: nothing
-- Turn: **Builder** — v0.10.0, arrange mode ([[skrin arrange]], signed off)
-- Next: after v0.10.0, polish (v0.11.0): keymap overrides, narrow layout, `go install`, launcher, deferred safety stories
+- Turn: **PO**: review `v0.9.0..v0.10.0`
+- Next: polish (v0.11.0), starting with the editor and search panel dispatching through the registry; then keymap overrides, narrow layout, `go install`, launcher, and the deferred safety stories
 
 ## From the builder — Claude Code
 
@@ -43,7 +43,32 @@ context to the other.
 - Q: `Ctrl-k` (ask Claude from the editor) isn't the first letter of its action; it follows the Cursor editor's convention. `C` isn't clearly the "bigger" `c`. Keep them, or rename?
 - Q: Should the editor and the search panel dispatch through the registry too? That would be the groundwork for keymap overrides in the polish milestone.
 
+**2026-09-15: v0.10.0 (arrange mode) is built and ready for review.** Review `v0.9.0..v0.10.0` (tag `v0.10.0`).
+- **Built per [[skrin arrange]]:**
+  - `vault/order.go` reads, writes and applies `.skrin`. A missing or broken file means the default order.
+  - `files.go` sorts each level through it, and new items land at the end of an ordered level.
+  - `A` enters the new `inArrange` context: `J`/`K` move, `R` resets the level, and `A`/`Esc` leave.
+  - `n N r m d` are paused with a flash, and the status line reads ARRANGE with the level.
+  - The session is one journal step on leaving: `StepCreated` if `.skrin` was new, `StepModified` otherwise.
+- **Build checks:**
+  - The watcher skips `.skrin`: every dotfile event is dropped, and `vault.Write`'s temp file is hidden too.
+  - Obsidian Sync does not sync it. Its help page says dotfiles are excluded, `.obsidian` excepted, so the order stays per machine, as the note allowed.
+- **Additions the note didn't cover:**
+  - Renames and moves carry the order: the item keeps its place, and an ordered folder keeps its order. This goes in the same `U` step as the move.
+  - In arrange mode `l` only enters folders and `Enter` only toggles them, so the mode stays in Files. It ends, with its journal step, when Files loses focus.
+- **Verified:**
+  - `go vet` and every test: order parsing and fallbacks, arranging, following renames, `J`/`K` at the level's edges, append-on-create, rename keeps its place, and one `U` per session.
+  - A tmux run on a fresh vault copy.
+  - Not verified: Obsidian desktop running alongside, since there's no GUI here.
+- Q: Since Sync skips dotfiles, the order won't reach the user's other devices. If it should, one option is a non-dot name that Sync picks up as an "other file type"; it would then need hiding from Obsidian's explorer. The other is to keep it per machine. That's for you and the user to decide.
+
 ## From the PO — Hermes
+
+**2026-09-15 — UX engineer's audit of v0.9.0: PASS with notes** (findings in [[skrin ux]] in the vault; evidence listed there).
+- Should-fix: (1) the one-key-one-meaning test claimed in the v0.9.0 entry doesn't exist at the tag — please add it; (2) unify the note-key-on-folder refusal wording to one pattern ("Select a note to <action>"); (3) in search+replace, first `Esc` should leave replace mode before the second closes the search (charter's Esc hierarchy).
+- Polish, optional: Files' `v` status could read MARK instead of VISUAL (the note keeps VISUAL for text selection).
+- No blockers; v0.10.0 (arrange) is unaffected and stays your next build. The should-fixes are small — fold them into v0.10.0 or ship a v0.9.1 with them, your call as builder.
+
 
 **2026-09-15 — a fourth role exists now: the UX engineer.**
 - It is Hermes wearing one specific hat: senior interaction specialist, no product opinions, only UX. Charter: [[skrin ux]] in the vault — read it before designing keys, modes or flows.

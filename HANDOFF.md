@@ -16,12 +16,21 @@ context to the other.
 
 ## State
 
-- Version: v0.12.0 (tagged, PO-reviewed: PASS)
-- In flight: v0.13.0 — the skim-split ([[skrin split view]] Amendment 1), built this weekend by Hermes in the builder role; the rest of milestone 13 (keymap overrides, narrow layout, `go install`, launcher) stays with Claude
-- Turn: **Builder** — Hermes builds the skim-split while Claude is out; Claude audits it Monday as the returning builder, and the user reads the diff as always
-- Next: skim-split lands first (fully specced, signed off); then Claude's remaining milestone-13 polish
+- Version: v0.12.0 (tagged, PO-reviewed: PASS) + the skim-split built on top, awaiting Claude's audit
+- In flight: the skim-split (commit `0d326d3`, tagged `v0.13.0-skim`) — built by Hermes in the builder role while Claude was out. NOT a release: Claude audits it Monday, then it rides into v0.13.0 with the rest of milestone 13 (keymap overrides, narrow layout, `go install`, launcher)
+- Turn: **PO** — Claude's audit of the skim-split (see the builder entry below), folded into the v0.13.0 review whenever that milestone lands
+- Next: v0.13.0: the skim-split + the polish that slid (keymap overrides, narrow layout, `go install`, the Omarchy launcher)
 
 ## From the builder — Claude Code
+
+**2026-09-16 (weekend stand-in): the skim-split is built — Hermes in the builder role, GLM-5.3. Please audit as the returning builder; the user reads the diff as always.** Commit `0d326d3`, tagged `v0.13.0-skim` (a review handle, not a release). Per [[skrin split view]] Amendment 1, user-signed:
+- **The chords:** `alt+down`/`alt+up` + aliases `alt+j`/`alt+k`, two new actions in `inMain`, registry rows in the Move group. Terminal delivery confirmed live in tmux (`M-Down`/`M-Up` arrive as distinct events) and by a key-name probe (`alt+down`, `alt+up`, `alt+j`, `alt+k` — exactly what the rows bind). Foot wasn't testable here (no GUI); worth one glance on your machine.
+- **Semantics:** `skimSplit` in `split.go` (49 lines + the `peek` guard). Focus stays in Files; skim replaces the split's note (two-pane cap); folder rows, non-notes and the reference note itself move the cursor and nothing else — landing on the reference is silent, since both panes showing one note is a broken state; sub-80 moves + flashes "No room to split"; note-pane presses get "Go to Files (1) to skim" (the Shift+↑/↓ pointer pattern); a skim-open flashes "Opened beside · Shift+→ focuses".
+- **One behavior change outside the new code, flagged for your audit:** `peek()` now skips the split's own note, so instant-open doesn't drag the reference pane onto the note the skim just opened. Without it the skim breaks (the reference note is silently replaced — found by my own test before it shipped). Check this against instant-open's spec intent: with a split open, j/k over the split's note no longer re-opens it in the main pane. I ruled it correct (the main pane holds the reference; the split's note is "beside" by definition) — overrule if you see a case I missed.
+- **Tests:** 8 new in `skim_test.go` (open, replace, alias, folder-only, reference-silent, sub-80, note-pane refusal, edge); `key()` in `ui_test.go` learned `alt+down`/`alt+up`. Full suite green (111+ tests), `gofmt`/`go vet` clean, the three registry guards pass with the new bindings, manual regenerated with both rows (verified by paging to them).
+- **Honest deviations from the spec:** (1) the spec's "flash on every skim-open" wording — folders and the reference note are silent by design; only note-opens flash, which matches the charter's "not everything is an event" reading. (2) The "is gone" path flashes without opening anything. Both small; overrule either.
+- Q: none. The `J`/`K` fallback stays documented in the amendment if a terminal ever eats the chords — none did here.
+
 
 **2026-09-15: v0.9.0 is built and ready for review.** Review `v0.8.0..v0.9.0` (tag `v0.9.0`).
 - **Instant-open is back.** The note under the Files cursor opens, and on a folder the last note stays open. Links, search, Go to note, `t` and going back reveal the note in Files. The v0.6 `autoReveal` reading is gone.

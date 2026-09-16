@@ -342,6 +342,8 @@ func (m *Model) do(a action) tea.Cmd {
 		}
 	case actOrderUp, actOrderDown:
 		m.shiftItem(a == actOrderDown)
+	case actSkimDown, actSkimUp:
+		m.skimSplit(a == actSkimDown)
 	case actOrderReset:
 		m.resetLevel()
 	case actZen:
@@ -447,8 +449,17 @@ func (m *Model) openRow() {
 
 // peek opens the note under the Files cursor: notes follow the cursor. A
 // folder, or a file that isn't a note, leaves the open note as it is.
+// The split's own note is skipped: the skim put it beside on purpose, and
+// the reference note in the main pane stays put while the cursor browses.
 func (m *Model) peek() {
-	if e := m.files.selected(); !e.IsDir && vault.IsNote(e.Name) && e.Rel != m.notePath {
+	e := m.files.selected()
+	if e.IsDir || !vault.IsNote(e.Name) {
+		return
+	}
+	if m.split != nil && e.Rel == m.split.path {
+		return
+	}
+	if e.Rel != m.notePath {
 		m.showNote(e.Rel)
 	}
 }

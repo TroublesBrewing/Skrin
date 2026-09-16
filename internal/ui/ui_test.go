@@ -88,6 +88,10 @@ func key(k string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModAlt}
 	case "alt+right":
 		return tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModAlt}
+	case "alt+down":
+		return tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModAlt}
+	case "alt+up":
+		return tea.KeyPressMsg{Code: tea.KeyUp, Mod: tea.ModAlt}
 	case "shift+right":
 		return tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift}
 	case "shift+left":

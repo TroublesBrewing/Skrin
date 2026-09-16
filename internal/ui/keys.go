@@ -67,6 +67,8 @@ const (
 	actOrderUp // Files' own order, kept in .skrin
 	actOrderDown
 	actOrderReset
+	actSkimDown  // Alt+↓ / Alt+j: the cursor moves and the note it lands
+	actSkimUp    // on opens in the split beside the one already open
 	actFindScope // the search panel
 	actFindCase
 	actFindWords
@@ -159,6 +161,8 @@ var defaultBindings = []binding{
 	{actOrderUp, []string{"shift+up"}, "move the item under the cursor up its level", groupFiles, inMain},
 	{actOrderDown, []string{"shift+down"}, "move it down its level", groupFiles, inMain},
 	{actOrderReset, []string{"R"}, "put this level back in the default order", groupFiles, inMain},
+	{actSkimDown, []string{"alt+down", "alt+j"}, "move down, opening the note beside the open one", groupMove, inMain},
+	{actSkimUp, []string{"alt+up", "alt+k"}, "move up, opening the note beside the open one", groupMove, inMain},
 	{actEdit, []string{"e"}, "edit the note in Skrin", groupNote, inMain},
 	{actEditExternal, []string{"E"}, "edit the note in $EDITOR", groupNote, inMain},
 	{actUndoEdit, []string{"u"}, "undo the note's last edit", groupNote, inMain},

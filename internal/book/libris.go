@@ -14,8 +14,8 @@ var librisBase = "https://libris.kb.se"
 // edition years and translators than Open Library, so it's tried as a
 // fallback for 978-91-... ISBNs, or whenever Open Library comes up empty.
 type librisResponse struct {
-	XMLName xml.Name      `xml:"result"`
-	Records []librisRecord `xml:"list>record"`
+	XMLName xml.Name       `xml:"xsearch"`
+	Records []librisRecord `xml:"collection>record"`
 }
 
 type librisRecord struct {
@@ -41,24 +41,10 @@ func (f librisField) sub(code string) string {
 	return ""
 }
 
-// LibrisByISBN looks a single ISBN up in Libris's MARC21-XML xsearch
-// endpoint.
-func LibrisByISBN(ctx context.Context, isbn string) (Result, error) {
-	isbn = NormalizeISBN(isbn)
-	url := fmt.Sprintf("%s/xsearch?query=isbn:%s&format=marcxml&n=1", librisBase, isbn)
-	body, err := getXML(ctx, url)
-	if err != nil {
-		return Result{}, err
-	}
-	var resp librisResponse
-	if err := xml.Unmarshal(body, &resp); err != nil {
-		return Result{}, err
-	}
-	if len(resp.Records) == 0 {
-		return Result{}, fmt.Errorf("libris: no record for %s", isbn)
-	}
+// resultFrom maps one MARC21-XML record to a Result.
+func (rec librisRecord) resultFrom(isbn string) Result {
 	r := Result{ISBN: isbn, Source: "Libris"}
-	for _, f := range resp.Records[0].Fields {
+	for _, f := range rec.Fields {
 		switch f.Tag {
 		case "245": // title statement
 			r.Title = f.sub("a")
@@ -84,5 +70,47 @@ func LibrisByISBN(ctx context.Context, isbn string) (Result, error) {
 			}
 		}
 	}
-	return r, nil
+	return r
+}
+
+// LibrisByISBN looks a single ISBN up in Libris's MARC21-XML xsearch
+// endpoint. Zero records is ErrNoRecord — Libris answered, it just
+// doesn't hold this edition — not a failure.
+func LibrisByISBN(ctx context.Context, isbn string) (Result, error) {
+	isbn = NormalizeISBN(isbn)
+	url := fmt.Sprintf("%s/xsearch?query=isbn:%s&format=marcxml&n=1", librisBase, isbn)
+	body, err := getXML(ctx, url)
+	if err != nil {
+		return Result{}, err
+	}
+	var resp librisResponse
+	if err := xml.Unmarshal(body, &resp); err != nil {
+		return Result{}, err
+	}
+	if len(resp.Records) == 0 {
+		return Result{}, ErrNoRecord
+	}
+	return resp.Records[0].resultFrom(isbn), nil
+}
+
+// LibrisSearch is the free-text fallback Amendment 1 adds: xsearch's
+// relevance ranking is weaker than Open Library's, which is why it's
+// tried last, but for a Swedish-language query it's often the only line
+// that has anything at all (Open Library's Swedish coverage is sparse).
+// Zero matches is a clean empty slice, not an error.
+func LibrisSearch(ctx context.Context, query string) ([]Result, error) {
+	url := fmt.Sprintf("%s/xsearch?query=%s&format=marcxml&n=10", librisBase, urlQueryEscape(query))
+	body, err := getXML(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+	var resp librisResponse
+	if err := xml.Unmarshal(body, &resp); err != nil {
+		return nil, err
+	}
+	out := make([]Result, 0, len(resp.Records))
+	for _, rec := range resp.Records {
+		out = append(out, rec.resultFrom(""))
+	}
+	return out, nil
 }

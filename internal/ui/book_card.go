@@ -21,7 +21,7 @@ type LibraryOptions struct {
 	Folder        string
 	CoversFolder  string
 	DefaultStatus string
-	Lookup        func(ctx context.Context, query string) ([]book.Result, error)
+	Lookup        func(ctx context.Context, query string) book.Outcome
 	FetchCover    func(ctx context.Context, url string) ([]byte, error)
 }
 
@@ -46,7 +46,7 @@ func (o LibraryOptions) defaultStatus() string {
 	return "reading"
 }
 
-func (o LibraryOptions) lookup() func(context.Context, string) ([]book.Result, error) {
+func (o LibraryOptions) lookup() func(context.Context, string) book.Outcome {
 	if o.Lookup != nil {
 		return o.Lookup
 	}
@@ -405,12 +405,11 @@ func fillBookCard(c *bookCard, b book.Book) {
 	}
 }
 
-// bookLookupMsg carries a metadata search's results (or its failure) back
-// to the update loop.
+// bookLookupMsg carries a metadata search's outcome back to the update
+// loop.
 type bookLookupMsg struct {
 	query   string
-	results []book.Result
-	err     error
+	outcome book.Outcome
 }
 
 // bookSaveMsg carries a save's cover download (if any) back to the update
@@ -489,7 +488,7 @@ func (m *Model) bookCardKey(k tea.KeyPressMsg) tea.Cmd {
 }
 
 // startBookLookup fetches metadata for the search bar's query. The network
-// call runs off the update loop, so the card stays responsive; a 3s
+// call runs off the update loop, so the card stays responsive; a 5s
 // timeout inside book.Lookup keeps a dead network from hanging it.
 func (m *Model) startBookLookup() tea.Cmd {
 	c := m.book
@@ -503,29 +502,33 @@ func (m *Model) startBookLookup() tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		results, err := lookup(ctx, query)
-		return bookLookupMsg{query: query, results: results, err: err}
+		outcome := lookup(ctx, query)
+		return bookLookupMsg{query: query, outcome: outcome}
 	}
 }
 
-// bookLookupDone applies a lookup's results: a single match fills the
-// card at once, several open the fuzzy chooser, none or a failure flashes
-// and leaves the card exactly as it was.
+// bookLookupDone applies a lookup's outcome: a single match fills the
+// card at once, several open the fuzzy chooser, none flashes and leaves
+// the card exactly as it was. Amendment 1's honest-outcome message rides
+// alongside either path: silent on a clean match (the chooser opening
+// speaks for itself), naming what's wrong otherwise (a down provider, or
+// the truthful word for "nothing, anywhere" — "offline" only when every
+// provider failed to answer). The flash is always assigned, even to "",
+// so the transient "Looking up…" flash never gets stuck once the result
+// lands — the exact bug the backlog reported and this amendment specs
+// as its own to fix.
 func (m *Model) bookLookupDone(msg bookLookupMsg) {
 	if m.book == nil {
 		return
 	}
 	m.book.fetching = false
-	if msg.err != nil {
-		m.flash = "Book lookup failed (offline) — continue manually"
+	o := msg.outcome
+	m.flash = o.Message(msg.query)
+	if len(o.Results) == 0 {
 		return
 	}
-	if len(msg.results) == 0 {
-		m.flash = "No matches for " + msg.query
-		return
-	}
-	items := make([]choice, len(msg.results))
-	for i, r := range msg.results {
+	items := make([]choice, len(o.Results))
+	for i, r := range o.Results {
 		r := r
 		items[i] = choice{label: r.Label(), detail: r.Detail(), do: func() { m.applyBookResult(r) }}
 	}

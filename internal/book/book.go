@@ -7,6 +7,16 @@ package book
 
 import "strings"
 
+// ErrNoRecord is what a provider's ISBN lookup returns when it answered
+// cleanly but simply doesn't hold that edition — a result, not a
+// failure, per the honest-outcomes rule: a provider saying "I don't have
+// this" is not the same as a provider that didn't answer at all.
+var ErrNoRecord = errNoRecord{}
+
+type errNoRecord struct{}
+
+func (errNoRecord) Error() string { return "no record for this ISBN" }
+
 // Quote is one passage caught while reading, with where it came from.
 type Quote struct {
 	Text    string

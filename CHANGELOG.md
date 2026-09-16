@@ -2,6 +2,19 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.13.1 — 2026-09-17
+
+Amendment 1 ([[skrin library]]): the Book Card's lookup stops lying about why it came up empty, and gains two more providers.
+
+- **Honest lookup outcomes.** "Book lookup failed (offline)" used to cover every miss — a timeout, a 5xx, or a provider's honest "I don't have this." Now a clean no-record from every tried provider is its own message ("No match for '{query}' — none of the three has it · continue manually", the query capped at ~24 runes so a long one can't crowd the words out); a provider that fails to answer is named ("Open Library didn't answer — showing Libris' 3 matches") without ending the lookup; "offline" appears only when every provider genuinely failed to answer. A clean single or multi-result match stays silent — the chooser opening is the success signal — but the transient "Looking up…" flash is now always replaced by something, fixing the backlog's stuck-flash report.
+- **Google Books joins the chain** (anonymous, keyless, `books/v1/volumes`) as a third independent source alongside Open Library and Libris.
+- **Libris gains a free-text fallback.** Its xsearch API already covered ISBNs; it's now also tried (last, after Open Library and Google Books come up empty) for free-text queries, since it's often the only line with anything at all for a Swedish-language search.
+- **Fixed: Libris lookups never actually worked.** The XML the provider expected (`<result><list><record>…`) didn't match Libris' real xsearch response shape (`<xsearch records="N"><collection><record>…`), so every Libris call — the ISBN path Swedish books depend on, and the new free-text fallback — silently failed to parse. This is the root cause behind the backlog's "Swedish ISBN lookups never work at all."
+- **Cover-quality backfill.** Libris never returns cover art; when it wins an ISBN match with no cover, a best-effort, silent lookup (Open Library first, then Google Books) backfills one without changing whose metadata won.
+- Lookup order: ISBN tries Libris → Open Library → Google Books for a Swedish-prefixed ISBN, Open Library → Google Books → Libris otherwise, all three tried, first match wins. Free text tries Open Library → Google Books → Libris.
+- No new keys, no config, no manual changes — the provider set is code, not configuration, per the amendment's scope.
+- Tests: `internal/book/lookup_test.go` (chain short-circuiting, no-record vs. down, the honest messages word-for-word, the Libris free-text fallback firing only when earlier providers are empty, the cover backfill), `internal/book/googlebooks_test.go` (result mapping, cover-URL https upgrade, no-record), plus rewritten `internal/book/openlibrary_test.go` cases and a new `internal/ui/book_card_test.go` case for the no-longer-stuck flash.
+
 ## v0.13.0 — 2026-09-16
 
 Milestone 11 (polish) continues, the skim-in-the-split amendment lands, and the Library & Book Card feature ships. Four separate builds land together in one release: skim-split, the Files-navigation amendment, the split-focus bugfix, and the Book Card.

@@ -208,11 +208,14 @@ func TestBookCardEditSavesInPlaceWithSnapshot(t *testing.T) {
 
 func TestBookCardLookupFillsSingleFieldOnSelection(t *testing.T) {
 	m := newTestModel(t)
-	m.opts.Library.Lookup = func(ctx context.Context, q string) ([]book.Result, error) {
-		return []book.Result{
-			{Title: "Meditations", Authors: []string{"Marcus Aurelius"}, Year: "2003", Publisher: "Modern Library", CoverURL: "https://covers.example/1.jpg", Source: "Open Library"},
-			{Title: "Meditations", Authors: []string{"Marcus Aurelius"}, Year: "2006", Publisher: "Penguin Classics", Source: "Open Library"},
-		}, nil
+	m.opts.Library.Lookup = func(ctx context.Context, q string) book.Outcome {
+		return book.Outcome{
+			Results: []book.Result{
+				{Title: "Meditations", Authors: []string{"Marcus Aurelius"}, Year: "2003", Publisher: "Modern Library", CoverURL: "https://covers.example/1.jpg", Source: "Open Library"},
+				{Title: "Meditations", Authors: []string{"Marcus Aurelius"}, Year: "2006", Publisher: "Penguin Classics", Source: "Open Library"},
+			},
+			Tried: []string{"Open Library"},
+		}
 	}
 	press(m, "B")
 	typeText(m, "Meditations")
@@ -227,15 +230,39 @@ func TestBookCardLookupFillsSingleFieldOnSelection(t *testing.T) {
 	if m.book.title.value() != "Meditations" || m.book.publisher.value() != "Modern Library" {
 		t.Errorf("title=%q publisher=%q, want filled from the chosen result", m.book.title.value(), m.book.publisher.value())
 	}
+
 	if m.book.pendingCoverURL == "" {
 		t.Error("the chosen result's cover should be queued for download")
 	}
 }
 
+// TestBookCardLookupClearsTheLookingUpFlashOnAMatch is Amendment 1's own
+// bug: the "Looking up…" transient flash must never linger once a result
+// lands, even a clean match where the chooser opening is the "success"
+// signal and there's nothing further to say.
+func TestBookCardLookupClearsTheLookingUpFlashOnAMatch(t *testing.T) {
+	m := newTestModel(t)
+	m.opts.Library.Lookup = func(ctx context.Context, q string) book.Outcome {
+		return book.Outcome{
+			Results: []book.Result{{Title: "Meditations", Source: "Open Library"}},
+			Tried:   []string{"Open Library"},
+		}
+	}
+	press(m, "B")
+	typeText(m, "Meditations")
+	pump(m, "enter")
+	if strings.Contains(m.flash, "Looking up") {
+		t.Errorf("flash = %q, the transient flash should be cleared once the result lands", m.flash)
+	}
+}
+
 func TestBookCardLookupFailureFlashesAndKeepsCardEditable(t *testing.T) {
 	m := newTestModel(t)
-	m.opts.Library.Lookup = func(ctx context.Context, q string) ([]book.Result, error) {
-		return nil, context.DeadlineExceeded
+	m.opts.Library.Lookup = func(ctx context.Context, q string) book.Outcome {
+		return book.Outcome{
+			Tried: []string{"Open Library", "Google Books", "Libris"},
+			Down:  []string{"Open Library", "Google Books", "Libris"},
+		}
 	}
 	press(m, "B")
 	typeText(m, "Meditations")
@@ -250,8 +277,11 @@ func TestBookCardLookupFailureFlashesAndKeepsCardEditable(t *testing.T) {
 
 func TestBookCardSaveDownloadsCover(t *testing.T) {
 	m := newTestModel(t)
-	m.opts.Library.Lookup = func(ctx context.Context, q string) ([]book.Result, error) {
-		return []book.Result{{Title: "Meditations", Year: "2003", CoverURL: "https://covers.example/1.jpg"}}, nil
+	m.opts.Library.Lookup = func(ctx context.Context, q string) book.Outcome {
+		return book.Outcome{
+			Results: []book.Result{{Title: "Meditations", Year: "2003", CoverURL: "https://covers.example/1.jpg"}},
+			Tried:   []string{"Open Library"},
+		}
 	}
 	m.opts.Library.FetchCover = func(ctx context.Context, url string) ([]byte, error) {
 		return []byte("fake-jpeg-bytes"), nil
@@ -282,8 +312,11 @@ func TestBookCardSaveDownloadsCover(t *testing.T) {
 
 func TestBookCardSaveContinuesWithoutCoverOnFetchFailure(t *testing.T) {
 	m := newTestModel(t)
-	m.opts.Library.Lookup = func(ctx context.Context, q string) ([]book.Result, error) {
-		return []book.Result{{Title: "Meditations", Year: "2003", CoverURL: "https://covers.example/1.jpg"}}, nil
+	m.opts.Library.Lookup = func(ctx context.Context, q string) book.Outcome {
+		return book.Outcome{
+			Results: []book.Result{{Title: "Meditations", Year: "2003", CoverURL: "https://covers.example/1.jpg"}},
+			Tried:   []string{"Open Library"},
+		}
 	}
 	m.opts.Library.FetchCover = func(ctx context.Context, url string) ([]byte, error) {
 		return nil, context.DeadlineExceeded

@@ -3,6 +3,7 @@ package book
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -96,6 +97,16 @@ func LooksLikeISBN(s string) bool {
 	return isbnPattern.MatchString(NormalizeISBN(s))
 }
 
+// httpStatusError carries the HTTP status a provider answered with, so
+// callers can tell "the server said no" (404: an honest no-record) from
+// "the server didn't answer properly" (anything else non-2xx: down).
+type httpStatusError struct {
+	status int
+	url    string
+}
+
+func (e *httpStatusError) Error() string { return fmt.Sprintf("%s: %d", e.url, e.status) }
+
 // getJSON fetches url and decodes it as JSON into out, failing fast on a
 // timeout or a non-2xx status rather than hanging the card.
 func getJSON(ctx context.Context, url string, out any) error {
@@ -112,7 +123,7 @@ func getJSON(ctx context.Context, url string, out any) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode/100 != 2 {
-		return fmt.Errorf("%s: %s", url, resp.Status)
+		return &httpStatusError{status: resp.StatusCode, url: url}
 	}
 	return json.NewDecoder(resp.Body).Decode(out)
 }
@@ -188,12 +199,17 @@ func SearchOpenLibrary(ctx context.Context, query string) ([]Result, error) {
 	return out, nil
 }
 
-// OpenLibraryByISBN looks a single ISBN up directly.
+// OpenLibraryByISBN looks a single ISBN up directly. A 404 means Open
+// Library simply doesn't hold this edition — ErrNoRecord, not a failure.
 func OpenLibraryByISBN(ctx context.Context, isbn string) (Result, error) {
 	isbn = NormalizeISBN(isbn)
 	url := openLibraryBase + "/isbn/" + isbn + ".json"
 	var resp olISBNResponse
 	if err := getJSON(ctx, url, &resp); err != nil {
+		var hse *httpStatusError
+		if errors.As(err, &hse) && hse.status == http.StatusNotFound {
+			return Result{}, ErrNoRecord
+		}
 		return Result{}, err
 	}
 	r := Result{
@@ -257,7 +273,7 @@ func getXML(ctx context.Context, url string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode/100 != 2 {
-		return nil, fmt.Errorf("%s: %s", url, resp.Status)
+		return nil, &httpStatusError{status: resp.StatusCode, url: url}
 	}
 	return io.ReadAll(resp.Body)
 }

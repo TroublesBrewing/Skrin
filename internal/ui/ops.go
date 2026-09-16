@@ -322,6 +322,7 @@ func movesIntoItself(dest string, srcs []string) bool {
 // stays behind on the next row, ready for the next item to tidy.
 func (m *Model) moveTo(dest string, srcs []string) {
 	var moves [][2]string
+	claimed := map[string]string{} // destination → the item that wants it
 	for _, s := range srcs {
 		to := path.Join(dest, path.Base(s))
 		if to == s {
@@ -331,6 +332,14 @@ func (m *Model) moveTo(dest string, srcs []string) {
 			m.flash = fmt.Sprintf("Nothing moved: %s already has a %s", m.folderLabel(dest), path.Base(s))
 			return
 		}
+		// Two marked items can share a name (a/Plan.md and b/Plan.md).
+		// Moving the first and failing the second would leave the batch
+		// half done, so the clash is caught before anything moves.
+		if first, clash := claimed[to]; clash {
+			m.flash = fmt.Sprintf("Nothing moved: %s and %s would both become %s", first, s, to)
+			return
+		}
+		claimed[to] = s
 		moves = append(moves, [2]string{s, to})
 	}
 	if len(moves) == 0 {

@@ -191,7 +191,11 @@ func (v *Vault) Read(rel string) (string, error) {
 
 // Watch calls onChange (debounced) whenever something visible in the vault
 // changes on disk, whether from Skrin, Obsidian desktop, Sync or an editor.
-func (v *Vault) Watch(ctx context.Context, onChange func()) error {
+// onTrouble is called when live updates can't be trusted any more: folders
+// that couldn't be watched (the system's watch limit, on a big vault) or an
+// error from the watcher itself. Going quiet without saying so is the one
+// thing it mustn't do. Either callback may be nil.
+func (v *Vault) Watch(ctx context.Context, onChange func(), onTrouble func(string)) error {
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
 		return err
@@ -200,7 +204,14 @@ func (v *Vault) Watch(ctx context.Context, onChange func()) error {
 		w.Close()
 		return err
 	}
-	watchTree(w, v.Root)
+	tell := func(s string) {
+		if onTrouble != nil {
+			onTrouble(s)
+		}
+	}
+	if missed := watchTree(w, v.Root); missed > 0 {
+		tell(unwatched(missed))
+	}
 	go func() {
 		defer w.Close()
 		var timer *time.Timer
@@ -220,27 +231,31 @@ func (v *Vault) Watch(ctx context.Context, onChange func()) error {
 				}
 				if ev.Has(fsnotify.Create) {
 					if fi, err := os.Stat(ev.Name); err == nil && fi.IsDir() {
-						watchTree(w, ev.Name)
+						if missed := watchTree(w, ev.Name); missed > 0 {
+							tell(unwatched(missed))
+						}
 					}
 				}
 				if timer != nil {
 					timer.Stop()
 				}
 				timer = time.AfterFunc(200*time.Millisecond, onChange)
-			case _, ok := <-w.Errors:
+			case err, ok := <-w.Errors:
 				if !ok {
 					return
 				}
+				tell("live updates: " + err.Error())
 			}
 		}
 	}()
 	return nil
 }
 
-// watchTree adds dir and every visible folder below it to the watcher. A
-// folder created with subfolders already inside (mkdir -p, a move) is
-// picked up whole this way.
-func watchTree(w *fsnotify.Watcher, dir string) {
+// watchTree adds dir and every visible folder below it to the watcher, and
+// reports how many it couldn't add. A folder created with subfolders
+// already inside (mkdir -p, a move) is picked up whole this way.
+func watchTree(w *fsnotify.Watcher, dir string) int {
+	missed := 0
 	_ = filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
 		if err != nil || !d.IsDir() {
 			return nil
@@ -248,7 +263,19 @@ func watchTree(w *fsnotify.Watcher, dir string) {
 		if p != dir && Hidden(d.Name()) {
 			return filepath.SkipDir
 		}
-		_ = w.Add(p)
+		if w.Add(p) != nil {
+			missed++
+		}
 		return nil
 	})
+	return missed
+}
+
+// unwatched says that live updates have holes in them, and why.
+func unwatched(n int) string {
+	what := "1 folder isn't"
+	if n > 1 {
+		what = fmt.Sprintf("%d folders aren't", n)
+	}
+	return "live updates: " + what + " being watched (the system's watch limit?) — changes there won't show by themselves"
 }

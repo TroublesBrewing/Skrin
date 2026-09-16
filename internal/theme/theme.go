@@ -67,7 +67,9 @@ var derived = [][2]string{
 	{"light_foreground", "foreground"},
 	{"muted", "dark_foreground"},
 	{"accent", "blue"},
-	{"orange", "yellow"},
+	// Not from yellow: Files paints marks yellow and the open note orange,
+	// so a theme without an orange would give them the same colour.
+	{"orange", "magenta"},
 }
 
 // Default returns the built-in palette.

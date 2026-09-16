@@ -49,6 +49,10 @@ type ThemeMsg struct{ Palette theme.Palette }
 // VaultChangedMsg reports that files changed on disk.
 type VaultChangedMsg struct{}
 
+// WatchTroubleMsg reports that live updates have holes in them: the watcher
+// hit the system's limit, or errored. It is shown, never swallowed.
+type WatchTroubleMsg struct{ Text string }
+
 // ggWait is how soon a second G must follow the first to make it GG: the
 // top instead of the bottom.
 const ggWait = 400 * time.Millisecond
@@ -215,6 +219,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else if open != "" && m.notePath == "" {
 			m.flash = displayName(open) + " is gone: deleted or renamed outside Skrin"
 		}
+	case WatchTroubleMsg:
+		m.flash = msg.Text
 	case claudeMsg:
 		m.claudeEvent(msg)
 		cmd = m.listen()

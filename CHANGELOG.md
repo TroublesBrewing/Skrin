@@ -2,6 +2,18 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.12.0 — 2026-09-16
+
+Milestone 11 continues with the safety stories deferred from the v0.9.0 review: what happens when something else touches the vault at exactly the wrong moment, or the machine stops at the wrong instant. Nothing here changes a key or a screen.
+
+- **A move never replaces what it finds.** Looking first and renaming after left a window where Obsidian Sync or another app could put a file at the destination, and the rename would overwrite it silently. Renames now refuse in the kernel itself (`renameat2` with `RENAME_NOREPLACE`), so the check and the move are one step. Moves, renames, trashing and restoring all go through it, and each says the destination is taken instead of losing what was there.
+- **A note Skrin calls saved survives the power going out.** Writes are flushed to the disk before the rename that puts them in place, and the folder entry is flushed after it. Snapshots are flushed too, so `u` still works after a crash.
+- **Live updates say when they have holes in them.** Folders that can't be watched (the system's watch limit, on a big vault) and errors from the watcher used to be dropped on the floor, leaving Skrin quietly stale until a restart. Both now reach the status line.
+- **A batch move is all or nothing again.** Moving two marked notes that share a name — `a/Plan.md` and `b/Plan.md` — moved the first and failed the second. The clash is caught before anything moves, and the refusal names both.
+- **`# Title ##` reads as "Title".** The closing hashes are markup: Obsidian hides them and Skrin's own index already did, but the renderer showed them.
+- **A note that can't be read for a moment keeps its place.** While Sync rewrites a note, an index refresh could drop it, so it vanished from search and links until some later refresh caught it. It now keeps what it had.
+- The open note's orange is derived from magenta rather than yellow, so a theme that sets no orange of its own can't give the open note the colour Files uses for marks.
+
 ## v0.11.0 — 2026-09-16
 
 Milestone 11 opens: arranging loses its mode (Amendment 1 in `skrin arrange.md`), the keymap registry reaches the components that handle their own keys, and the open note is findable in Files again.

@@ -69,8 +69,11 @@ func (v *Vault) trashSystem(rel string) (Trashed, error) {
 			os.Remove(info) // a leftover without an info file; pick another name
 			continue
 		}
-		if err := os.Rename(abs, stored); err != nil {
+		if err := renameNoReplace(abs, stored); err != nil {
 			os.Remove(info)
+			if errors.Is(err, ErrExists) {
+				continue // something took the name in the meantime
+			}
 			return Trashed{}, err
 		}
 		return Trashed{Rel: rel, Stored: stored, Info: info}, nil
@@ -89,7 +92,10 @@ func (v *Vault) trashLocal(rel string) (Trashed, error) {
 		if _, err := os.Lstat(stored); err == nil {
 			continue
 		}
-		if err := os.Rename(v.Abs(rel), stored); err != nil {
+		if err := renameNoReplace(v.Abs(rel), stored); err != nil {
+			if errors.Is(err, ErrExists) {
+				continue // something took the name in the meantime
+			}
 			return Trashed{}, err
 		}
 		return Trashed{Rel: rel, Stored: stored}, nil
@@ -104,7 +110,10 @@ func (v *Vault) Restore(t Trashed) error {
 	if _, err := v.mkdirs(parentOf(t.Rel)); err != nil {
 		return err
 	}
-	if err := os.Rename(t.Stored, v.Abs(t.Rel)); err != nil {
+	if err := renameNoReplace(t.Stored, v.Abs(t.Rel)); err != nil {
+		if errors.Is(err, ErrExists) {
+			return fmt.Errorf("can't restore %s: %w", t.Rel, ErrExists)
+		}
 		return err
 	}
 	if t.Info != "" {

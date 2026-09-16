@@ -64,6 +64,23 @@ func TestHeadingsMapToSourceLines(t *testing.T) {
 	}
 }
 
+// "# Title ##" closes the heading with markup, not text. Obsidian hides the
+// trailing hashes and internal/index already strips them, so a heading must
+// not read differently depending on which of them you ask.
+func TestClosingHashesAreMarkup(t *testing.T) {
+	lines := render(t, "# Stoic ideas ##\nbody\n## Second #\n### Kept #tag\n#### Spaced   \n", 60)
+	for src, want := range map[int]string{
+		0: "Stoic ideas",
+		2: "Second",
+		3: "Kept #tag", // a tag isn't a closing hash
+		4: "Spaced",
+	} {
+		if s := plainAt(lines, src); s != want {
+			t.Errorf("source line %d renders as %q, want %q", src, s, want)
+		}
+	}
+}
+
 func TestFrontmatterBecomesProperties(t *testing.T) {
 	lines := render(t, sample, 60)
 	if s := plainAt(lines, 2); !strings.Contains(s, "#stoa #filosofi/antik") {

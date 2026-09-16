@@ -123,7 +123,8 @@ func run(vaultArg string) error {
 	defer cancel()
 	// Outside Omarchy there is no theme to watch; the built-in palette stays.
 	_ = theme.Watch(ctx, themeDir, func(pal theme.Palette) { p.Send(ui.ThemeMsg{Palette: pal}) })
-	if err := v.Watch(ctx, func() { p.Send(ui.VaultChangedMsg{}) }); err != nil {
+	onTrouble := func(s string) { p.Send(ui.WatchTroubleMsg{Text: s}) }
+	if err := v.Watch(ctx, func() { p.Send(ui.VaultChangedMsg{}) }, onTrouble); err != nil {
 		m.Flash("live refresh off: " + err.Error())
 	}
 	if cfg.AssistantEnabled() {

@@ -142,7 +142,9 @@ type renderer struct {
 }
 
 var (
-	headingRE  = regexp.MustCompile(`^ {0,3}(#{1,6})[ \t]+(.*)$`)
+	// The closing hashes of "# Title ##" are markup, not text: Obsidian
+	// hides them and so does internal/index, so the renderer must too.
+	headingRE  = regexp.MustCompile(`^ {0,3}(#{1,6})[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$`)
 	listRE     = regexp.MustCompile(`^(\s*)([-*+]|\d{1,9}[.)])[ \t]+(\[(.)\](?:[ \t]+|$))?(.*)$`)
 	calloutRE  = regexp.MustCompile(`^\[!([A-Za-z]+)\][+-]?\s*(.*)$`)
 	tableSepRE = regexp.MustCompile(`^\|?[\s:|-]+\|?$`)

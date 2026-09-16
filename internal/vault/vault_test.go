@@ -100,11 +100,25 @@ func TestListFoldersFirst(t *testing.T) {
 func TestWatchSeesNewNotesInNewFolders(t *testing.T) {
 	v := makeVault(t, "Welcome.md")
 	changed := make(chan struct{}, 8)
+	trouble := make(chan string, 8)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	if err := v.Watch(ctx, func() { changed <- struct{}{} }); err != nil {
+	tell := func(s string) {
+		select {
+		case trouble <- s:
+		default:
+		}
+	}
+	if err := v.Watch(ctx, func() { changed <- struct{}{} }, tell); err != nil {
 		t.Fatal(err)
 	}
+	defer func() {
+		select {
+		case s := <-trouble:
+			t.Errorf("a vault this size should watch cleanly: %q", s)
+		default:
+		}
+	}()
 	if err := os.MkdirAll(v.Abs("New/Deep"), 0o755); err != nil {
 		t.Fatal(err)
 	}

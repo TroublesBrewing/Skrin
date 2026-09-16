@@ -85,6 +85,12 @@ func (x *Index) Update(v *vault.Vault) error {
 		}
 		content, err := v.Read(f.Rel)
 		if err != nil {
+			// Unreadable for a moment — Sync rewriting it, say. Keep what
+			// the note had, so it doesn't drop out of search and links
+			// until some later refresh happens to catch it.
+			if old := x.notes[f.Rel]; old != nil {
+				notes[f.Rel] = old
+			}
 			continue
 		}
 		notes[f.Rel] = &entry{note: parse(content), content: content, lines: splitLines(content), mod: mod, size: f.Size}

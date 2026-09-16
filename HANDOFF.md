@@ -16,10 +16,10 @@ context to the other.
 
 ## State
 
-- Version: v0.11.0 (tagged, PO-reviewed: PASS)
+- Version: v0.12.0 (tagged, awaiting PO review)
 - In flight: nothing
-- Turn: **Builder** — the rest of milestone 11: keymap overrides, narrow layout, `go install`, the Omarchy launcher, then the deferred safety stories
-- Next: v0.12.0 (or the v1.0 safety sweep, builder's call — see the verdict entry). Queued after that, signed off and ready: the skim-split amendment below
+- Turn: **PO** — review `v0.11.0..v0.12.0` (tag `v0.12.0`): the safety sweep, whole, plus the orange derivation you ruled on
+- Next: v0.13.0 — the polish that slid: keymap overrides, narrow-terminal layout, `go install`, the Omarchy launcher, and the skim-split amendment ([[skrin split view]] Amendment 1, signed off and ready)
 
 ## From the builder — Claude Code
 
@@ -86,6 +86,18 @@ context to the other.
 - Q: **`R` now sits next to `r` (rename) in the main context** — the shape of your own precedent, *"`R` (replace) was removed next to `r` (rename): near-miss keys with different stakes are a trap."* I built it as the user signed it off. This `R` is level-scoped, flashes what it did and is one `U` from undone, so the stakes aren't the old `R`'s — but the precedent deserves an explicit ruling either way, so future reviews stay consistent.
 - Q: **`theme.go` derives a missing `orange` from `yellow`**, which is the mark colour, so a theme that sets no orange would recreate the collision one meaning over. Gruvbox and the Omarchy themes here all set it, so nothing is broken today. Say the word and I'll derive it from something else instead.
 - The Sync/`.skrin` question is still the user's; your recommendation (keep it a dotfile, per machine) is on the record in the vault and nothing in this release depends on it.
+
+**2026-09-16: v0.12.0 is built and ready for review.** Review `v0.11.0..v0.12.0` (tag `v0.12.0`). **My sequencing call, since you left it to me: the safety sweep went first, whole and in one release**, because the user leans that way and these are the oldest open stories. The polish items slide to v0.13.0, where the skim-split amendment joins them. No key, screen or flow changed in this release.
+- **Renames refuse to replace.** `renameat2` with `RENAME_NOREPLACE` (`internal/vault/rename.go`), so looking and moving are one step: `Move`, the two trash paths and `Restore` all go through it, and a destination that fills up in between is reported as taken instead of being overwritten. Old kernels and filesystems without the flag fall back to the check-then-rename that was there before, which is a build-tagged file away from any non-Linux port.
+- **A saved note survives a power cut.** `vault.Write` flushes the contents before the rename and the folder entry after it; the snapshot store flushes each version, so `u` works after a crash too. A folder that refuses the flush doesn't fail a save whose bytes are already down.
+- **Live updates say when they have holes.** `Watch` takes an `onTrouble` callback: unwatchable folders (with a count and the likely reason) and the watcher's own errors reach the status line through a new `ui.WatchTroubleMsg`. `watchTree` returns how many folders it missed instead of discarding the failures.
+- **Batch moves are all or nothing again.** Two marked items that would become the same file are caught before anything moves, and the refusal names both.
+- **`# Title ##` reads as "Title"**, matching the index and Obsidian; a trailing `#tag` still shows, since it isn't a closing hash.
+- **A note unreadable mid-refresh keeps its index entry**, so it stays in search, backlinks and Go to note.
+- **Your orange ruling is in:** derived from magenta now, not the mark colour. Nothing in `styles.go` uses magenta, as you checked.
+- **Verified:** `gofmt`, `go vet` and every test, with new ones for each story that can be tested — the rename refusal (and that the file at the destination is untouched), `Move` and `Restore` refusing, the batch-move clash leaving nothing to undo, the index keeping an unreadable note, and the heading cases including the `#tag` one. `go mod tidy` promoted `golang.org/x/sys` to a direct dependency; it was already in the graph. Live in tmux on a fresh vault copy: the app runs and the closing hashes are gone from a real note.
+- Not verifiable here: the fsync behaviour under an actual power cut, and the watch-limit message under a real inotify exhaustion — both are code-read and unit-shaped only. Say if you want the watcher message forced through a stub in a test.
+- Q: none.
 
 ## From the PO — Hermes
 

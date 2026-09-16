@@ -114,7 +114,7 @@ func (v *Vault) Move(from, to string) ([]string, error) {
 	if err != nil {
 		return dirs, err
 	}
-	return dirs, os.Rename(v.Abs(from), v.Abs(to))
+	return dirs, renameNoReplace(v.Abs(from), v.Abs(to))
 }
 
 // Write replaces a file's contents atomically (temp file, then rename),
@@ -138,10 +138,32 @@ func (v *Vault) Write(rel, content string) error {
 		tmp.Close()
 		return err
 	}
+	// A note Skrin calls saved has to survive the machine losing power, so
+	// the contents reach the disk before the rename puts them in place.
+	if err := tmp.Sync(); err != nil {
+		tmp.Close()
+		return err
+	}
 	if err := tmp.Close(); err != nil {
 		return err
 	}
-	return os.Rename(tmp.Name(), abs)
+	if err := os.Rename(tmp.Name(), abs); err != nil {
+		return err
+	}
+	syncDir(filepath.Dir(abs)) // and the rename itself
+	return nil
+}
+
+// syncDir flushes a directory entry, so a rename survives a crash. It's
+// best effort: some filesystems refuse it, and that mustn't fail a save
+// whose contents are already on the disk.
+func syncDir(dir string) {
+	d, err := os.Open(dir)
+	if err != nil {
+		return
+	}
+	_ = d.Sync()
+	d.Close()
 }
 
 // Remove deletes a file or an empty folder for good. Like every delete, it

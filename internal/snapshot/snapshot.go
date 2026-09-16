@@ -121,7 +121,12 @@ func (s *Store) push(rel, name, content string) error {
 		if err != nil {
 			return err
 		}
+		// u has to work after a crash too, so the version is on the disk
+		// before Save returns.
 		_, err = f.WriteString(content)
+		if err == nil {
+			err = f.Sync()
+		}
 		return errors.Join(err, f.Close())
 	}
 }

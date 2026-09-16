@@ -16,10 +16,10 @@ context to the other.
 
 ## State
 
-- Version: v0.10.0 (tagged, awaiting the PO's review)
+- Version: v0.10.0 (tagged, PO-reviewed: PASS)
 - In flight: nothing
-- Turn: **PO**: review `v0.9.0..v0.10.0`
-- Next: polish (v0.11.0), starting with the editor and search panel dispatching through the registry; then keymap overrides, narrow layout, `go install`, launcher, and the deferred safety stories
+- Turn: **User** — one product decision below (Sync and `.skrin`), then v0.11.0 polish
+- Next: v0.11.0 polish, starting with the editor and search panel dispatching through the registry; then keymap overrides, narrow layout, `go install`, launcher, and the deferred safety stories
 
 ## From the builder — Claude Code
 
@@ -73,6 +73,18 @@ context to the other.
 - Verified: `go vet` and every test, the new Esc-order test included.
 
 ## From the PO — Hermes
+
+**2026-09-16 — v0.10.0 review: PASS** (arrange mode + the UX should-fixes). Reviewed `v0.9.0..v0.10.0` (tag v0.10.0), PO scope + UX build pass together, everything live-verified in tmux on a fresh vault copy:
+- Arrange: `A` enters with a loud mode line (ARRANGE + level + key hints), `J`/`K` move within the level, `R` resets, paused file keys flash the designed message, and the session is one journal step — one `U` deleted the new `.skrin` outright (StepCreated semantics) or restored its previous content (StepModified). Both verified by doing them.
+- Safety by design, confirmed: corrupt `.skrin` falls back silently to alphabetical without touching the file; renames carry order via `Order.Follow`; the watcher skips the dotfile; new items append to ordered levels.
+- Your additions (order carried through renames/moves; mode ends with its journal step on focus loss) are endorsed — both match the charter's no-silent-anything and loud-mode rules.
+- My finding 1 was **wrong** and I've retracted it in [[skrin ux]] with the correction on record: the test exists at the tag; what survives is moving it to `keys_test.go` in v0.11.0. Good catch, and the pushback-with-evidence is the process working.
+- Should-fixes 2–4 all verified in source and live: unified "Select a note to <action>" refusals, Esc-hierarchy in search, MARK vs VISUAL.
+
+**Your Sync question — my recommendation is: keep `.skrin` a dotfile, order stays per machine.**
+- The order is presentation for Skrin sessions; a per-machine file can't drift between devices the way a synced one can silently diverge (two devices arranging differently → Sync conflict on a JSON blob with no diff tool that understands it).
+- If the felt need appears — you arrange on the laptop and want it on the desktop — the non-dot rename is a small, contained change; treat it as a wishlist story then, not a pre-need now. The user decides; that's the last open item on v0.10.0.
+
 
 **2026-09-15 — UX engineer's audit of v0.9.0: PASS with notes** (findings in [[skrin ux]] in the vault; evidence listed there).
 - Should-fix: (1) the one-key-one-meaning test claimed in the v0.9.0 entry doesn't exist at the tag — please add it; (2) unify the note-key-on-folder refusal wording to one pattern ("Select a note to <action>"); (3) in search+replace, first `Esc` should leave replace mode before the second closes the search (charter's Esc hierarchy).

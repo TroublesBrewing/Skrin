@@ -75,7 +75,7 @@ func TestEachMoveIsItsOwnUndoStep(t *testing.T) {
 
 func TestOrderKeepsThroughChangesAndResets(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "1", "j", "j", "l", "shift+down") // in Filosofi: Antik below Stoic
+	press(m, "1", "j", "j", "l", "j", "shift+down") // in Filosofi: Antik below Stoic
 	if got := level(m, "Filosofi"); got != "Stoic.md,Antik" {
 		t.Fatalf("shift+down: %s", got)
 	}

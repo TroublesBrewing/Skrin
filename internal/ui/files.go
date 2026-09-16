@@ -132,21 +132,22 @@ func (t *files) toggle() {
 	}
 }
 
-// in steps into the folder under the cursor, opening it, and reports false
-// when the cursor is on a file.
-func (t *files) in() bool {
+// openFolder is l/→ on a folder: it opens the folder (revealing its
+// contents below) but keeps the cursor on the folder row — looking into a
+// folder is no longer the same as stepping into it. It reports whether the
+// cursor is on a folder, and whether that folder was already open (so the
+// caller can flash a no-op instead of silently doing nothing).
+func (t *files) openFolder() (isDir, alreadyOpen bool) {
 	e := t.selected()
 	if !e.IsDir {
-		return false
+		return false, false
 	}
-	if !t.expanded[e.Rel] {
-		t.expanded[e.Rel] = true
-		t.relayout()
+	if t.expanded[e.Rel] {
+		return true, true
 	}
-	if len(t.kids[e.Rel]) > 0 {
-		t.cur++ // the folder's first entry is the next row
-	}
-	return true
+	t.expanded[e.Rel] = true
+	t.relayout()
+	return true, false
 }
 
 // out closes the folder under the cursor if it's open, and otherwise moves
@@ -168,6 +169,37 @@ func (t *files) up() {
 	if e := t.selected(); e.Rel != "" {
 		t.selectPath(parentOf(e.Rel))
 	}
+}
+
+// folderJumpResult is what a folderJump found.
+type folderJumpResult int
+
+const (
+	folderJumped   folderJumpResult = iota // the cursor moved to another folder row
+	folderJumpEdge                         // no folder that way, but there are others elsewhere
+	folderJumpNone                         // no other folder row in the tree at all
+)
+
+// folderJump is Ctrl+↑/↓: move the cursor to the previous/next folder row
+// among the visible rows (the vault row counts), skipping file rows. It
+// never reveals or expands anything; it only moves the cursor.
+func (t *files) folderJump(down bool) folderJumpResult {
+	step := -1
+	if down {
+		step = 1
+	}
+	for i := t.cur + step; i >= 0 && i < len(t.rows); i += step {
+		if t.rows[i].IsDir {
+			t.cur = i
+			return folderJumped
+		}
+	}
+	for i, r := range t.rows {
+		if i != t.cur && r.IsDir {
+			return folderJumpEdge
+		}
+	}
+	return folderJumpNone
 }
 
 // collapseAll closes every folder, like Obsidian's "Collapse all".

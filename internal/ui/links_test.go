@@ -38,7 +38,7 @@ func TestFollowLinkWithHintsAndGoBack(t *testing.T) {
 func TestEnterFollowsTheOnlyLinkInView(t *testing.T) {
 	m := newTestModel(t)
 	inFilosofi(m)
-	press(m, "l", "enter", "enter") // into Antik/, open Zeno, follow its one link
+	press(m, "l", "j", "enter", "enter") // open Antik/, onto Zeno, open it, follow its one link
 	if m.notePath != "Filosofi/Stoic.md" {
 		t.Errorf("enter followed to %q", m.notePath)
 	}

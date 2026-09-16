@@ -2,6 +2,17 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.13.0 — 2026-09-16
+
+Milestone 11 (polish) continues, the skim-in-the-split amendment lands, and the Library & Book Card feature ships. Four separate builds land together in one release: skim-split, the Files-navigation amendment, the split-focus bugfix, and the Book Card.
+
+- **Skim in the split from Files** ([[skrin split view]] Amendment 1). `Alt+↑`/`Alt+↓` (alias `Alt+j`/`Alt+k`) skim a folder's notes into the split pane without leaving Files — the cursor stays put, the split's note follows. Built over the weekend while Claude was out; reviewed and folded into this release.
+- **Library & Book Card.** `B` catalogues a book: metadata fetch and cover art from Open Library, a generated note from a template, quotes and reflections. See `skrin library.md` in the vault for the design. Configurable under `[library]` in `config.toml` (`folder`, `covers_folder`, `default_status`).
+- **`l`/`→` opens a folder without stepping onto its first child.** The cursor stays on the folder row; an already-open folder flashes instead of no-op-toggling. `Ctrl+↑`/`Ctrl+↓` jump the cursor to the previous/next folder row, so moving between folders no longer means touching every file row between them.
+- **`Space` marks or unmarks in place.** It no longer advances the cursor afterward, so marking a range from the bottom up no longer fights the cursor's own movement.
+- **Fixed: opening the split's own note used to discard the reference note.** Pressing `l`/`→` or `Enter` on a note already showing in the split pane now swaps focus to that pane, instead of silently overwriting the main pane's note with it.
+- Tests: `folder_jump_test.go`, `book_card_test.go`, and updates across `arrange_test.go`, `files_test.go`, `links_test.go`, `ops_test.go`, `skim_test.go`, `split_test.go`, `ui_test.go` for the new semantics.
+
 ## v0.12.0 — 2026-09-16
 
 Milestone 11 continues with the safety stories deferred from the v0.9.0 review: what happens when something else touches the vault at exactly the wrong moment, or the machine stops at the wrong instant. Nothing here changes a key or a screen.

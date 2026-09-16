@@ -80,6 +80,12 @@ func key(k string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: tea.KeySpace, Text: " "}
 	case "down":
 		return tea.KeyPressMsg{Code: tea.KeyDown}
+	case "up":
+		return tea.KeyPressMsg{Code: tea.KeyUp}
+	case "ctrl+up":
+		return tea.KeyPressMsg{Code: tea.KeyUp, Mod: tea.ModCtrl}
+	case "ctrl+down":
+		return tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModCtrl}
 	case "end":
 		return tea.KeyPressMsg{Code: tea.KeyEnd}
 	case "home":
@@ -201,9 +207,9 @@ func TestNavigateFilesAndNote(t *testing.T) {
 	if m.notePath != "" {
 		t.Fatalf("a folder under the cursor opened %q", m.notePath)
 	}
-	// l opens Filosofi and steps onto its first entry, Antik/; j lands on
-	// Stoic, which opens at once.
-	press(m, "l", "j")
+	// l opens Filosofi (cursor stays); j steps onto Antik/, then Stoic,
+	// which opens at once.
+	press(m, "l", "j", "j")
 	if got := m.files.selected().Rel; got != "Filosofi/Stoic.md" {
 		t.Fatalf("cursor on %q", got)
 	}
@@ -224,11 +230,11 @@ func TestNavigateFilesAndNote(t *testing.T) {
 	if m.files.selected().Rel != "Filosofi" || m.files.expanded["Filosofi"] {
 		t.Errorf("h h: cursor on %q, Filosofi open %v", m.files.selected().Rel, m.files.expanded["Filosofi"])
 	}
-	press(m, "l", "l", "H") // into Filosofi, into Antik, then close everything
+	press(m, "l", "j", "l", "H") // open Filosofi, onto Antik, open it, then close everything
 	if got := m.files.openFolders(); len(got) != 0 || m.files.selected().Rel != "Filosofi" {
 		t.Errorf("H: open %q, cursor on %q", got, m.files.selected().Rel)
 	}
-	press(m, "l", "backspace")
+	press(m, "l", "j", "backspace") // open Filosofi, onto Antik, then up to the parent
 	if m.files.selected().Rel != "Filosofi" {
 		t.Errorf("backspace should go up to the folder, got %q", m.files.selected().Rel)
 	}
@@ -249,7 +255,7 @@ func TestEnterOnOtherFileOpensItsApp(t *testing.T) {
 
 func TestVaultChangeKeepsPlace(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "1", "j", "j", "l", "j")
+	press(m, "1", "j", "j", "l", "j", "j")
 	if err := os.WriteFile(m.vault.Abs("Filosofi/Aaa.md"), []byte("# new"), 0o644); err != nil {
 		t.Fatal(err)
 	}

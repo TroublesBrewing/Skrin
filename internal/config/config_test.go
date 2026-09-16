@@ -71,3 +71,40 @@ func TestDiscoverVaultUsesObsidianRegistry(t *testing.T) {
 		t.Errorf("DiscoverVault = %q, %v", got, err)
 	}
 }
+
+func TestLibraryDefaults(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.LibraryFolder() != "Books" {
+		t.Errorf("LibraryFolder() = %q, want Books", c.LibraryFolder())
+	}
+	if c.LibraryCoversFolder() != "Assets/Covers" {
+		t.Errorf("LibraryCoversFolder() = %q, want Assets/Covers", c.LibraryCoversFolder())
+	}
+	if c.LibraryDefaultStatus() != "reading" {
+		t.Errorf("LibraryDefaultStatus() = %q, want reading", c.LibraryDefaultStatus())
+	}
+}
+
+func TestLibraryReadsOverrides(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", home)
+	dir := filepath.Join(home, "skrin")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	conf := "[library]\nfolder = \"Library\"\ncovers_folder = \"Covers\"\ndefault_status = \"want\"\n"
+	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte(conf), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.LibraryFolder() != "Library" || c.LibraryCoversFolder() != "Covers" || c.LibraryDefaultStatus() != "want" {
+		t.Errorf("library config = %+v", c.Library)
+	}
+}

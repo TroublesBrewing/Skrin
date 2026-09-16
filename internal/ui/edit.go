@@ -55,10 +55,17 @@ func (m *Model) subject() (string, bool) {
 }
 
 // subjectOpen is subject, opened on the right first if it isn't already,
-// for the keys that change or scroll what's on screen.
+// for the keys that change or scroll what's on screen. A subject that's
+// already showing in the split pane is swapped into focus rather than
+// reopened over it — the same courtesy openRow gives Enter/l/→, so e, E,
+// u, Ctrl-r and o never quietly discard the reference note either.
 func (m *Model) subjectOpen() (string, bool) {
 	rel, ok := m.subject()
-	if ok && rel != m.notePath {
+	switch {
+	case !ok:
+	case m.split != nil && rel == m.split.path:
+		m.swapPanes()
+	case rel != m.notePath:
 		m.pushHistory()
 		m.showNote(rel)
 	}

@@ -9,7 +9,7 @@ import (
 
 // inFilosofi opens Filosofi in Files and puts the cursor on its first entry,
 // Antik/. One j further is Stoic.
-func inFilosofi(m *Model) { press(m, "1", "j", "j", "l") }
+func inFilosofi(m *Model) { press(m, "1", "j", "j", "l", "j") }
 
 func TestCreateNoteInCurrentFolderAndUndo(t *testing.T) {
 	m := newTestModel(t)
@@ -146,7 +146,7 @@ func TestRenameAndUndo(t *testing.T) {
 
 func TestRenameFolderKeepsItOpen(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "1", "j", "j", "l", "h", "r", "ctrl+u") // open Filosofi, back on it
+	press(m, "1", "j", "j", "l", "r", "ctrl+u") // open Filosofi, cursor stays
 	typeText(m, "Philosophy")
 	press(m, "enter")
 	if !m.vault.IsDir("Philosophy") || m.cwd() != "Philosophy" || m.files.selected().Rel != "Philosophy" {
@@ -221,7 +221,7 @@ func TestDeleteFolderAsksWithNoteCount(t *testing.T) {
 func TestMarkMoveAndUndoAsOne(t *testing.T) {
 	m := newTestModel(t)
 	inFilosofi(m)
-	press(m, "space", "space")
+	press(m, "space", "j", "space") // mark Antik, move to Stoic, mark it
 	if len(m.marks) != 2 {
 		t.Fatalf("marks = %v", m.marks)
 	}
@@ -260,11 +260,31 @@ func TestMoveRefusesNameClash(t *testing.T) {
 		t.Fatal(err)
 	}
 	inFilosofi(m)
-	press(m, "space", "space", "m")
+	press(m, "space", "j", "space", "m") // mark Antik, move to Stoic, mark it, then move
 	typeText(m, "daily")
 	press(m, "enter")
 	if !m.vault.IsDir("Filosofi/Antik") || !strings.Contains(m.flash, "Nothing moved") {
 		t.Errorf("clash should move nothing; flash %q", m.flash)
+	}
+}
+
+func TestSpaceMarksInPlace(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "j") // Daily/
+	before := m.files.cur
+	press(m, "space")
+	if m.files.cur != before {
+		t.Errorf("space moved the cursor from %d to %d", before, m.files.cur)
+	}
+	if !m.marks["Daily"] {
+		t.Fatal("space should have marked Daily")
+	}
+	press(m, "space") // toggles the same row back off
+	if m.files.cur != before {
+		t.Errorf("space moved the cursor from %d to %d", before, m.files.cur)
+	}
+	if m.marks["Daily"] {
+		t.Error("a second space on the same row should unmark it, not mark a different one")
 	}
 }
 
@@ -287,7 +307,7 @@ func TestVisualRangeAndMarkAll(t *testing.T) {
 		t.Error("second ctrl+a should unmark")
 	}
 	// A range can cross folders now: both daily notes, then Filosofi.
-	press(m, "home", "j", "l", "v", "j", "j", "v")
+	press(m, "home", "j", "l", "j", "v", "j", "j", "v")
 	for _, p := range []string{"Daily/2026-09-11.md", "Daily/2026-09-13.md", "Filosofi"} {
 		if !m.marks[p] {
 			t.Errorf("%s not marked: %v", p, m.marks)

@@ -77,6 +77,12 @@ const (
 	actPrevField
 	actReplaceAll
 	actSkipMatch
+	actNewBook
+	actFetchBook
+	actAddQuote
+	actSaveBook
+	actFolderJumpUp // Ctrl+↑/↓: cursor to the previous/next folder row
+	actFolderJumpDown
 )
 
 // Contexts say where a binding works. Each gets its own keymap, built from
@@ -93,6 +99,7 @@ const (
 	inConflict = "conflict"
 	inManual   = "manual"
 	inComplete = "complete" // the [[ popup in the editor
+	inBookCard = "bookcard" // the B card: bibliographic fields, quotes, notes
 )
 
 // binding is one row of the keymap registry. Every key Skrin handles is
@@ -125,6 +132,7 @@ const (
 	groupConflict = "On a save conflict"
 	groupManual   = "In this manual"
 	groupComplete = "In link completion ([[)"
+	groupBookCard = "In the Book Card (B)"
 )
 
 var defaultBindings = []binding{
@@ -135,7 +143,9 @@ var defaultBindings = []binding{
 	{actHalfDown, []string{"ctrl+d", "pgdown"}, "half a page down", groupMove, inMain},
 	{actHalfUp, []string{"ctrl+u", "pgup"}, "half a page up", groupMove, inMain},
 	{actLeft, []string{"h", "left"}, "Files: close the folder, or up one · note: back to Files", groupMove, inMain},
-	{actRight, []string{"l", "right"}, "Files: into the folder, or over to the note", groupMove, inMain},
+	{actRight, []string{"l", "right"}, "Files: open the folder, cursor stays · note: over to the note", groupMove, inMain},
+	{actFolderJumpUp, []string{"ctrl+up"}, "Files: jump to the previous folder row", groupMove, inMain},
+	{actFolderJumpDown, []string{"ctrl+down"}, "Files: jump to the next folder row", groupMove, inMain},
 	{actOpen, []string{"enter"}, "Files: toggle folder / go to note / open file · note: follow link", groupMove, inMain},
 	{actParent, []string{"backspace"}, "Files: up to the parent folder · note: go back", groupMove, inMain},
 	{actCollapseAll, []string{"H"}, "close all folders", groupMove, inMain},
@@ -158,6 +168,7 @@ var defaultBindings = []binding{
 	{actEscape, []string{"esc"}, "clear marks · split: close the pane you're in · zen: leave it", groupFiles, inMain},
 	{actUndoOp, []string{"U"}, "undo the last file operation", groupFiles, inMain},
 	{actDaily, []string{"t"}, "open or create today's daily note", groupFiles, inMain},
+	{actNewBook, []string{"B"}, "Book Card: catalogue a book, or edit the open book note", groupFiles, inMain},
 	{actOrderUp, []string{"shift+up"}, "move the item under the cursor up its level", groupFiles, inMain},
 	{actOrderDown, []string{"shift+down"}, "move it down its level", groupFiles, inMain},
 	{actOrderReset, []string{"R"}, "put this level back in the default order", groupFiles, inMain},
@@ -254,6 +265,16 @@ var defaultBindings = []binding{
 	{actDown, []string{"down", "ctrl+n"}, "down the list", groupComplete, inComplete},
 	{actPick, []string{"enter", "tab"}, "put the link in", groupComplete, inComplete},
 	{actCancel, []string{"esc"}, "close the popup and carry on typing", groupComplete, inComplete},
+
+	{actUp, []string{"up", "ctrl+p"}, "previous field (line up inside Notes)", groupBookCard, inBookCard},
+	{actDown, []string{"down", "ctrl+n"}, "next field (line down inside Notes)", groupBookCard, inBookCard},
+	{actNextField, []string{"tab"}, "next field", groupBookCard, inBookCard},
+	{actPrevField, []string{"shift+tab"}, "previous field", groupBookCard, inBookCard},
+	{actPick, []string{"enter"}, "search bar: fetch · a field: next · Save: write the note", groupBookCard, inBookCard},
+	{actFetchBook, []string{"alt+f"}, "fetch metadata & cover from the search bar", groupBookCard, inBookCard},
+	{actAddQuote, []string{"alt+q"}, "add another quote", groupBookCard, inBookCard},
+	{actSaveBook, []string{"ctrl+s"}, "save the book note and download its cover", groupBookCard, inBookCard},
+	{actCancel, []string{"esc"}, "step back: close a result list, then the card", groupBookCard, inBookCard},
 
 	{actNone, []string{"j", "k", "ctrl+d", "ctrl+u", "space"}, "scroll", groupManual, inManual},
 	{actNone, []string{"home", "g", "G", "end"}, "top / bottom", groupManual, inManual},

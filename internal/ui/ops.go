@@ -30,9 +30,6 @@ func (m *Model) toggleMark() {
 	} else {
 		m.marks[e.Rel] = true
 	}
-	if m.files.cur < len(m.files.rows)-1 {
-		m.files.cur++
-	}
 }
 
 // markAll marks the cursor's row and everything next to it in its folder,

@@ -110,6 +110,11 @@ func run(vaultArg string) error {
 				MCPConfig: assistant.MCPConfig(exe, sock),
 			},
 		},
+		Library: ui.LibraryOptions{
+			Folder:        cfg.LibraryFolder(),
+			CoversFolder:  cfg.LibraryCoversFolder(),
+			DefaultStatus: cfg.LibraryDefaultStatus(),
+		},
 	})
 	if err != nil {
 		return err

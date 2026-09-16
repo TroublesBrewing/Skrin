@@ -30,6 +30,11 @@ type Config struct {
 		Model    string `toml:"model"`    // "" for Claude Code's default
 		Command  string `toml:"command"`  // the claude binary; default claude on $PATH
 	} `toml:"assistant"`
+	Library struct {
+		Folder        string `toml:"folder"`         // default: "Books"
+		CoversFolder  string `toml:"covers_folder"`  // default: "Assets/Covers"
+		DefaultStatus string `toml:"default_status"` // default: "reading"
+	} `toml:"library"`
 }
 
 // AssistantEnabled reports whether the Claude drawer is available. It is on
@@ -42,6 +47,32 @@ func (c Config) AssistantEnabled() bool {
 // daily note. It is on unless turned off.
 func (c Config) RolloverTodos() bool {
 	return c.Daily.RolloverTodos == nil || *c.Daily.RolloverTodos
+}
+
+// LibraryFolder is where new book notes are created: Books, unless set.
+func (c Config) LibraryFolder() string {
+	if c.Library.Folder != "" {
+		return c.Library.Folder
+	}
+	return "Books"
+}
+
+// LibraryCoversFolder is where cover images are saved: Assets/Covers,
+// unless set.
+func (c Config) LibraryCoversFolder() string {
+	if c.Library.CoversFolder != "" {
+		return c.Library.CoversFolder
+	}
+	return "Assets/Covers"
+}
+
+// LibraryDefaultStatus is the status a new Book Card starts with: reading,
+// unless set.
+func (c Config) LibraryDefaultStatus() string {
+	if c.Library.DefaultStatus != "" {
+		return c.Library.DefaultStatus
+	}
+	return "reading"
 }
 
 // Load reads the config file. A missing file is not an error.

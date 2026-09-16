@@ -50,31 +50,91 @@ func TestFilesOrderFoldersFirst(t *testing.T) {
 	}
 }
 
-func TestFilesInAndOut(t *testing.T) {
+func TestFilesOpenFolderAndOut(t *testing.T) {
 	f := newSample()
 	f.selectPath("Filosofi")
-	f.in() // opens Filosofi and steps onto Antik/
-	if f.selected().Rel != "Filosofi/Antik" || !f.expanded["Filosofi"] {
-		t.Fatalf("in: on %q", f.selected().Rel)
+	isDir, alreadyOpen := f.openFolder() // opens Filosofi, cursor stays put
+	if !isDir || alreadyOpen {
+		t.Fatalf("openFolder: isDir=%v alreadyOpen=%v", isDir, alreadyOpen)
 	}
-	f.in()
-	if f.selected().Rel != "Filosofi/Antik/Zeno.md" || f.folder() != "Filosofi/Antik" {
-		t.Fatalf("second in: on %q", f.selected().Rel)
+	if f.selected().Rel != "Filosofi" || !f.expanded["Filosofi"] {
+		t.Fatalf("openFolder: on %q, expanded=%v", f.selected().Rel, f.expanded)
 	}
-	if f.in() {
-		t.Error("in on a file should report false")
+	isDir, alreadyOpen = f.openFolder() // already open: no-op
+	if !isDir || !alreadyOpen {
+		t.Fatalf("openFolder again: isDir=%v alreadyOpen=%v", isDir, alreadyOpen)
+	}
+	if f.selected().Rel != "Filosofi" {
+		t.Fatalf("openFolder again moved the cursor: on %q", f.selected().Rel)
+	}
+	f.selectPath("Filosofi/Stoic.md")
+	if isDir, _ := f.openFolder(); isDir {
+		t.Error("openFolder on a file should report isDir false")
 	}
 	f.out() // a file: up to its folder
-	if f.selected().Rel != "Filosofi/Antik" || !f.expanded["Filosofi/Antik"] {
+	if f.selected().Rel != "Filosofi" || !f.expanded["Filosofi"] {
 		t.Fatalf("out from a file: on %q", f.selected().Rel)
 	}
 	f.out() // an open folder: close it
-	if f.selected().Rel != "Filosofi/Antik" || f.expanded["Filosofi/Antik"] {
+	if f.selected().Rel != "Filosofi" || f.expanded["Filosofi"] {
 		t.Fatalf("out on an open folder should close it")
 	}
 	f.out() // a closed folder: up
+	if f.selected().Rel != "" {
+		t.Errorf("out on a closed top-level folder: on %q", f.selected().Rel)
+	}
+}
+
+func TestFilesFolderJump(t *testing.T) {
+	f := newSample() // rows: vault, Daily/, Filosofi/, Templates/, b.png, Welcome.md
+	if r := f.folderJump(true); r != folderJumped {
+		t.Fatalf("jump down from vault: %v", r)
+	}
+	if f.selected().Rel != "Daily" {
+		t.Fatalf("jump down from vault landed on %q", f.selected().Rel)
+	}
+	if r := f.folderJump(true); r != folderJumped {
+		t.Fatalf("jump down from Daily: %v", r)
+	}
 	if f.selected().Rel != "Filosofi" {
-		t.Errorf("out on a closed folder: on %q", f.selected().Rel)
+		t.Fatalf("jump down from Daily landed on %q", f.selected().Rel)
+	}
+	if r := f.folderJump(true); r != folderJumped {
+		t.Fatalf("jump down from Filosofi: %v", r)
+	}
+	if f.selected().Rel != "Templates" {
+		t.Fatalf("jump down from Filosofi landed on %q", f.selected().Rel)
+	}
+	// past Templates (the last folder row), onto file rows: refused at the edge.
+	if r := f.folderJump(true); r != folderJumpEdge {
+		t.Fatalf("jump down past the last folder: %v", r)
+	}
+	if f.selected().Rel != "Templates" {
+		t.Fatalf("a refused jump should not move the cursor: on %q", f.selected().Rel)
+	}
+	f.selectPath("Welcome.md") // a file row is a valid starting point
+	if r := f.folderJump(false); r != folderJumped {
+		t.Fatalf("jump up from a file row: %v", r)
+	}
+	if f.selected().Rel != "Templates" {
+		t.Fatalf("jump up from Welcome.md landed on %q", f.selected().Rel)
+	}
+	for range 3 {
+		f.folderJump(false)
+	}
+	if f.selected().Rel != "" {
+		t.Fatalf("jump up to the vault row: on %q", f.selected().Rel)
+	}
+	if r := f.folderJump(false); r != folderJumpEdge {
+		t.Fatalf("jump up past the vault row: %v", r)
+	}
+}
+
+func TestFilesFolderJumpNone(t *testing.T) {
+	f := newFiles()
+	f.set(entries("Welcome.md", "b.png"), "vault", nil) // no folders below the vault row
+	if r := f.folderJump(true); r != folderJumpNone {
+		t.Fatalf("jump down with no folders anywhere: %v", r)
 	}
 }
 

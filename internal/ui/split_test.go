@@ -19,9 +19,9 @@ func TestNotesFollowTheCursor(t *testing.T) {
 	if m.notePath != "Welcome.md" {
 		t.Errorf("a folder under the cursor closed the note: open %q", m.notePath)
 	}
-	press(m, "l") // into Templates, onto its first entry, a note
+	press(m, "l", "j") // open Templates, then onto its first entry, a note
 	if m.notePath != "Templates/Daily template.md" {
-		t.Errorf("stepping into a folder onto a note should open it: %q", m.notePath)
+		t.Errorf("stepping onto a note should open it: %q", m.notePath)
 	}
 	if len(m.back) != 0 {
 		t.Error("skimming shouldn't fill the history")
@@ -109,5 +109,50 @@ func TestSplitFollowsRenames(t *testing.T) {
 	press(m, "enter")
 	if m.split.path != "Hello.md" || m.notePath != "Filosofi/Antik/Zenon.md" {
 		t.Errorf("after renaming Zeno: focused %q, other %q", m.notePath, m.split.path)
+	}
+}
+
+// TestEditingTheSkimmedNoteSwapsPanes covers the PO's first review finding:
+// e, E, u, Ctrl-r and o (all behind subjectOpen) had the same hole the
+// split-focus bugfix cured for l/→/Enter — the cursor landing back on the
+// split's own note and pressing e used to call showNote on it, discarding
+// the reference note. subjectOpen now swaps panes first, same as openRow.
+func TestEditingTheSkimmedNoteSwapsPanes(t *testing.T) {
+	m := newTestModel(t)
+	m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
+	press(m, "G")     // Welcome.md is the reference, in the main pane
+	press(m, "k")     // Templates/
+	press(m, "k")     // Filosofi/
+	press(m, "l")     // opens Filosofi/, cursor stays
+	press(m, "alt+j") // onto Antik/, a folder: moves only
+	press(m, "alt+j") // onto Stoic.md: the split opens on it
+	if m.split == nil || m.split.path != "Filosofi/Stoic.md" {
+		t.Fatalf("split = %+v, want Filosofi/Stoic.md open beside", m.split)
+	}
+	press(m, "e") // cursor is still on Stoic.md, the split's own note
+	if m.notePath != "Filosofi/Stoic.md" || m.editor == nil {
+		t.Fatalf("open %q, editor set %v: e should edit the split's note", m.notePath, m.editor != nil)
+	}
+	if m.split == nil || m.split.path != "Welcome.md" {
+		t.Fatalf("split = %+v: the reference note should have moved there, not been dropped", m.split)
+	}
+}
+
+// TestOutlineOfTheSkimmedNoteSwapsPanes is the same guard for o.
+func TestOutlineOfTheSkimmedNoteSwapsPanes(t *testing.T) {
+	m := newTestModel(t)
+	m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
+	press(m, "G")     // Welcome.md is the reference
+	press(m, "k")     // Templates/
+	press(m, "k")     // Filosofi/
+	press(m, "l")     // opens Filosofi/, cursor stays
+	press(m, "alt+j") // onto Antik/, a folder: moves only
+	press(m, "alt+j") // onto Stoic.md: the split opens on it
+	press(m, "o")     // cursor is still on Stoic.md, the split's own note
+	if m.notePath != "Filosofi/Stoic.md" {
+		t.Fatalf("open %q: o should focus the split's note", m.notePath)
+	}
+	if m.split == nil || m.split.path != "Welcome.md" {
+		t.Fatalf("split = %+v: the reference note should have moved there, not been dropped", m.split)
 	}
 }

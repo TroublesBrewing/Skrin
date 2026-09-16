@@ -32,6 +32,9 @@ func (m *Model) render() string {
 	if m.zen {
 		out = m.zenView()
 	}
+	if m.book != nil {
+		out = m.overlay(out, m.bookCardBox())
+	}
 	switch {
 	case m.chooser != nil:
 		out = m.overlay(out, m.chooserBox())

@@ -75,6 +75,9 @@ type Options struct {
 	Session session.State
 	// Assistant sets up the Claude drawer.
 	Assistant AssistantOptions
+	// Library sets up the Book Card (B): folders, default status and the
+	// metadata/cover lookups it makes.
+	Library LibraryOptions
 	// Now is the clock; tests pin it.
 	Now func() time.Time
 }
@@ -132,6 +135,7 @@ type Model struct {
 	chooser *chooser
 	search  *searchPanel
 	manual  *manual
+	book    *bookCard
 
 	lastSearch *searchPanel // reopened by the next /
 
@@ -229,6 +233,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = m.listen()
 	case externalDoneMsg:
 		m.externalDone(msg)
+	case bookLookupMsg:
+		m.bookLookupDone(msg)
+	case bookSaveMsg:
+		m.finishBookSave(msg)
 	case tea.PasteMsg:
 		m.paste(msg.Content)
 	case tea.KeyPressMsg:
@@ -257,6 +265,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.promptKey(msg)
 		case m.chooser != nil:
 			m.chooserKey(msg)
+		case m.book != nil:
+			cmd = m.bookCardKey(msg)
 		case m.search != nil:
 			m.searchKey(msg)
 		default:
@@ -329,6 +339,8 @@ func (m *Model) do(a action) tea.Cmd {
 		m.undoOp()
 	case actDaily:
 		m.openDaily()
+	case actNewBook:
+		m.openBookCard()
 	case actEscape:
 		switch {
 		case m.noteSel != nil:
@@ -344,6 +356,8 @@ func (m *Model) do(a action) tea.Cmd {
 		m.shiftItem(a == actOrderDown)
 	case actSkimDown, actSkimUp:
 		m.skimSplit(a == actSkimDown)
+	case actFolderJumpUp, actFolderJumpDown:
+		m.folderJump(a == actFolderJumpDown)
 	case actOrderReset:
 		m.resetLevel()
 	case actZen:
@@ -401,9 +415,13 @@ func (m *Model) filesAction(a action) {
 	case actOpen:
 		m.openRow()
 	case actRight:
-		m.visual = nil // the rows are about to change under the range
-		if !f.in() {
+		m.visual = nil // the rows may change under the range
+		isDir, alreadyOpen := f.openFolder()
+		switch {
+		case !isDir:
 			m.openRow()
+		case alreadyOpen:
+			m.flash = "Already open — Enter toggles it closed"
 		}
 	case actLeft:
 		m.visual = nil
@@ -419,6 +437,8 @@ func (m *Model) filesAction(a action) {
 		m.toggleVisual()
 	case actMarkAll:
 		m.markAll()
+	case actPaneRight:
+		m.focusSplit()
 	default:
 		if c := step(f.cur, len(f.rows), a, m.layout().bodyH-2); c != f.cur {
 			f.cur = c
@@ -429,8 +449,44 @@ func (m *Model) filesAction(a action) {
 	}
 }
 
+// focusSplit is Shift+→ from Files: the "done browsing, now look at what I
+// skimmed beside" step the skim flash promises. It swaps the split's note
+// into focus — the same swap openRow does when the cursor lands back on the
+// split's own note — so the note you skimmed to becomes the interactive
+// one, not just whichever happens to render on the right. With no split,
+// it's a no-op; there is nothing to Files' own left to focus, so Shift+←
+// from Files stays unhandled.
+func (m *Model) focusSplit() {
+	if m.split != nil {
+		m.swapPanes()
+		m.focus = paneNote
+	}
+}
+
+// folderJump is Ctrl+↑/↓: the cursor moves to the previous/next folder row
+// among the visible rows, wherever the cursor starts. Silent on success
+// (a cursor move, nothing more); loud on refusal, like the arrange keys.
+func (m *Model) folderJump(down bool) {
+	if !m.inFiles("jump between folders") {
+		return
+	}
+	switch m.files.folderJump(down) {
+	case folderJumpEdge:
+		edge := "top"
+		if down {
+			edge = "bottom"
+		}
+		m.flash = "Already at the tree's " + edge
+	case folderJumpNone:
+		m.flash = "No folders to jump to"
+	}
+}
+
 // openRow is Enter in Files: a folder opens or closes, a note (already open
 // under the cursor) gets the focus, and any other file opens in its own app.
+// A note that's already showing in the split pane gets the focus there
+// instead of being reopened into the main pane — the same courtesy peek
+// gives j/k, so the reference note is never quietly discarded.
 func (m *Model) openRow() {
 	e := m.files.selected()
 	switch {
@@ -438,7 +494,10 @@ func (m *Model) openRow() {
 		m.visual = nil
 		m.files.toggle()
 	case vault.IsNote(e.Name):
-		if e.Rel != m.notePath {
+		switch {
+		case m.split != nil && e.Rel == m.split.path:
+			m.swapPanes()
+		case e.Rel != m.notePath:
 			m.showNote(e.Rel)
 		}
 		m.focus = paneNote

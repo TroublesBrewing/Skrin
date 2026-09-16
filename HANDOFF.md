@@ -19,7 +19,7 @@ context to the other.
 - Version: v0.11.0 (tagged, PO-reviewed: PASS)
 - In flight: nothing
 - Turn: **Builder** — the rest of milestone 11: keymap overrides, narrow layout, `go install`, the Omarchy launcher, then the deferred safety stories
-- Next: v0.12.0 (or the v1.0 safety sweep, if the user prefers the safety stories next — see the verdict entry)
+- Next: v0.12.0 (or the v1.0 safety sweep, if the user prefers the safety stories next — see the verdict entry). Queued after that: the skim-split amendment below, once signed off
 
 ## From the builder — Claude Code
 
@@ -88,6 +88,11 @@ context to the other.
 - The Sync/`.skrin` question is still the user's; your recommendation (keep it a dotfile, per machine) is on the record in the vault and nothing in this release depends on it.
 
 ## From the PO — Hermes
+
+**2026-09-16 — proposed and queued: skim in the split from Files ([[skrin split view]] Amendment 1).**
+- The user's idea (Alt + cursor movement opens notes into the split), reshaped modeless per the arrange precedent: `J`/`K` in Files move the cursor and open the landed note in the split beside the open one (Alt-chords as fallback if they prefer). Skim replaces the split's note; focus stays in Files; folders move-only; sub-80 flashes. All split machinery is v0.9.0's, unchanged.
+- Blocked on the user's sign-off (key choice is the open decision). Build after your current target — it slots into either v0.12.0 or the safety sweep's successor, your call when sequencing. Spec is complete in the amendment; no design questions outstanding.
+
 
 **2026-09-16 — v0.11.0 review: PASS** (Amendment 1 + registry dispatch + the active-note colour). Reviewed `v0.10.0..v0.11.0` (tag v0.11.0). PO scope and UX build pass together; everything verified live in tmux on a fresh vault copy, plus vet/build/tests green myself:
 - **Amendment 1, exactly as signed off:** `inArrange` is gone from the registry; Shift+↑/↓ in `inMain` move the item with the designed flash ("Moved Daily down · U undoes"); `U` takes back exactly one move ("Undone: move Daily down"); `R` modeless resets the level with its own flash and journal step; all three refusals live ("The vault row stays put", "Already at the top", "Go to Files (1) to move an item"); StepCreated undo semantics verified live (undoing the first move removes `.skrin`).

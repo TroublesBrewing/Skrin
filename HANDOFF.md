@@ -19,7 +19,7 @@ context to the other.
 - Version: v0.10.0 (tagged, PO-reviewed: PASS)
 - In flight: nothing
 - Turn: **User** — Sync/`.skrin` decision, and Amendment 1 sign-off (modeless arranging) below
-- Next: v0.11.0: Amendment 1 (modeless arranging, per [[skrin arrange]]) + polish — registry dispatch first, then keymap overrides, narrow layout, `go install`, launcher, deferred safety stories
+- Next: v0.11.0: Amendment 1 (modeless arranging, per [[skrin arrange]]) + polish — registry dispatch first, then keymap overrides, narrow layout, `go install`, launcher, deferred safety stories; **plus the active-note color bug fix** ([[skrin backlog]] top story, UX ruling there: `open` → Orange in `styles.go` + a collision-guard test)
 
 ## From the builder — Claude Code
 
@@ -74,7 +74,7 @@ context to the other.
 
 ## From the PO — Hermes
 
-**2026-09-16 — Amendment 1 proposed: modeless arranging, retiring the arrange mode.**
+**2026-09-16 — Amendment 1 proposed: modeless arranging, retiring the arrange mode.** *(Later same day: the active-note color story at the top of [[skrin backlog]] is confirmed a theme-collision bug — gruvbox's `accent` == `blue` — with the fix ruling written into the story. Fold into v0.11.0 as a bug fix; it's one line plus a test.)*
 - The user proposed it after a day of use: Shift+↑/↓ in Files moves the item under the cursor, no mode. The UX engineer endorsed (grammar analysis in [[skrin arrange]] Amendment 1): Shift+↑/↓ is free in Files, Shift-as-intensifier is the charter's modifier rule, and per-move flash + one-`U` undo satisfies "no silent anything" without a consent ceremony.
 - Build scope for v0.11.0: retire the `inArrange` context; bind Shift+↑/↓ in `inMain` with per-move journal steps and flashes; `R` goes modeless (reset the cursor's level, flash + step); two refusal messages (vault row, level edges); move `TestNoKeyMeansTwoThingsInOneContext` to `keys_test.go` while you're in there. All `.skrin` safety rules carry over unchanged.
 - Blocked on the user's sign-off box in the amendment. Fold into v0.11.0 with the polish work — registry dispatch first, per the standing answer.

@@ -18,8 +18,8 @@ context to the other.
 
 - Version: v0.10.0 (tagged, PO-reviewed: PASS)
 - In flight: nothing
-- Turn: **User** — one product decision below (Sync and `.skrin`), then v0.11.0 polish
-- Next: v0.11.0 polish, starting with the editor and search panel dispatching through the registry; then keymap overrides, narrow layout, `go install`, launcher, and the deferred safety stories
+- Turn: **User** — Sync/`.skrin` decision, and Amendment 1 sign-off (modeless arranging) below
+- Next: v0.11.0: Amendment 1 (modeless arranging, per [[skrin arrange]]) + polish — registry dispatch first, then keymap overrides, narrow layout, `go install`, launcher, deferred safety stories
 
 ## From the builder — Claude Code
 
@@ -73,6 +73,12 @@ context to the other.
 - Verified: `go vet` and every test, the new Esc-order test included.
 
 ## From the PO — Hermes
+
+**2026-09-16 — Amendment 1 proposed: modeless arranging, retiring the arrange mode.**
+- The user proposed it after a day of use: Shift+↑/↓ in Files moves the item under the cursor, no mode. The UX engineer endorsed (grammar analysis in [[skrin arrange]] Amendment 1): Shift+↑/↓ is free in Files, Shift-as-intensifier is the charter's modifier rule, and per-move flash + one-`U` undo satisfies "no silent anything" without a consent ceremony.
+- Build scope for v0.11.0: retire the `inArrange` context; bind Shift+↑/↓ in `inMain` with per-move journal steps and flashes; `R` goes modeless (reset the cursor's level, flash + step); two refusal messages (vault row, level edges); move `TestNoKeyMeansTwoThingsInOneContext` to `keys_test.go` while you're in there. All `.skrin` safety rules carry over unchanged.
+- Blocked on the user's sign-off box in the amendment. Fold into v0.11.0 with the polish work — registry dispatch first, per the standing answer.
+
 
 **2026-09-16 — v0.10.0 review: PASS** (arrange mode + the UX should-fixes). Reviewed `v0.9.0..v0.10.0` (tag v0.10.0), PO scope + UX build pass together, everything live-verified in tmux on a fresh vault copy:
 - Arrange: `A` enters with a loud mode line (ARRANGE + level + key hints), `J`/`K` move within the level, `R` resets, paused file keys flash the designed message, and the session is one journal step — one `U` deleted the new `.skrin` outright (StepCreated semantics) or restored its previous content (StepModified). Both verified by doing them.

@@ -136,6 +136,7 @@ type Model struct {
 	search  *searchPanel
 	manual  *manual
 	book    *bookCard
+	habits  *habitView
 
 	lastSearch *searchPanel // reopened by the next /
 
@@ -267,6 +268,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.chooserKey(msg)
 		case m.book != nil:
 			cmd = m.bookCardKey(msg)
+		case m.habits != nil:
+			m.habitKey(msg)
 		case m.search != nil:
 			m.searchKey(msg)
 		default:
@@ -341,6 +344,8 @@ func (m *Model) do(a action) tea.Cmd {
 		m.openDaily()
 	case actNewBook:
 		m.openBookCard()
+	case actHabits:
+		m.openHabits()
 	case actEscape:
 		switch {
 		case m.noteSel != nil:

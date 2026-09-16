@@ -83,6 +83,8 @@ const (
 	actSaveBook
 	actFolderJumpUp // Ctrl+↑/↓: cursor to the previous/next folder row
 	actFolderJumpDown
+	actHabits   // T: the habits overlay
+	actHabitTab // H inside it: today → this week → this month
 )
 
 // Contexts say where a binding works. Each gets its own keymap, built from
@@ -100,6 +102,7 @@ const (
 	inManual   = "manual"
 	inComplete = "complete" // the [[ popup in the editor
 	inBookCard = "bookcard" // the B card: bibliographic fields, quotes, notes
+	inHabits   = "habits"   // the T overlay: today's list, the week and month grids
 )
 
 // binding is one row of the keymap registry. Every key Skrin handles is
@@ -133,6 +136,7 @@ const (
 	groupManual   = "In this manual"
 	groupComplete = "In link completion ([[)"
 	groupBookCard = "In the Book Card (B)"
+	groupHabits   = "In the habits view (T)"
 )
 
 var defaultBindings = []binding{
@@ -168,6 +172,7 @@ var defaultBindings = []binding{
 	{actEscape, []string{"esc"}, "clear marks · split: close the pane you're in · zen: leave it", groupFiles, inMain},
 	{actUndoOp, []string{"U"}, "undo the last file operation", groupFiles, inMain},
 	{actDaily, []string{"t"}, "open or create today's daily note", groupFiles, inMain},
+	{actHabits, []string{"T"}, "habits: today's list, and the week/month grids", groupFiles, inMain},
 	{actNewBook, []string{"B"}, "Book Card: catalogue a book, or edit the open book note", groupFiles, inMain},
 	{actOrderUp, []string{"shift+up"}, "move the item under the cursor up its level", groupFiles, inMain},
 	{actOrderDown, []string{"shift+down"}, "move it down its level", groupFiles, inMain},
@@ -280,6 +285,15 @@ var defaultBindings = []binding{
 	{actNone, []string{"home", "g", "G", "end"}, "top / bottom", groupManual, inManual},
 	{actNone, []string{"/"}, "filter the manual", groupManual, inManual},
 	{actNone, []string{"esc", "?", "q"}, "clear the filter, then close", groupManual, inManual},
+
+	{actUp, []string{"k", "up"}, "up a habit (grid: up a row)", groupHabits, inHabits},
+	{actDown, []string{"j", "down"}, "down a habit (grid: down a row)", groupHabits, inHabits},
+	{actLeft, []string{"h", "left"}, "grid: left a day · today: nothing to the left", groupHabits, inHabits},
+	{actRight, []string{"l", "right"}, "grid: right a day · today: over to the note", groupHabits, inHabits},
+	{actMark, []string{"space"}, "tick / untick the habit under the cursor", groupHabits, inHabits},
+	{actHabitTab, []string{"H"}, "today → this week → this month → today", groupHabits, inHabits},
+	{actUndoOp, []string{"U"}, "undo the last tick you made from here", groupHabits, inHabits},
+	{actCancel, []string{"esc", "ctrl+c"}, "close the habits view", groupHabits, inHabits},
 }
 
 // keymaps is each context's keymap: key → action.

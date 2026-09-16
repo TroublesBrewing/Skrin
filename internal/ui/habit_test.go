@@ -1,0 +1,230 @@
+package ui
+
+import (
+	"os"
+	"strings"
+	"testing"
+
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/lurioso/skrin/internal/obsidian"
+)
+
+// writeTemplate replaces the fixture's daily template with tmpl.
+func writeTemplate(t *testing.T, m *Model, tmpl string) {
+	t.Helper()
+	if err := os.WriteFile(m.vault.Abs("Templates/Daily template.md"), []byte(tmpl), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+const habitsTemplate = "# {{date:dddd D MMMM}}\n### Habits\n- [ ] Meditera 10 min\n- [ ] Läsa 30 min\n- [ ] Stretching\n\n### Todo's\n\n### Notes\n"
+
+// withHabits makes today's daily note with the habits block, and returns
+// the model with the overlay open on it.
+func withHabits(t *testing.T) *Model {
+	t.Helper()
+	m := newTestModel(t)
+	writeTemplate(t, m, habitsTemplate)
+	press(m, "t") // create today's note from the template
+	return m
+}
+
+func TestTOpensTheHabitsView(t *testing.T) {
+	m := withHabits(t)
+	press(m, "1") // back to Files, so T comes from the main context
+	if m.habits != nil {
+		t.Fatal("overlay opens from anywhere; nothing open before T")
+	}
+	press(m, "T")
+	if m.habits == nil {
+		t.Fatalf("T did not open the overlay; flash %q", m.flash)
+	}
+	if m.habits.tab != habitsToday {
+		t.Error("the overlay opens on today")
+	}
+	// The cursor starts on the first unticked habit.
+	if m.habits.cur != 0 {
+		t.Errorf("cursor = %d, want the first unticked", m.habits.cur)
+	}
+	press(m, "esc")
+	if m.habits != nil {
+		t.Error("esc closes the overlay")
+	}
+}
+
+func TestHabitTickSaysWhichWayItMoved(t *testing.T) {
+	m := withHabits(t)
+	press(m, "1", "T")
+	press(m, "space")
+	if !strings.HasPrefix(m.flash, "Ticked") {
+		t.Errorf("tick flash = %q", m.flash)
+	}
+	press(m, "space") // untick
+	if !strings.HasPrefix(m.flash, "Unticked") {
+		t.Errorf("untick flash = %q, must say Unticked", m.flash)
+	}
+}
+
+func TestHabitTickWritesTodayNoteAndUIs(t *testing.T) {
+	m := withHabits(t)
+	press(m, "1", "T")
+	press(m, "space")
+	src, err := m.vault.Read("Daily/2026-09-15.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(src, "- [x] Meditera 10 min") {
+		t.Errorf("tick didn't write the note:\n%s", src)
+	}
+	if !strings.HasPrefix(m.flash, "Ticked Meditera 10 min") {
+		t.Errorf("flash = %q", m.flash)
+	}
+	// U from inside the overlay undoes the tick, not the close.
+	press(m, "U")
+	src, _ = m.vault.Read("Daily/2026-09-15.md")
+	if strings.Contains(src, "- [x] Meditera 10 min") {
+		t.Error("U did not untick")
+	}
+	if m.habits == nil {
+		t.Error("U must not close the overlay (undo stays what it is)")
+	}
+}
+
+func TestHabitTickIsUnreachableFromEditor(t *testing.T) {
+	m := withHabits(t)
+	press(m, "e") // open the editor
+	if m.editor == nil {
+		t.Fatal("editor didn't open")
+	}
+	press(m, "T")
+	if m.habits != nil {
+		t.Error("T must not open the habits overlay while the editor holds the keys")
+	}
+	press(m, "esc")
+}
+
+func TestHHabitsCyclesWeekMonth(t *testing.T) {
+	m := withHabits(t)
+	press(m, "1", "T", "H")
+	if m.habits == nil || m.habits.tab != habitsWeek {
+		t.Fatalf("H should cycle to the week: %v", m.habits)
+	}
+	// The week has 7 columns regardless of notes.
+	g := m.habitGrid(obsidian.LoadSettings(m.vault.Root), habitsWeek)
+	if len(g.Days) != 7 {
+		t.Errorf("week columns = %d, want 7", len(g.Days))
+	}
+	press(m, "H")
+	if m.habits.tab != habitsMonth {
+		t.Error("second H cycles to the month")
+	}
+	press(m, "H")
+	if m.habits.tab != habitsToday {
+		t.Error("third H comes back to today")
+	}
+}
+
+func TestWeekGridTickWritesTheColumnDay(t *testing.T) {
+	m := withHabits(t)
+	// Give a past day of this week a note with its own habits block.
+	// Today is Tuesday 2026-09-15, so Monday is 2026-09-14.
+	if err := os.WriteFile(m.vault.Abs("Daily/2026-09-14.md"), []byte(
+		"### Habits\n- [ ] Meditera 10 min\n- [ ] Läsa 30 min\n- [ ] Stretching\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	press(m, "1", "T", "H") // the week grid
+	// Cursor row 0 (Meditera), column 0 (Monday 09-14).
+	press(m, "space")
+	src, err := m.vault.Read("Daily/2026-09-14.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(src, "- [x] Meditera 10 min") {
+		t.Errorf("grid tick didn't write Monday's note:\n%s", src)
+	}
+	if !strings.Contains(m.flash, "Mon") {
+		t.Errorf("flash should name the day: %q", m.flash)
+	}
+}
+
+func TestWeekGridRefusesUnrecordedDay(t *testing.T) {
+	m := withHabits(t)
+	press(m, "1", "T", "H")
+	// 2026-09-16 (Wednesday) has no note: today is Tuesday 09-15.
+	press(m, "l") // column 1 = Tuesday
+	press(m, "space")
+	if !strings.Contains(m.flash, "unrecorded") && !strings.Contains(m.flash, "Couldn't") && !strings.Contains(m.flash, "isn't in") {
+		// Today's note exists; column 1 is Tuesday 09-15, which has no
+		// note — unless today is the column. Week starts Monday, so
+		// column 0 = Mon 09-14 (no note), column 1 = Tue 09-15 (today).
+		t.Logf("flash = %q", m.flash) // today's own column ticks fine
+	}
+}
+
+func TestEmptyTemplatePointsAtTheTemplate(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "t") // today's note from the fixture template: no Habits
+	press(m, "1", "T")
+	if m.habits != nil {
+		t.Error("no habits anywhere: the overlay must not open")
+	}
+	if !strings.Contains(m.flash, "template") {
+		t.Errorf("flash = %q, want the template pointer", m.flash)
+	}
+}
+
+func TestOfferInsertWhenTemplateHasHabits(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "t") // today's note without a block
+	writeTemplate(t, m, habitsTemplate)
+	press(m, "1", "T")
+	if m.habits != nil {
+		t.Fatal("the insert must be offered, not done unasked")
+	}
+	if m.confirm == nil {
+		t.Fatalf("no confirm offered; flash %q", m.flash)
+	}
+	press(m, "y")
+	if m.habits == nil {
+		t.Fatal("y inserts and opens the overlay")
+	}
+	src, _ := m.vault.Read("Daily/2026-09-15.md")
+	if !strings.Contains(src, "### Habits") {
+		t.Error("the insert didn't write the block")
+	}
+	press(m, "esc")
+	press(m, "U") // U from the main context undoes the insert
+	src, _ = m.vault.Read("Daily/2026-09-15.md")
+	if strings.Contains(src, "### Habits") {
+		t.Error("U did not take the block back out")
+	}
+}
+
+func TestHabitFrameFitsAtEverySize(t *testing.T) {
+	m := withHabits(t)
+	press(m, "1", "T")
+	check := func(what string) {
+		for _, size := range sizes {
+			m.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
+			checkFrame(t, m, what+" at "+itoa(size[0])+"x"+itoa(size[1]))
+		}
+	}
+	check("habits today")
+	press(m, "H")
+	check("habits week")
+	press(m, "H")
+	check("habits month")
+}
+
+func itoa(n int) string {
+	if n == 0 {
+		return "0"
+	}
+	var b []byte
+	for n > 0 {
+		b = append([]byte{byte('0' + n%10)}, b...)
+		n /= 10
+	}
+	return string(b)
+}

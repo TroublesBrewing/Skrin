@@ -35,6 +35,9 @@ func (m *Model) render() string {
 	if m.book != nil {
 		out = m.overlay(out, m.bookCardBox())
 	}
+	if m.habits != nil {
+		out = m.overlay(out, m.habitsBox())
+	}
 	switch {
 	case m.chooser != nil:
 		out = m.overlay(out, m.chooserBox())

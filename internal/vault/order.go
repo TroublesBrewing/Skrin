@@ -9,10 +9,31 @@ import (
 )
 
 // OrderFile holds the manual order of Files levels. It sits at the vault
-// root, so it travels with the vault, and it's hidden, so neither Skrin nor
-// Obsidian lists it. Deleting it puts every level back in the default
-// order.
-const OrderFile = ".skrin"
+// root, not as a dotfile, so sync transports that skip dotfiles (Obsidian
+// Sync among them) carry it like any other vault file — the order follows
+// the vault, not the machine. Skrin still hides it from the tree by name
+// (see the OrderFile checks in vault.go), and it's not a type Obsidian's
+// own explorer shows by default either. Deleting it puts every level back
+// in the default order.
+const OrderFile = "skrin.json"
+
+// legacyOrderFile is the old, per-machine name: a dotfile, so it never
+// synced. migrateOrderFile renames it to OrderFile on first open.
+const legacyOrderFile = ".skrin"
+
+// migrateOrderFile moves the order from its old dotfile name to the new,
+// syncable one: silently, with no journal step, since the content doesn't
+// change and the old name was the old design's accident, not the user's.
+// If skrin.json already exists, it wins and .skrin is left alone.
+func (v *Vault) migrateOrderFile() {
+	if _, err := os.Stat(v.Abs(OrderFile)); err == nil {
+		return // the new name already exists: it wins
+	}
+	if _, err := os.Stat(v.Abs(legacyOrderFile)); err != nil {
+		return // nothing to migrate
+	}
+	_ = os.Rename(v.Abs(legacyOrderFile), v.Abs(OrderFile))
+}
 
 // Order is the manual order of Files levels: for each ordered folder
 // (vault-relative, "" for the root), its children's names in order. A

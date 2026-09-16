@@ -37,12 +37,14 @@ func Open(root string) (*Vault, error) {
 	}
 	fi, err := os.Stat(abs)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("can't open the vault at %s: %w", abs, err)
 	}
 	if !fi.IsDir() {
 		return nil, fmt.Errorf("%s is not a directory", abs)
 	}
-	return &Vault{Root: abs}, nil
+	v := &Vault{Root: abs}
+	v.migrateOrderFile()
+	return v, nil
 }
 
 // Name is the vault's folder name, which is what Obsidian calls it too.
@@ -122,7 +124,7 @@ func (v *Vault) walk(fn func(rel string, d fs.DirEntry)) error {
 			return nil
 		}
 		rel := v.rel(p)
-		if rel != "" && Hidden(d.Name()) {
+		if rel != "" && (Hidden(d.Name()) || rel == OrderFile) {
 			if d.IsDir() {
 				return filepath.SkipDir
 			}
@@ -142,7 +144,7 @@ func (v *Vault) List(rel string) ([]Entry, error) {
 	}
 	entries := make([]Entry, 0, len(des))
 	for _, d := range des {
-		if Hidden(d.Name()) {
+		if Hidden(d.Name()) || (rel == "" && d.Name() == OrderFile) {
 			continue
 		}
 		e := Entry{Name: d.Name(), Rel: path.Join(rel, d.Name()), IsDir: d.IsDir()}

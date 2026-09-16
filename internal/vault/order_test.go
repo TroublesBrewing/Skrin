@@ -2,6 +2,7 @@ package vault
 
 import (
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -10,7 +11,7 @@ import (
 func TestLoadOrderAndItsFallbacks(t *testing.T) {
 	v := makeVault(t, "Welcome.md")
 	if o := v.LoadOrder(); len(o) != 0 {
-		t.Errorf("no .skrin should mean no order: %v", o)
+		t.Errorf("no skrin.json should mean no order: %v", o)
 	}
 	if err := os.WriteFile(v.Abs(OrderFile), []byte(`{"Filosofi/": ["b.md", "a"], "/": ["z.md"]}`), 0o644); err != nil {
 		t.Fatal(err)
@@ -24,8 +25,51 @@ func TestLoadOrderAndItsFallbacks(t *testing.T) {
 			t.Fatal(err)
 		}
 		if o := v.LoadOrder(); len(o) != 0 {
-			t.Errorf("a broken .skrin (%s) should mean no order: %v", bad, o)
+			t.Errorf("a broken skrin.json (%s) should mean no order: %v", bad, o)
 		}
+	}
+}
+
+// TestMigratesTheOldDotfileOrderOnOpen is Amendment 2: opening a vault that
+// still has the old per-machine .skrin, and no skrin.json yet, renames it
+// silently so the order starts following the vault through sync.
+func TestMigratesTheOldDotfileOrderOnOpen(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, legacyOrderFile), []byte(`{"/": ["z.md"]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	v, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(v.Abs(legacyOrderFile)); err == nil {
+		t.Error(".skrin should be gone after migrating")
+	}
+	if o := v.LoadOrder(); !reflect.DeepEqual(o, Order{"": {"z.md"}}) {
+		t.Errorf("the migrated order should read back the same: %v", o)
+	}
+}
+
+// TestNewOrderFileWinsOverTheOldOneOnOpen: if both names exist (an old vault
+// copy, say, alongside a fresh one already arranged), skrin.json wins and
+// .skrin is left alone rather than overwritten or merged.
+func TestNewOrderFileWinsOverTheOldOneOnOpen(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, legacyOrderFile), []byte(`{"/": ["old.md"]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, OrderFile), []byte(`{"/": ["new.md"]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	v, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(v.Abs(legacyOrderFile)); err != nil {
+		t.Error(".skrin should be left alone when skrin.json already exists")
+	}
+	if o := v.LoadOrder(); !reflect.DeepEqual(o, Order{"": {"new.md"}}) {
+		t.Errorf("skrin.json should win: %v", o)
 	}
 }
 

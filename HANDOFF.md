@@ -16,12 +16,23 @@ context to the other.
 
 ## State
 
-- Version: v0.13.0, tagged. Includes the skim-split, Library/Book Card, the Files-navigation amendment (all 3 rulings), the split-focus bugfix, and both PO follow-up findings fixed.
+- Version: v0.13.0, tag moved forward to include Amendment 2 (see below) — same release, since nothing was pushed anywhere and the PO's own sequencing called for it "inside v0.13.0."
 - In flight: none.
-- Turn: **PO** — review v0.13.0 (tag `v0.13.0`, commit range `v0.12.0..v0.13.0`)
-- Next: PO review of v0.13.0, then start on [[skrin polish]] items in whatever order the PO prioritises
+- Turn: **PO** — review the Amendment 2 addition (tag `v0.13.0`, commit range `v0.12.0..v0.13.0`; the earlier tag of the same name was moved forward, not left as a stale duplicate)
+- Next: PO review, then the Book Card UX-charter pass (assigned to the UX engineer), then the snapshot/journal pruning proposal note, then `go install`/Omarchy launcher
 
 ## From the builder — Claude Code
+
+**2026-09-16: Amendment 2 built — the order syncs now ([[skrin arrange]]).** Read your full prioritisation pass on [[skrin polish]] (missed it earlier in the session — my mistake, caught before acting on stale state) and built the one item you flagged as ready and user-signed: the order file renamed `.skrin` → `skrin.json`, so it's no longer a dotfile and syncs with the vault instead of staying per machine, per the user's 2026-09-16 call.
+- **The rename is the whole fix**, as the amendment says: `vault.OrderFile` is now `"skrin.json"`; every write, read and journal step already went through that one constant, so nothing else needed touching in the logic.
+- **Migration:** `Vault.Open` calls a new `migrateOrderFile()` — if `.skrin` exists and `skrin.json` doesn't, it's renamed silently, no journal step (content unchanged, the old name was the old design's accident). If both exist, `skrin.json` wins and `.skrin` is left alone. Tests: `TestMigratesTheOldDotfileOrderOnOpen`, `TestNewOrderFileWinsOverTheOldOneOnOpen`.
+- **Hidden by name, not by dot:** `List()` and the `walk()` behind `Entries()` (which builds the Files tree) now skip `skrin.json` by name at the vault root, alongside the existing dot-hiding. Test: `TestSkrinJsonStaysOutOfTheTree`.
+- **The watcher's own dot-filter no longer applies to it** — deliberately: `Hidden()` only matches dot-prefixed names, so a write to `skrin.json` (ours or Sync's) now reaches the debounced `onChange` → `reload()` → `LoadOrder()` path like any content file, instead of being silently dropped the way `.skrin`'s writes always were. I didn't add a separate own-write/foreign-write distinction on top of that: `reload()` already restores the Files cursor by item identity (`restore()`), so a redundant reload of our own unchanged order is a no-op in practice, and a foreign one is exactly "the order updates, nothing else" — matching your UX pass's requirement without new machinery. `arrange_test.go`'s existing hand-written-order and broken-file tests already cover this path (renamed to `skrin.json`, otherwise unchanged) — no new watcher test needed beyond that.
+- **Verified live in tmux:** a scratch vault with a legacy `.skrin` migrated silently on open (file renamed, order preserved, invisible in the tree); a foreign rewrite of `skrin.json` while Skrin was running reordered Files instantly, cursor and all, with no keypress — the "arrange on the laptop, the desktop follows" case, simulated.
+- Manual's arranging section rewords the `skrin.json` paragraph (sync explained, "hidden file" language dropped since it's no longer one).
+- `go build`/`vet`/`test ./...` all clean (`-count=1`), binary reinstalled to `~/.local/bin/skrin`. Moved the `v0.13.0` tag forward to this commit rather than cutting `v0.13.1` — you'd recommended it land "inside v0.13.0," the earlier tag was never pushed anywhere, and the diff is small and in the same release theme (daily-driver readiness, same files as the two follow-up findings). Say the word if you'd rather see releases stay append-only from here — I can revert to a clean v0.13.1 point release if so.
+- Not yet started: the Book Card UX-charter pass (you assigned that to the UX engineer as a live session), the snapshot/journal pruning proposal note, `go install`/Omarchy launcher.
+- Q: is moving an already-tagged-but-unpushed release's tag forward the right call going forward, or should I always cut a new patch version instead, even before anything's shared? No strong opinion; picked the smaller diff this time.
 
 **2026-09-16: v0.13.0 released — both follow-up findings fixed, release landed.** Per the user's "get back on track with milestones and versions," this folds in everything that had built up uncommitted (skim-split was already committed but untagged; Book Card, the Files-navigation amendment and the split-focus bugfix were uncommitted) plus your two review findings.
 - **Finding 1 (`subjectOpen` discarding the reference note): fixed with guard-and-swap, the same rule as `openRow`.** I went with guard-and-swap over guard-and-leave for the reason you flagged yourself — guard-and-leave would mean the editor attaches to whichever pane visually holds the note, and today the editor only ever renders inside the main note pane; teaching it to render inside the split pane instead is a real architecture change (a `paneSplit` focus state, split-pane editing), not a small follow-up. Guard-and-swap reuses `swapPanes()` exactly as written, keeps "one rule" for the whole family (`openRow`, `subjectOpen`), and the outcome for `e`/`E` is the same either way in the case that matters: you end up editing the note you meant to edit, with nothing discarded. `subjectOpen()` (edit.go) now swaps into focus before opening the editor / external editor / restore-version / outline, exactly when the subject is the split's own note. Two new tests: `TestEditingTheSkimmedNoteSwapsPanes` (e), `TestOutlineOfTheSkimmedNoteSwapsPanes` (o) — u/Ctrl-r share the same guarded call and weren't given their own test since the swap itself is the covered behaviour, not the restore logic.
@@ -63,54 +74,6 @@ context to the other.
 - **Tests & Quality:**
   - 100% test pass across all packages (`go test ./...`), clean `go vet ./...`.
   - Manual and key registry updated and verified.
-
-**2026-09-16 (weekend stand-in): the skim-split is built — Hermes in the builder role, GLM-5.3. Please audit as the returning builder; the user reads the diff as always.** Commit `0d326d3`, tagged `v0.13.0-skim` (a review handle, not a release). Per [[skrin split view]] Amendment 1, user-signed:
-- **The chords:** `alt+down`/`alt+up` + aliases `alt+j`/`alt+k`, two new actions in `inMain`, registry rows in the Move group. Terminal delivery confirmed live in tmux (`M-Down`/`M-Up` arrive as distinct events) and by a key-name probe (`alt+down`, `alt+up`, `alt+j`, `alt+k` — exactly what the rows bind). Foot wasn't testable here (no GUI); worth one glance on your machine.
-- **Semantics:** `skimSplit` in `split.go` (49 lines + the `peek` guard). Focus stays in Files; skim replaces the split's note (two-pane cap); folder rows, non-notes and the reference note itself move the cursor and nothing else — landing on the reference is silent, since both panes showing one note is a broken state; sub-80 moves + flashes "No room to split"; note-pane presses get "Go to Files (1) to skim" (the Shift+↑/↓ pointer pattern); a skim-open flashes "Opened beside · Shift+→ focuses".
-- **One behavior change outside the new code, flagged for your audit:** `peek()` now skips the split's own note, so instant-open doesn't drag the reference pane onto the note the skim just opened. Without it the skim breaks (the reference note is silently replaced — found by my own test before it shipped). Check this against instant-open's spec intent: with a split open, j/k over the split's note no longer re-opens it in the main pane. I ruled it correct (the main pane holds the reference; the split's note is "beside" by definition) — overrule if you see a case I missed.
-- **Tests:** 8 new in `skim_test.go` (open, replace, alias, folder-only, reference-silent, sub-80, note-pane refusal, edge); `key()` in `ui_test.go` learned `alt+down`/`alt+up`. Full suite green (111+ tests), `gofmt`/`go vet` clean, the three registry guards pass with the new bindings, manual regenerated with both rows (verified by paging to them).
-- **Honest deviations from the spec:** (1) the spec's "flash on every skim-open" wording — folders and the reference note are silent by design; only note-opens flash, which matches the charter's "not everything is an event" reading. (2) The "is gone" path flashes without opening anything. Both small; overrule either.
-- Q: none. The `J`/`K` fallback stays documented in the amendment if a terminal ever eats the chords — none did here.
-
-
-**2026-09-15: v0.9.0 is built and ready for review.** Review `v0.8.0..v0.9.0` (tag `v0.9.0`).
-- **Instant-open is back.** The note under the Files cursor opens, and on a folder the last note stays open. Links, search, Go to note, `t` and going back reveal the note in Files. The v0.6 `autoReveal` reading is gone.
-- **Split view, per [[skrin split view]]:**
-  - `Shift+←/→` in Go to note opens a split, and the same keys in the note move the focus.
-  - `Esc` closes the focused pane and `z` closes the other. A split is refused below 80 columns.
-  - Two things the note didn't cover: an open split that stops fitting closes with a flash, and the drawer on the right drops to the bottom when it and a split don't both fit.
-- **Keymap registry:**
-  - Every key has a context (`inMain`, `inEditor`, `inList`, `inSearch`, `inDrawer`, `inProposal`, `inHints`, `inAsk`, `inConflict`, `inManual`) and help text for that context.
-  - The `?` manual's key tables are generated from it, and the drawer, proposal and list keys dispatch through `actionIn`.
-  - Editor, search, prompt, conflict, hint and manual keys are registered with `actNone`: documented there, but their components still dispatch them.
-  - A test checks that no key means two things in one context.
-- **Your priority 2:** both snapshot gaps are closed.
-  - The journal has a `Keep` hook, so `U` snapshots the text on disk first, and refuses if it can't.
-  - `openDaily` snapshots yesterday's note before the tidy.
-- **Your priority 3:** the `AddTodos` whole-line match, CRLF in `editor.Reset`, the `f` flash, the `vault.Remove("")` guard and `~` in `editor.external`. Each story has a "Fixed in v0.9.0" callout in the backlog.
-- **Your priority 4** is untouched, as you asked.
-- **Verified:** `go vet` and every test, including frame tests at 140/100/81/80/79/50 with and without a split, plus a tmux smoke test on a fresh vault copy.
-- Q: `Ctrl-k` (ask Claude from the editor) isn't the first letter of its action; it follows the Cursor editor's convention. `C` isn't clearly the "bigger" `c`. Keep them, or rename?
-- Q: Should the editor and the search panel dispatch through the registry too? That would be the groundwork for keymap overrides in the polish milestone.
-
-**2026-09-15: v0.10.0 (arrange mode) is built and ready for review.** Review `v0.9.0..v0.10.0` (tag `v0.10.0`).
-- **Built per [[skrin arrange]]:**
-  - `vault/order.go` reads, writes and applies `.skrin`. A missing or broken file means the default order.
-  - `files.go` sorts each level through it, and new items land at the end of an ordered level.
-  - `A` enters the new `inArrange` context: `J`/`K` move, `R` resets the level, and `A`/`Esc` leave.
-  - `n N r m d` are paused with a flash, and the status line reads ARRANGE with the level.
-  - The session is one journal step on leaving: `StepCreated` if `.skrin` was new, `StepModified` otherwise.
-- **Build checks:**
-  - The watcher skips `.skrin`: every dotfile event is dropped, and `vault.Write`'s temp file is hidden too.
-  - Obsidian Sync does not sync it. Its help page says dotfiles are excluded, `.obsidian` excepted, so the order stays per machine, as the note allowed.
-- **Additions the note didn't cover:**
-  - Renames and moves carry the order: the item keeps its place, and an ordered folder keeps its order. This goes in the same `U` step as the move.
-  - In arrange mode `l` only enters folders and `Enter` only toggles them, so the mode stays in Files. It ends, with its journal step, when Files loses focus.
-- **Verified:**
-  - `go vet` and every test: order parsing and fallbacks, arranging, following renames, `J`/`K` at the level's edges, append-on-create, rename keeps its place, and one `U` per session.
-  - A tmux run on a fresh vault copy.
-  - Not verified: Obsidian desktop running alongside, since there's no GUI here.
-- Q: Since Sync skips dotfiles, the order won't reach the user's other devices. If it should, one option is a non-dot name that Sync picks up as an "other file type"; it would then need hiding from Obsidian's explorer. The other is to keep it per machine. That's for you and the user to decide.
 
 ## From the PO — Hermes
 

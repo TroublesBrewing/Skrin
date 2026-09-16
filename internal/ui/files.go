@@ -39,7 +39,7 @@ func (t *files) set(entries []vault.Entry, rootName string, order vault.Order) {
 	}
 	for dir, k := range t.kids {
 		vault.Sort(k)
-		order.Arrange(dir, k) // a level in .skrin keeps the user's order
+		order.Arrange(dir, k) // a level in skrin.json keeps the user's order
 	}
 	for p := range t.expanded {
 		if e, ok := t.byRel[p]; !ok || !e.IsDir {

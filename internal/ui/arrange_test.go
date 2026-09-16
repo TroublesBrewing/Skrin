@@ -56,8 +56,8 @@ func TestFileKeysKeepWorkingWhileArranging(t *testing.T) {
 func TestEachMoveIsItsOwnUndoStep(t *testing.T) {
 	m := newTestModel(t)
 	press(m, "1", "j", "shift+down")
-	if !strings.Contains(read(m, ".skrin"), `"/": [`) {
-		t.Fatalf(".skrin = %q", read(m, ".skrin"))
+	if !strings.Contains(read(m, "skrin.json"), `"/": [`) {
+		t.Fatalf("skrin.json = %q", read(m, "skrin.json"))
 	}
 	press(m, "shift+down")
 	if got := level(m, ""); got != "Filosofi,Templates,Daily,Welcome.md" {
@@ -68,8 +68,8 @@ func TestEachMoveIsItsOwnUndoStep(t *testing.T) {
 		t.Errorf("U should take back the last move only: %s", got)
 	}
 	press(m, "U")
-	if got := level(m, ""); got != "Daily,Filosofi,Templates,Welcome.md" || m.vault.Exists(".skrin") {
-		t.Errorf("undoing the first move should take .skrin away again: %s", got)
+	if got := level(m, ""); got != "Daily,Filosofi,Templates,Welcome.md" || m.vault.Exists("skrin.json") {
+		t.Errorf("undoing the first move should take skrin.json away again: %s", got)
 	}
 }
 
@@ -111,18 +111,18 @@ func TestOrderKeepsThroughChangesAndResets(t *testing.T) {
 	if got := level(m, "Filosofi"); got != "Stoic.md,Antik,Aaa.md" {
 		t.Errorf("U should bring the order back after R: %s", got)
 	}
-	if err := os.WriteFile(m.vault.Abs(".skrin"), []byte(`{"Filosofi/": ["Stoic.md", "Aaa.md", "Antik"]}`), 0o644); err != nil {
+	if err := os.WriteFile(m.vault.Abs("skrin.json"), []byte(`{"Filosofi/": ["Stoic.md", "Aaa.md", "Antik"]}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	m.Update(VaultChangedMsg{})
 	if got := level(m, "Filosofi"); got != "Stoic.md,Aaa.md,Antik" {
 		t.Errorf("an order written by hand should show: %s", got)
 	}
-	if err := os.WriteFile(m.vault.Abs(".skrin"), []byte("{not json"), 0o644); err != nil {
+	if err := os.WriteFile(m.vault.Abs("skrin.json"), []byte("{not json"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	m.Update(VaultChangedMsg{})
 	if got := level(m, "Filosofi"); got != "Antik,Aaa.md,Stoic.md" {
-		t.Errorf("a broken .skrin should mean the default order: %s", got)
+		t.Errorf("a broken skrin.json should mean the default order: %s", got)
 	}
 }

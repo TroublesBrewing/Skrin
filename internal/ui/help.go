@@ -213,7 +213,7 @@ func (m *Model) manualText(w int) []manualLine {
 	head("Your own order")
 	para("In Files, Shift+↑ and Shift+↓ move the item under the cursor up and down its level. There's no mode to enter: the arrows move the cursor, and with Shift they move the thing under it. R puts the level back in the default order.")
 	para("Within a level anything can sit anywhere, a file above a folder too. New items appear at the end of an ordered level, and renaming or moving keeps an item's place.")
-	para("The order lives in .skrin at the vault root, a hidden file. Obsidian keeps its own alphabetical order, Sync leaves dotfiles alone (so the order stays on this machine), and deleting .skrin puts everything back. Each move is one step: U takes back the last one.")
+	para("The order lives in skrin.json at the vault root, invisible in the tree but not a dotfile, so it syncs with the vault: arrange on one machine and it follows to the next. Obsidian keeps its own alphabetical order and doesn't show the file either. Deleting skrin.json puts everything back. Each move is one step: U takes back the last one.")
 
 	head("Claude")
 	para("c opens the Claude drawer and C puts you straight into typing; Ctrl-k does it from the editor. The drawer sits along the bottom, or on the right with Alt-p or assistant.position = \"right\".")

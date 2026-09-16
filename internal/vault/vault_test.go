@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -28,6 +29,20 @@ func makeVault(t *testing.T, files ...string) *Vault {
 	return v
 }
 
+// TestOpenOnAMissingPathSaysSo is a polish-list item: the error should
+// name the path and say what's wrong, not just surface a bare "stat"
+// error.
+func TestOpenOnAMissingPathSaysSo(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "does-not-exist")
+	_, err := Open(missing)
+	if err == nil {
+		t.Fatal("Open on a missing path should fail")
+	}
+	if !strings.Contains(err.Error(), missing) || !strings.Contains(err.Error(), "can't open the vault") {
+		t.Errorf("error %q doesn't name the path and say what's wrong", err.Error())
+	}
+}
+
 func TestDirsAndFilesSkipHidden(t *testing.T) {
 	v := makeVault(t, "Welcome.md", "Daily/2026-09-11.md", "Filosofi/Stoa/Epiktetos.md",
 		".obsidian/app.json", ".trash/old.md", "Daily/.draft.md")
@@ -44,6 +59,34 @@ func TestDirsAndFilesSkipHidden(t *testing.T) {
 	}
 	if want := []string{"Daily/2026-09-11.md", "Filosofi/Stoa/Epiktetos.md", "Welcome.md"}; !reflect.DeepEqual(files, want) {
 		t.Errorf("Files = %q, want %q", files, want)
+	}
+}
+
+// TestSkrinJsonStaysOutOfTheTree is Amendment 2: the order file is no
+// longer a dotfile (so it can sync), but it's still Skrin's own machinery,
+// so both Entries (the Files tree) and List skip it by name.
+func TestSkrinJsonStaysOutOfTheTree(t *testing.T) {
+	v := makeVault(t, "Welcome.md")
+	if err := v.Write(OrderFile, `{"/": ["Welcome.md"]}`); err != nil {
+		t.Fatal(err)
+	}
+	es, err := v.Entries()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range es {
+		if e.Rel == OrderFile {
+			t.Errorf("Entries shouldn't list %s: %v", OrderFile, es)
+		}
+	}
+	entries, err := v.List("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if e.Name == OrderFile {
+			t.Errorf("List shouldn't list %s: %v", OrderFile, entries)
+		}
 	}
 }
 

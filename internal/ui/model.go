@@ -100,7 +100,7 @@ type Model struct {
 	zen           bool // z: only the note, centred at a readable width
 
 	files files       // the Files pane; its cursor sits on the open note
-	order vault.Order // Files' manual order, from .skrin
+	order vault.Order // Files' manual order, from skrin.json
 
 	// The focused note pane. With a split, the other pane waits in split.
 	notePath  string // the open note, "" when none is

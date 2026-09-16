@@ -58,6 +58,35 @@ red = "#f7768e"
 	}
 }
 
+// TestOrangeFallsBackSafelyWithNoOrangeOrMagenta covers a polish-list
+// robustness item: orange derives from magenta (to avoid colliding with
+// Files' yellow marks) but a theme can omit both. The gruvbox fallback,
+// which fills any key still missing after derivation, should give a real,
+// distinct orange rather than leaving it to collide with something else.
+func TestOrangeFallsBackSafelyWithNoOrangeOrMagenta(t *testing.T) {
+	dir := writeTheme(t, "no-orange", `
+mode = "dark"
+accent = "#7daea3"
+background = "#282828"
+foreground = "#d4be98"
+red = "#ea6962"
+yellow = "#d8a657"
+green = "#a9b665"
+cyan = "#89b482"
+blue = "#7daea3"
+`)
+	p, err := Load(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sameColor(p.Orange, p.Yellow) {
+		t.Errorf("orange collides with yellow when the theme has neither orange nor magenta")
+	}
+	if !sameColor(p.Orange, color.RGBA{0xe1, 0x87, 0x5c, 0xff}) {
+		t.Errorf("orange = %v, want gruvbox's own orange as the fallback", p.Orange)
+	}
+}
+
 func TestSkrinTomlOverridesRoles(t *testing.T) {
 	dir := writeTheme(t, "x", `red = "#ff0000"`)
 	if err := os.WriteFile(filepath.Join(dir, "skrin.toml"), []byte(`h1 = "#00ff00"`), 0o644); err != nil {

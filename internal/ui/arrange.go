@@ -6,7 +6,7 @@ import (
 	"github.com/lurioso/skrin/internal/vault"
 )
 
-// Files can be kept in your own order, level by level, in .skrin at the
+// Files can be kept in your own order, level by level, in skrin.json at the
 // vault root. There is no mode for it: Shift+↑ and Shift+↓ move the item
 // under the cursor within its level, and R puts a level back in the
 // default order. Every move is its own journal step, so U takes back the
@@ -72,7 +72,7 @@ func (m *Model) resetLevel() {
 	}
 }
 
-// saveOrder writes .skrin and shows the new order, with the cursor staying
+// saveOrder writes skrin.json and shows the new order, with the cursor staying
 // on its item. The change is one journal step, so U takes back this move
 // and nothing else. It reports whether the order was saved.
 func (m *Model) saveOrder(desc string) bool {

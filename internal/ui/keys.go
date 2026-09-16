@@ -64,7 +64,7 @@ const (
 	actScrollOn
 	actApply // a change Claude proposes
 	actReject
-	actOrderUp // Files' own order, kept in .skrin
+	actOrderUp // Files' own order, kept in skrin.json
 	actOrderDown
 	actOrderReset
 	actSkimDown  // Alt+↓ / Alt+j: the cursor moves and the note it lands
@@ -154,7 +154,7 @@ var defaultBindings = []binding{
 	{actPane1, []string{"1"}, "Files", groupMove, inMain},
 	{actPane2, []string{"2"}, "the note", groupMove, inMain},
 	{actPaneLeft, []string{"shift+left"}, "note, split: to the pane on the left", groupMove, inMain},
-	{actPaneRight, []string{"shift+right"}, "note, split: to the pane on the right", groupMove, inMain},
+	{actPaneRight, []string{"shift+right"}, "note, split: to the pane on the right · Files: focus the split", groupMove, inMain},
 	{actBack, []string{"ctrl+o", "alt+left"}, "go back", groupMove, inMain},
 	{actForward, []string{"ctrl+i", "alt+right"}, "go forward", groupMove, inMain},
 	{actNewNote, []string{"n"}, "new note in the current folder", groupFiles, inMain},

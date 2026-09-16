@@ -24,7 +24,7 @@ type noteView struct {
 func (m *Model) openSplit(rel string, left bool) {
 	switch {
 	case rel == "" || m.notePath == "":
-		m.flash = "Open a note first: a split goes beside it"
+		m.flash = "Select a note to split beside"
 		return
 	case m.width < splitMinWidth:
 		m.flash = "No room to split"

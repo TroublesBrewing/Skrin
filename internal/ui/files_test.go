@@ -23,7 +23,7 @@ var sample = entries("Welcome.md", "b.png", "Templates/", "Daily/", "Daily/2026-
 
 func newSample() *files {
 	t := newFiles()
-	t.set(sample, "vault")
+	t.set(sample, "vault", nil)
 	return &t
 }
 
@@ -97,17 +97,17 @@ func TestFilesKeepPlaceWhenThingsGo(t *testing.T) {
 	f := newSample()
 	f.reveal("Filosofi/Stoic.md")
 	f.set(entries("Welcome.md", "b.png", "Templates/", "Daily/", "Daily/2026-09-11.md",
-		"Filosofi/", "Filosofi/Antik/", "Filosofi/Antik/Zeno.md"), "vault")
+		"Filosofi/", "Filosofi/Antik/", "Filosofi/Antik/Zeno.md"), "vault", nil)
 	if f.selected().Rel != "Filosofi/Antik" {
 		t.Errorf("after deleting Stoic the cursor should go to its neighbour, got %q", f.selected().Rel)
 	}
 	f.selectPath("Filosofi")
-	f.set(entries("Welcome.md", "b.png", "Templates/", "Daily/", "Daily/2026-09-11.md"), "vault")
+	f.set(entries("Welcome.md", "b.png", "Templates/", "Daily/", "Daily/2026-09-11.md"), "vault", nil)
 	if f.selected().Rel != "Templates" || f.expanded["Filosofi"] {
 		t.Errorf("after deleting Filosofi: on %q", f.selected().Rel)
 	}
 	f.reveal("Daily/2026-09-11.md")
-	f.set(entries("Welcome.md", "Templates/"), "vault")
+	f.set(entries("Welcome.md", "Templates/"), "vault", nil)
 	if f.selected().Rel != "" {
 		t.Errorf("with its folder gone the cursor should climb to the vault row, got %q", f.selected().Rel)
 	}
@@ -118,7 +118,7 @@ func TestFilesFollowRename(t *testing.T) {
 	f.reveal("Filosofi/Antik/Zeno.md") // opens Filosofi and Antik
 	f.selectPath("Filosofi")
 	f.follow([][2]string{{"Filosofi", "Philosophy"}}, true)
-	f.set(entries("Welcome.md", "Philosophy/", "Philosophy/Stoic.md", "Philosophy/Antik/", "Philosophy/Antik/Zeno.md"), "vault")
+	f.set(entries("Welcome.md", "Philosophy/", "Philosophy/Stoic.md", "Philosophy/Antik/", "Philosophy/Antik/Zeno.md"), "vault", nil)
 	if f.selected().Rel != "Philosophy" || !f.expanded["Philosophy"] || !f.expanded["Philosophy/Antik"] {
 		t.Errorf("after the rename: on %q, open %q", f.selected().Rel, f.openFolders())
 	}

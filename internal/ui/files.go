@@ -28,7 +28,7 @@ func newFiles() files { return files{expanded: map[string]bool{"": true}} }
 // set loads the vault's entries and rebuilds the rows. Folders that are gone
 // are forgotten. The cursor stays on its item; see restore for when that
 // item is gone.
-func (t *files) set(entries []vault.Entry, rootName string) {
+func (t *files) set(entries []vault.Entry, rootName string, order vault.Order) {
 	was, at := t.selected().Rel, t.cur
 	t.kids = map[string][]vault.Entry{}
 	t.byRel = map[string]vault.Entry{"": {Name: rootName, IsDir: true}}
@@ -37,8 +37,9 @@ func (t *files) set(entries []vault.Entry, rootName string) {
 		t.kids[p] = append(t.kids[p], e)
 		t.byRel[e.Rel] = e
 	}
-	for _, k := range t.kids {
+	for dir, k := range t.kids {
 		vault.Sort(k)
+		order.Arrange(dir, k) // a level in .skrin keeps the user's order
 	}
 	for p := range t.expanded {
 		if e, ok := t.byRel[p]; !ok || !e.IsDir {
@@ -193,6 +194,16 @@ func (t *files) siblings() []vault.Entry {
 		return t.kids[""]
 	}
 	return t.kids[parentOf(e.Rel)]
+}
+
+// childNames is folder dir's entries by name, in the order Files shows
+// them.
+func (t *files) childNames(dir string) []string {
+	var out []string
+	for _, e := range t.kids[dir] {
+		out = append(out, e.Name)
+	}
+	return out
 }
 
 // follow carries open folders across moves and renames, and with cursor the

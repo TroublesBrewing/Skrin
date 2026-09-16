@@ -2,6 +2,23 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.10.0 — 2026-09-15
+
+Milestone 10: arrange mode (`skrin arrange.md` in the vault).
+
+- **`A` puts a Files level in your own order.** `J`/`K` move the item under the cursor up or down its level, and `l`/`h` go into a folder and out. `R` puts the level back in the default order, and `A` or `Esc` leaves.
+- Within a level anything can sit anywhere, a file above a folder too. New items appear at the end of an ordered level, and renaming or moving an item keeps its place.
+- The status line reads ARRANGE with the level's path, and Files' title says *arranging*. `n` `N` `r` `m` `d` are paused while you arrange.
+- The whole session is one step, so one `U` undoes it.
+- **From the UX engineer's audit of v0.9.0:**
+  - Every note-only key refuses the same way: "Select a note to edit / undo / follow its links / see what links here / see its outline / search in just that one / read in zen mode / split beside".
+  - In search, `Esc` steps back one level: the first leaves replace mode, the second closes the panel.
+  - Marking a range in Files reads MARK in the status line; VISUAL now means selected text in a note.
+- The order lives in `.skrin` at the vault root:
+  - Paths never change, and Obsidian's own explorer stays alphabetical.
+  - Deleting `.skrin` puts everything back.
+  - Obsidian Sync skips dotfiles, so the order stays on each machine unless you copy the file over.
+
 ## v0.9.0 — 2026-09-15
 
 Milestone 9: instant-open and split view, from the product owner's and the user's notes (`skrin split view.md` in the vault).

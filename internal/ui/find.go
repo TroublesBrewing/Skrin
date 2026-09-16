@@ -133,7 +133,19 @@ func (m *Model) searchKey(k tea.KeyPressMsg) {
 	p := m.search
 	s := k.String()
 	switch s {
-	case "esc", "ctrl+c":
+	case "esc":
+		// Esc steps out one layer at a time: replace first, then search.
+		if p.replacing {
+			p.replacing = false
+			if p.focus == 1 {
+				p.focus = 0
+			}
+			m.runSearch()
+			return
+		}
+		m.lastSearch, m.search = p, nil
+		return
+	case "ctrl+c":
 		m.lastSearch, m.search = p, nil
 		return
 	case "alt+r":
@@ -155,7 +167,7 @@ func (m *Model) searchKey(k tea.KeyPressMsg) {
 		return
 	case "alt+t":
 		if p.rel == "" {
-			m.flash = "Select a note first to look in just that one"
+			m.flash = "Select a note to search in just that one"
 			return
 		}
 		p.inNote = !p.inNote

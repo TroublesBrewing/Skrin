@@ -131,7 +131,7 @@ func (m *Model) fileAction(a action) {
 	ts := m.targets()
 	if len(ts) == 0 {
 		if m.focus == paneNote {
-			m.flash = "No note open"
+			m.flash = "Select a note to " + map[action]string{actRename: "rename", actMove: "move", actDelete: "delete"}[a]
 		} else {
 			m.flash = "The vault itself can't be renamed, moved or deleted"
 		}

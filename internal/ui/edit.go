@@ -72,6 +72,7 @@ func (m *Model) startEdit() {
 		return
 	}
 	m.openEditor(rel)
+
 }
 
 // openEditor opens rel in the built-in editor, at the line the note pane
@@ -333,7 +334,7 @@ func (m *Model) conflictLine() string {
 func (m *Model) startExternal() tea.Cmd {
 	rel, ok := m.subjectOpen()
 	if !ok {
-		m.flash = "Select a note to edit"
+		m.flash = "Select a note to edit in $EDITOR"
 		return nil
 	}
 	before, err := m.vault.Read(rel)
@@ -389,7 +390,11 @@ func (m *Model) externalDone(msg externalDoneMsg) {
 func (m *Model) restoreVersion(redo bool) {
 	rel, ok := m.subjectOpen()
 	if !ok {
-		m.flash = "Select a note first"
+		verb := "undo"
+		if redo {
+			verb = "redo"
+		}
+		m.flash = "Select a note to " + verb
 		return
 	}
 	cur, err := m.vault.Read(rel)

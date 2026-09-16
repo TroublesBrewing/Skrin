@@ -210,6 +210,12 @@ func (m *Model) manualText(w int) []manualLine {
 	para("In the note, Shift+← and Shift+→ move between the two panes; keys act on the one with the bright border. Esc closes the pane you're in, and z (zen) closes the other.")
 	para("Two is the most, so a new split replaces the older one. Below 80 columns there's no room for one, and splits aren't remembered when you quit.")
 
+	head("Arrange mode")
+	para("A puts the Files level under the cursor in your own order. J and K move the item under the cursor up or down its level, l and h go into a folder and out again, and R puts a level back in the default order. A or Esc leaves.")
+	para("Within a level anything can sit anywhere, a file above a folder too. New items appear at the end of an ordered level, and renaming or moving keeps an item's place.")
+	para("The order lives in .skrin at the vault root, a hidden file that travels with the vault. Paths never change, Obsidian keeps its own alphabetical order, and deleting .skrin puts everything back. The whole session is one step: U undoes it.")
+	para("While arranging, n N r m d are paused: arrange mode is about order, not files.")
+
 	head("Claude")
 	para("c opens the Claude drawer and C puts you straight into typing; Ctrl-k does it from the editor. The drawer sits along the bottom, or on the right with Alt-p or assistant.position = \"right\".")
 	para("Claude sees the open note (the focused one, in a split), sent along with your message whenever it has changed. Highlight text first (v and j/k in the note, Shift and the arrows in the editor) and it goes into your message.")

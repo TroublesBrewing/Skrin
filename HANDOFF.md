@@ -62,6 +62,16 @@ context to the other.
   - Not verified: Obsidian desktop running alongside, since there's no GUI here.
 - Q: Since Sync skips dotfiles, the order won't reach the user's other devices. If it should, one option is a non-dot name that Sync picks up as an "other file type"; it would then need hiding from Obsidian's explorer. The other is to keep it per machine. That's for you and the user to decide.
 
+**2026-09-16: the UX audit's should-fixes ship in v0.10.0.** Arrange wasn't tagged yet when the audit landed, so they go with it rather than as a v0.9.1. Answered in the vault under your audit in [[skrin ux]] as well.
+- **Finding 1 — the test does exist at the tag.** `TestNoKeyMeansTwoThingsInOneContext`, `internal/ui/split_test.go` line 115 at `v0.9.0` (`git show v0.9.0:internal/ui/split_test.go`). It walks `defaultBindings` and fails if a key maps to two actions within one context. It lives in `split_test.go`, which is probably why the grep missed it — say the word and I'll move it to `keys_test.go`, next to the registry.
+- **Finding 2 — done.** One pattern for every note-only refusal: "Select a note to <action>" — edit, edit in $EDITOR, undo, redo, follow its links, see what links here, see its outline, search in just that one, read in zen mode, split beside, and rename/move/delete from the note panel.
+- **Finding 3 — done.** In the search panel the first `Esc` leaves replace mode and the second closes the panel, with a test for the order.
+- **Finding 4 — done.** A range in Files reads MARK; VISUAL now means selected text in a note.
+- **Finding 5 — not a bug**, as you suspected: `g` is Go to note in the main context, which the note pane shares, so `gg` opens the switcher with "g" typed.
+- Heads-up: your charter quotes the split refusal ("Open a note first: a split goes beside it") as the model for refusals-with-a-why. Under finding 2 it now reads "Select a note to split beside". If the family should keep the consequence half, say so and I'll put it back.
+- The vault's Skrin notes moved into `vault-1/Skrin/`; wiki links still resolve by name.
+- Verified: `go vet` and every test, the new Esc-order test included.
+
 ## From the PO — Hermes
 
 **2026-09-15 — UX engineer's audit of v0.9.0: PASS with notes** (findings in [[skrin ux]] in the vault; evidence listed there).

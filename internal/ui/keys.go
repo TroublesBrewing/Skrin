@@ -64,6 +64,13 @@ const (
 	actScrollOn
 	actApply // a change Claude proposes
 	actReject
+	actArrange // arrange mode
+	actLeaveArrange
+	actOrderUp
+	actOrderDown
+	actOrderReset
+	actArrangeIn
+	actToggleFolder
 )
 
 // Contexts say where a binding works. Each gets its own keymap, built from
@@ -79,6 +86,7 @@ const (
 	inAsk      = "ask" // a name to type, or a y/n question
 	inConflict = "conflict"
 	inManual   = "manual"
+	inArrange  = "arrange" // arrange mode in Files
 )
 
 // binding is one row of the keymap registry. Every key Skrin handles is
@@ -110,6 +118,7 @@ const (
 	groupAsk      = "When Skrin asks"
 	groupConflict = "On a save conflict"
 	groupManual   = "In this manual"
+	groupArrange  = "In arrange mode (A)"
 )
 
 var defaultBindings = []binding{
@@ -143,6 +152,7 @@ var defaultBindings = []binding{
 	{actEscape, []string{"esc"}, "clear marks · split: close the pane you're in · zen: leave it", groupFiles, inMain},
 	{actUndoOp, []string{"U"}, "undo the last file operation", groupFiles, inMain},
 	{actDaily, []string{"t"}, "open or create today's daily note", groupFiles, inMain},
+	{actArrange, []string{"A"}, "arrange mode: put this level of Files in your own order", groupFiles, inMain},
 	{actEdit, []string{"e"}, "edit the note in Skrin", groupNote, inMain},
 	{actEditExternal, []string{"E"}, "edit the note in $EDITOR", groupNote, inMain},
 	{actUndoEdit, []string{"u"}, "undo the note's last edit", groupNote, inMain},
@@ -226,6 +236,15 @@ var defaultBindings = []binding{
 	{actNone, []string{"d"}, "show or hide the diff", groupConflict, inConflict},
 	{actNone, []string{"j", "k"}, "scroll the diff", groupConflict, inConflict},
 	{actNone, []string{"esc"}, "keep editing, without saving", groupConflict, inConflict},
+
+	{actOrderDown, []string{"J"}, "move the item under the cursor down its level", groupArrange, inArrange},
+	{actOrderUp, []string{"K"}, "move it up its level", groupArrange, inArrange},
+	{actNone, []string{"j", "k"}, "move the cursor", groupArrange, inArrange},
+	{actNone, []string{"h", "left"}, "out to the parent level", groupArrange, inArrange},
+	{actArrangeIn, []string{"l", "right"}, "into the folder under the cursor", groupArrange, inArrange},
+	{actToggleFolder, []string{"enter"}, "open or close the folder, to see inside", groupArrange, inArrange},
+	{actOrderReset, []string{"R"}, "put this level back in the default order", groupArrange, inArrange},
+	{actLeaveArrange, []string{"A", "esc"}, "leave arrange mode (one U undoes the session)", groupArrange, inArrange},
 
 	{actNone, []string{"j", "k", "ctrl+d", "ctrl+u", "space"}, "scroll", groupManual, inManual},
 	{actNone, []string{"home", "g", "G", "end"}, "top / bottom", groupManual, inManual},

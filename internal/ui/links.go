@@ -41,7 +41,7 @@ const hintKeys = "asdfghjklqwertyuiopzxcvbnm"
 // and only one link in view, it follows that link straight away.
 func (m *Model) startHints(direct bool) {
 	if m.notePath == "" {
-		m.flash = "No links in view: no note is open"
+		m.flash = "Select a note to follow its links"
 		return
 	}
 	vis := m.layout().bodyH - 2
@@ -267,7 +267,7 @@ func (m *Model) offerCreate(target string) {
 func (m *Model) showBacklinks() {
 	rel, ok := m.subject()
 	if !ok {
-		m.flash = "Select a note first"
+		m.flash = "Select a note to see what links here"
 		return
 	}
 	bl := m.idx.Backlinks(rel)
@@ -288,7 +288,7 @@ func (m *Model) showBacklinks() {
 func (m *Model) showOutline() {
 	rel, ok := m.subjectOpen()
 	if !ok {
-		m.flash = "Select a note first"
+		m.flash = "Select a note to see its outline"
 		return
 	}
 	hs := m.idx.Headings(rel)
@@ -553,6 +553,9 @@ func (m *Model) moveNow(moves [][2]string, refs []relink, desc string, update bo
 		var s []vault.Step
 		s, relinked, failed = m.relinkAfter(refs, moves)
 		steps = append(steps, s...)
+	}
+	if s, ok := m.orderFollows(moved); ok {
+		steps = append(steps, s)
 	}
 	m.journal.Record(vault.Op{Desc: desc, Steps: steps})
 	return moved, relinked, failed

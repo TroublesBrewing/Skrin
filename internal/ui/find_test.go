@@ -164,6 +164,22 @@ func TestGoToNoteEnterOnEmptyJustCloses(t *testing.T) {
 	}
 }
 
+func TestEscStepsOutOfReplaceThenSearch(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "G", "/", "alt+r")
+	if !m.search.replacing {
+		t.Fatal("alt+r should turn replace on")
+	}
+	press(m, "tab", "esc")
+	if m.search == nil || m.search.replacing {
+		t.Fatal("the first esc should leave replace mode, not the whole panel")
+	}
+	press(m, "esc")
+	if m.search != nil {
+		t.Error("the second esc should close the search")
+	}
+}
+
 func TestReplaceInThisNote(t *testing.T) {
 	m := newTestModel(t)
 	press(m, "G", "/", "alt+r", "alt+t") // the cursor on Welcome in Files

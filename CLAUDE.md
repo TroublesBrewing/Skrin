@@ -28,7 +28,7 @@ Go is pinned in `.mise.toml`. If `go` isn't on PATH, prefix commands with `mise 
 ## Layout
 
 - `cmd/skrin`: flags and vault resolution (argument → `~/.config/skrin/config.toml` → Obsidian's `obsidian.json`); wires the watchers to `tea.Program.Send`.
-- `internal/vault`: disk access. Paths are vault-relative with `/`, and `""` is the root. Dot-entries (`.obsidian`, `.trash`) are hidden. Also has the debounced fsnotify watcher. File operations (`ops.go`) never overwrite. Deletes go to the freedesktop trash or the vault's `.trash` (`trash.go`). `journal.go` is the undo stack behind `U`.
+- `internal/vault`: disk access. Paths are vault-relative with `/`, and `""` is the root. Dot-entries (`.obsidian`, `.trash`) are hidden. Also has the debounced fsnotify watcher. File operations (`ops.go`) never overwrite. Deletes go to the freedesktop trash or the vault's `.trash` (`trash.go`). `journal.go` is the undo stack behind `U`. `order.go` reads and writes `.skrin`, the manual order of Files levels; a missing or broken file means the default order.
 - `internal/obsidian`: read-only access to Obsidian's own config: the vault registry, `.obsidian/*.json`, the Rollover plugin's settings, and whether Obsidian is running.
 - `internal/daily`: the daily-note path, moment.js date formatting, template variables and todo rollover, all mirroring Obsidian and the Rollover Daily Todos plugin.
 - `internal/theme`: builds the palette from Omarchy's `~/.local/state/omarchy/current/theme/colors.toml`, with an optional `skrin.toml` override. It live-reloads by watching `theme.name`.
@@ -52,6 +52,7 @@ Go is pinned in `.mise.toml`. If `go` isn't on PATH, prefix commands with `mise 
   - `find.go` has the `/` search panel and Go to note; `replace.go` has the panel's replace mode.
   - `modal.go` has the name prompt, the y/n question and the filterable chooser used for moves, backlinks and the outline.
   - `drawer.go` has the Claude drawer, `propose.go` Claude's tools and the y/n proposals, and `select.go` the line selection in the reading view.
+  - `arrange.go` has arrange mode (`A`): `J`/`K` reorder a level through `.skrin`, and the session becomes one journal step. Moves and renames carry the order along (`orderFollows`, called from `moveNow`).
   - `split.go` has the split view. The other pane waits in `m.split`; `swapPanes` trades it with the focused one, so all the note code keeps working on `m.notePath`.
   - `keys.go` has the keymap registry. It holds every key, with the context it works in (`inMain`, `inEditor`, `inList`, `inDrawer`, …) and help text for that context.
     - `actionIn` looks a key up in its context, and `help.go`'s `?` manual is generated from the same table.

@@ -172,7 +172,7 @@ func TestLinksMoveTheFilesCursor(t *testing.T) {
 func TestFWithNoNoteSaysSo(t *testing.T) {
 	m := newTestModel(t)
 	press(m, "f")
-	if m.hints != nil || !strings.Contains(m.flash, "No links in view") {
+	if m.hints != nil || !strings.Contains(m.flash, "Select a note to follow its links") {
 		t.Errorf("f with no note open: hints %v, flash %q", m.hints != nil, m.flash)
 	}
 }

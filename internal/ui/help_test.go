@@ -71,7 +71,7 @@ func TestManualFilterAndScroll(t *testing.T) {
 func TestZenShowsJustTheNote(t *testing.T) {
 	m := newTestModel(t)
 	press(m, "z")
-	if m.zen || !strings.Contains(m.flash, "Open a note first") {
+	if m.zen || !strings.Contains(m.flash, "Select a note to read in zen mode") {
 		t.Fatalf("zen %v with no note open, flash %q", m.zen, m.flash)
 	}
 	press(m, "G", "enter", "z")

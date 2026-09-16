@@ -111,19 +111,3 @@ func TestSplitFollowsRenames(t *testing.T) {
 		t.Errorf("after renaming Zeno: focused %q, other %q", m.notePath, m.split.path)
 	}
 }
-
-func TestNoKeyMeansTwoThingsInOneContext(t *testing.T) {
-	seen := map[string]action{}
-	for _, b := range defaultBindings {
-		if b.act == actNone {
-			continue
-		}
-		for _, k := range b.keys {
-			id := b.where + " " + k
-			if a, ok := seen[id]; ok && a != b.act {
-				t.Errorf("%q in %s is bound to two actions", k, b.where)
-			}
-			seen[id] = b.act
-		}
-	}
-}

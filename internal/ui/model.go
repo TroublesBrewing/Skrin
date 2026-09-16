@@ -92,9 +92,8 @@ type Model struct {
 	focus         pane
 	zen           bool // z: only the note, centred at a readable width
 
-	files   files       // the Files pane; its cursor sits on the open note
-	order   vault.Order // Files' manual order, from .skrin
-	arrange *arranging  // arrange mode, while it's on
+	files files       // the Files pane; its cursor sits on the open note
+	order vault.Order // Files' manual order, from .skrin
 
 	// The focused note pane. With a split, the other pane waits in split.
 	notePath  string // the open note, "" when none is
@@ -265,12 +264,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.lastG = time.Now()
 			}
-			if m.arrange != nil {
-				if act := actionIn(inArrange, key); act != actNone {
-					m.arrangeKey(act)
-					break
-				}
-			}
 			if act := actionIn(inMain, key); act != actNone {
 				if act == actQuit {
 					return m, tea.Quit
@@ -305,13 +298,6 @@ func (m *Model) setPalette(p theme.Palette) {
 }
 
 func (m *Model) do(a action) tea.Cmd {
-	if m.arrange != nil {
-		switch a {
-		case actNewNote, actNewFolder, actRename, actMove, actDelete:
-			m.flash = "Arrange mode is about order, not files: A or esc leaves it"
-			return nil
-		}
-	}
 	// Asking for Files leaves zen mode.
 	if m.zen && (a == actPane1 || a == actNextPane || a == actPrevPane || (a == actLeft && m.focus == paneNote)) {
 		m.zen = false
@@ -348,8 +334,10 @@ func (m *Model) do(a action) tea.Cmd {
 		default:
 			m.escape()
 		}
-	case actArrange:
-		m.enterArrange()
+	case actOrderUp, actOrderDown:
+		m.shiftItem(a == actOrderDown)
+	case actOrderReset:
+		m.resetLevel()
 	case actZen:
 		m.toggleZen()
 	case actHelp:
@@ -607,9 +595,6 @@ func plural(n int, word string) string {
 func (m *Model) settle() {
 	if m.width == 0 {
 		return
-	}
-	if m.arrange != nil && m.focus != paneFiles {
-		m.leaveArrange() // arrange mode lives in Files
 	}
 	if m.focus == paneFiles && m.editor == nil {
 		m.peek()

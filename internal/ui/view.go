@@ -166,11 +166,7 @@ func (m *Model) filesPane(w, h int) []string {
 		}
 		body = append(body, text)
 	}
-	title := "Files"
-	if m.arrange != nil {
-		title = "Files · arranging"
-	}
-	return m.box(title, body, w, h, m.focus == paneFiles)
+	return m.box("Files", body, w, h, m.focus == paneFiles)
 }
 
 func (m *Model) notePane(w, h int) []string {
@@ -254,12 +250,6 @@ func (m *Model) statusLine() string {
 		return m.promptLine()
 	case m.confirm != nil:
 		return m.confirmLine()
-	case m.arrange != nil:
-		right := m.st.muted.Render("J/K move · l/h in, out · R reset · A or esc done")
-		if m.flash != "" {
-			right = m.st.flash.Render(m.flash)
-		}
-		return spread(m.st.pill.Render(" ARRANGE ")+" "+m.st.text.Render(m.folderLabel(m.arrangeLevel())), right, m.width)
 	}
 	mode := " VIEW "
 	switch {

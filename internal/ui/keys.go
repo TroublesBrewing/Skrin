@@ -64,13 +64,17 @@ const (
 	actScrollOn
 	actApply // a change Claude proposes
 	actReject
-	actArrange // arrange mode
-	actLeaveArrange
-	actOrderUp
+	actOrderUp // Files' own order, kept in .skrin
 	actOrderDown
 	actOrderReset
-	actArrangeIn
-	actToggleFolder
+	actFindScope // the search panel
+	actFindCase
+	actFindWords
+	actFindReplace
+	actNextField
+	actPrevField
+	actReplaceAll
+	actSkipMatch
 )
 
 // Contexts say where a binding works. Each gets its own keymap, built from
@@ -86,7 +90,7 @@ const (
 	inAsk      = "ask" // a name to type, or a y/n question
 	inConflict = "conflict"
 	inManual   = "manual"
-	inArrange  = "arrange" // arrange mode in Files
+	inComplete = "complete" // the [[ popup in the editor
 )
 
 // binding is one row of the keymap registry. Every key Skrin handles is
@@ -118,7 +122,7 @@ const (
 	groupAsk      = "When Skrin asks"
 	groupConflict = "On a save conflict"
 	groupManual   = "In this manual"
-	groupArrange  = "In arrange mode (A)"
+	groupComplete = "In link completion ([[)"
 )
 
 var defaultBindings = []binding{
@@ -152,7 +156,9 @@ var defaultBindings = []binding{
 	{actEscape, []string{"esc"}, "clear marks · split: close the pane you're in · zen: leave it", groupFiles, inMain},
 	{actUndoOp, []string{"U"}, "undo the last file operation", groupFiles, inMain},
 	{actDaily, []string{"t"}, "open or create today's daily note", groupFiles, inMain},
-	{actArrange, []string{"A"}, "arrange mode: put this level of Files in your own order", groupFiles, inMain},
+	{actOrderUp, []string{"shift+up"}, "move the item under the cursor up its level", groupFiles, inMain},
+	{actOrderDown, []string{"shift+down"}, "move it down its level", groupFiles, inMain},
+	{actOrderReset, []string{"R"}, "put this level back in the default order", groupFiles, inMain},
 	{actEdit, []string{"e"}, "edit the note in Skrin", groupNote, inMain},
 	{actEditExternal, []string{"E"}, "edit the note in $EDITOR", groupNote, inMain},
 	{actUndoEdit, []string{"u"}, "undo the note's last edit", groupNote, inMain},
@@ -198,18 +204,21 @@ var defaultBindings = []binding{
 	{actCancel, []string{"esc", "ctrl+c"}, "close the list", groupList, inList},
 
 	{actNone, []string{"letters"}, "the search, as you type (see Search below)", groupFind, inSearch},
-	{actNone, []string{"alt+t"}, "this note, or the whole vault", groupFind, inSearch},
-	{actNone, []string{"alt+c"}, "match case", groupFind, inSearch},
-	{actNone, []string{"alt+r"}, "search & replace on or off", groupFind, inSearch},
-	{actNone, []string{"alt+w"}, "replacing: whole words only", groupFind, inSearch},
-	{actNone, []string{"tab", "shift+tab"}, "next / previous field: search, replacement, results", groupFind, inSearch},
-	{actNone, []string{"up", "down", "ctrl+p", "ctrl+n"}, "move through the results", groupFind, inSearch},
+	{actFindScope, []string{"alt+t"}, "this note, or the whole vault", groupFind, inSearch},
+	{actFindCase, []string{"alt+c"}, "match case", groupFind, inSearch},
+	{actFindReplace, []string{"alt+r"}, "search & replace on or off", groupFind, inSearch},
+	{actFindWords, []string{"alt+w"}, "replacing: whole words only", groupFind, inSearch},
+	{actNextField, []string{"tab"}, "next field: search, replacement, results", groupFind, inSearch},
+	{actPrevField, []string{"shift+tab"}, "the field before it", groupFind, inSearch},
+	{actUp, []string{"up", "ctrl+p"}, "up through the results", groupFind, inSearch},
+	{actDown, []string{"down", "ctrl+n"}, "down through them", groupFind, inSearch},
 	{actNone, []string{"j", "k"}, "in the results: move", groupFind, inSearch},
-	{actNone, []string{"pgup", "pgdown"}, "ten results up / down", groupFind, inSearch},
-	{actNone, []string{"enter"}, "open the note at the result (replacing: to the next field)", groupFind, inSearch},
-	{actNone, []string{"space"}, "replacing, in the results: skip a match, or a whole note", groupFind, inSearch},
-	{actNone, []string{"ctrl+s"}, "replacing: replace them all, after a y/n", groupFind, inSearch},
-	{actNone, []string{"esc", "ctrl+c"}, "close; the next / brings the search back", groupFind, inSearch},
+	{actHalfUp, []string{"pgup"}, "ten results up", groupFind, inSearch},
+	{actHalfDown, []string{"pgdown"}, "ten results down", groupFind, inSearch},
+	{actPick, []string{"enter"}, "open the note at the result (replacing: to the next field)", groupFind, inSearch},
+	{actSkipMatch, []string{"space", " "}, "replacing, in the results: skip a match, or a whole note", groupFind, inSearch},
+	{actReplaceAll, []string{"ctrl+s"}, "replacing: replace them all, after a y/n", groupFind, inSearch},
+	{actCancel, []string{"esc", "ctrl+c"}, "close; esc leaves replace first, / brings the search back", groupFind, inSearch},
 
 	{actSend, []string{"enter"}, "send", groupDrawer, inDrawer},
 	{actNewLine, []string{"alt+enter", "shift+enter"}, "a new line", groupDrawer, inDrawer},
@@ -237,14 +246,10 @@ var defaultBindings = []binding{
 	{actNone, []string{"j", "k"}, "scroll the diff", groupConflict, inConflict},
 	{actNone, []string{"esc"}, "keep editing, without saving", groupConflict, inConflict},
 
-	{actOrderDown, []string{"J"}, "move the item under the cursor down its level", groupArrange, inArrange},
-	{actOrderUp, []string{"K"}, "move it up its level", groupArrange, inArrange},
-	{actNone, []string{"j", "k"}, "move the cursor", groupArrange, inArrange},
-	{actNone, []string{"h", "left"}, "out to the parent level", groupArrange, inArrange},
-	{actArrangeIn, []string{"l", "right"}, "into the folder under the cursor", groupArrange, inArrange},
-	{actToggleFolder, []string{"enter"}, "open or close the folder, to see inside", groupArrange, inArrange},
-	{actOrderReset, []string{"R"}, "put this level back in the default order", groupArrange, inArrange},
-	{actLeaveArrange, []string{"A", "esc"}, "leave arrange mode (one U undoes the session)", groupArrange, inArrange},
+	{actUp, []string{"up", "ctrl+p"}, "up the list", groupComplete, inComplete},
+	{actDown, []string{"down", "ctrl+n"}, "down the list", groupComplete, inComplete},
+	{actPick, []string{"enter", "tab"}, "put the link in", groupComplete, inComplete},
+	{actCancel, []string{"esc"}, "close the popup and carry on typing", groupComplete, inComplete},
 
 	{actNone, []string{"j", "k", "ctrl+d", "ctrl+u", "space"}, "scroll", groupManual, inManual},
 	{actNone, []string{"home", "g", "G", "end"}, "top / bottom", groupManual, inManual},

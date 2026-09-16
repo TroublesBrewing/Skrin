@@ -6,61 +6,43 @@ import (
 	"github.com/lurioso/skrin/internal/vault"
 )
 
-// arranging is arrange mode (A): J and K reorder the Files level under the
-// cursor, saving .skrin as they go. before is the order file as the
-// session found it, for the one journal step written when the session
-// ends.
-type arranging struct {
-	before  string
-	existed bool
-}
+// Files can be kept in your own order, level by level, in .skrin at the
+// vault root. There is no mode for it: Shift+↑ and Shift+↓ move the item
+// under the cursor within its level, and R puts a level back in the
+// default order. Every move is its own journal step, so U takes back the
+// last one.
 
-// enterArrange is A: arrange mode on the Files level under the cursor.
-func (m *Model) enterArrange() {
-	before, err := m.vault.Read(vault.OrderFile)
-	m.arrange = &arranging{before: before, existed: err == nil}
-	m.focus, m.zen, m.visual = paneFiles, false, nil
-}
+// cursorLevel is the folder whose order the move keys change: the one
+// holding the row under the cursor.
+func (m *Model) cursorLevel() string { return parentOf(m.files.selected().Rel) }
 
-// arrangeLevel is the folder whose order J, K and R change: the one holding
-// the row under the cursor.
-func (m *Model) arrangeLevel() string { return parentOf(m.files.selected().Rel) }
-
-// arrangeKey handles the keys arrange mode adds; the rest work as usual.
-func (m *Model) arrangeKey(a action) {
-	e := m.files.selected()
-	switch a {
-	case actOrderUp, actOrderDown:
-		m.shiftItem(a == actOrderDown)
-	case actOrderReset:
-		m.resetLevel()
-	case actArrangeIn:
-		if e.IsDir {
-			m.files.in()
-		}
-	case actToggleFolder:
-		if e.IsDir {
-			m.files.toggle()
-		}
-	case actLeaveArrange:
-		m.leaveArrange()
+// inFiles reports whether the arranging keys apply, and says what would
+// unblock them when they don't.
+func (m *Model) inFiles(what string) bool {
+	if m.focus == paneFiles {
+		return true
 	}
+	m.flash = "Go to Files (1) to " + what
+	return false
 }
 
-// shiftItem is J or K: the item under the cursor trades places with its
-// neighbour in the level, and the level's new order is saved.
+// shiftItem is Shift+↓ and Shift+↑: the item under the cursor trades
+// places with its neighbour in the level.
 func (m *Model) shiftItem(down bool) {
+	if !m.inFiles("move an item") {
+		return
+	}
 	e := m.files.selected()
 	if e.Rel == "" {
-		m.flash = "The vault row stays at the top"
+		m.flash = "The vault row stays put"
 		return
 	}
 	dir := parentOf(e.Rel)
 	names := m.files.childNames(dir)
 	i := slices.Index(names, e.Name)
-	j, edge := i-1, "top"
+	j, edge, way := i-1, "top", "up"
 	if down {
-		j, edge = i+1, "bottom"
+		j, edge, way = i+1, "bottom", "down"
 	}
 	if i < 0 || j < 0 || j >= len(names) {
 		m.flash = "Already at the " + edge + " of " + m.folderLabel(dir)
@@ -68,46 +50,47 @@ func (m *Model) shiftItem(down bool) {
 	}
 	names[i], names[j] = names[j], names[i]
 	m.order[dir] = names
-	m.saveOrder()
+	if m.saveOrder("move " + displayName(e.Rel) + " " + way) {
+		m.flash = "Moved " + displayName(e.Rel) + " " + way + " · U undoes"
+	}
 }
 
-// resetLevel is R: the level goes back to the default order.
+// resetLevel is R: the level the cursor is in goes back to the default
+// order.
 func (m *Model) resetLevel() {
-	dir := m.arrangeLevel()
+	if !m.inFiles("put a level back in the default order") {
+		return
+	}
+	dir := m.cursorLevel()
 	if _, ok := m.order[dir]; !ok {
 		m.flash = m.folderLabel(dir) + " is already in the default order"
 		return
 	}
 	delete(m.order, dir)
-	m.saveOrder()
-	m.flash = m.folderLabel(dir) + " is back in the default order"
+	if m.saveOrder("reset " + m.folderLabel(dir)) {
+		m.flash = m.folderLabel(dir) + " is back in the default order · U undoes"
+	}
 }
 
 // saveOrder writes .skrin and shows the new order, with the cursor staying
-// on its item.
-func (m *Model) saveOrder() {
+// on its item. The change is one journal step, so U takes back this move
+// and nothing else. It reports whether the order was saved.
+func (m *Model) saveOrder(desc string) bool {
+	before, err := m.vault.Read(vault.OrderFile)
+	existed := err == nil
 	if err := m.vault.Write(vault.OrderFile, m.order.Marshal()); err != nil {
 		m.flash = "Couldn't save the order: " + err.Error()
-		return
+		return false
 	}
-	m.refresh()
-}
-
-// leaveArrange ends arrange mode. What the session changed becomes one
-// journal step, so one U undoes every move.
-func (m *Model) leaveArrange() {
-	a := m.arrange
-	m.arrange = nil
-	after, err := m.vault.Read(vault.OrderFile)
-	if err != nil || after == a.before {
-		return
-	}
-	step := vault.Step{Kind: vault.StepModified, Rel: vault.OrderFile, Content: a.before}
-	if !a.existed {
+	step := vault.Step{Kind: vault.StepModified, Rel: vault.OrderFile, Content: before}
+	if !existed {
+		// The first move in this vault: undoing it takes the file away.
+		after, _ := m.vault.Read(vault.OrderFile)
 		step = vault.Step{Kind: vault.StepCreated, Rel: vault.OrderFile, Content: after}
 	}
-	m.journal.Record(vault.Op{Desc: "arrange Files", Steps: []vault.Step{step}})
-	m.flash = "Arranged · U undoes the whole session"
+	m.journal.Record(vault.Op{Desc: desc, Steps: []vault.Step{step}})
+	m.refresh()
+	return true
 }
 
 // orderFollows keeps Files' manual order through moves and renames: a

@@ -4,58 +4,80 @@ import (
 	"os"
 	"strings"
 	"testing"
-
-	"github.com/charmbracelet/x/ansi"
 )
 
 // level lists folder dir's entries in the order Files shows them.
 func level(m *Model, dir string) string { return strings.Join(m.files.childNames(dir), ",") }
 
-func TestArrangeMode(t *testing.T) {
+func TestShiftMovesTheItemUnderTheCursor(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "1", "j", "A") // on Daily, at the top level
-	if m.arrange == nil || !strings.Contains(ansi.Strip(m.render()), "ARRANGE") {
-		t.Fatal("A should enter arrange mode, and say so")
-	}
-	checkFrame(t, m, "arrange mode")
-	press(m, "J")
+	press(m, "1", "j", "shift+down") // on Daily, at the top level
 	if got := level(m, ""); got != "Filosofi,Daily,Templates,Welcome.md" {
-		t.Fatalf("J: %s", got)
+		t.Fatalf("shift+down: %s", got)
 	}
 	if m.files.selected().Rel != "Daily" {
 		t.Error("the cursor should stay on the item it moved")
 	}
-	press(m, "G", "K", "K") // Welcome up past Templates and Daily: a file above folders
+	if !strings.Contains(m.flash, "Moved Daily down") || !strings.Contains(m.flash, "U undoes") {
+		t.Errorf("a move should say so and say how to take it back: %q", m.flash)
+	}
+	checkFrame(t, m, "after a move")
+	press(m, "G", "shift+up", "shift+up") // Welcome up past Templates and Daily
 	if got := level(m, ""); got != "Filosofi,Welcome.md,Daily,Templates" {
-		t.Errorf("K K: %s", got)
+		t.Errorf("two shift+up: %s", got)
 	}
-	press(m, "home", "j", "K")
+	press(m, "home", "shift+up")
+	if !strings.Contains(m.flash, "vault row") {
+		t.Errorf("the vault row can't move: flash %q", m.flash)
+	}
+	press(m, "j", "shift+up")
 	if !strings.Contains(m.flash, "Already at the top") {
-		t.Errorf("K at the top: flash %q", m.flash)
+		t.Errorf("shift+up at the top of a level: flash %q", m.flash)
 	}
-	press(m, "n")
-	if m.prompt != nil || !strings.Contains(m.flash, "about order") {
-		t.Error("n should be paused in arrange mode")
-	}
-	ops := m.journal.Len()
-	press(m, "esc")
-	if m.arrange != nil || m.journal.Len() != ops+1 {
-		t.Fatalf("esc should leave arrange mode as one journal step (%d → %d)", ops, m.journal.Len())
-	}
-	if !strings.Contains(read(m, ".skrin"), `"/": [`) {
-		t.Errorf(".skrin = %q", read(m, ".skrin"))
-	}
-	press(m, "U")
-	if got := level(m, ""); got != "Daily,Filosofi,Templates,Welcome.md" || m.vault.Exists(".skrin") {
-		t.Errorf("one U should undo the whole session: %s", got)
+	press(m, "2", "shift+down")
+	if !strings.Contains(m.flash, "Files") {
+		t.Errorf("moving an item is a Files key, and should say so: %q", m.flash)
 	}
 }
 
-func TestArrangedOrderKeepsThroughChanges(t *testing.T) {
+func TestFileKeysKeepWorkingWhileArranging(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "1", "j", "j", "l", "A", "J", "esc") // in Filosofi: Antik/ below Stoic
+	press(m, "1", "j", "shift+down", "n") // no mode to pause them any more
+	if m.prompt == nil {
+		t.Fatal("n should still start a new note")
+	}
+	press(m, "esc")
+	press(m, "shift+up")
+	if got := level(m, ""); got != "Daily,Filosofi,Templates,Welcome.md" {
+		t.Errorf("shift+up should still move the item: %s", got)
+	}
+}
+
+func TestEachMoveIsItsOwnUndoStep(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "1", "j", "shift+down")
+	if !strings.Contains(read(m, ".skrin"), `"/": [`) {
+		t.Fatalf(".skrin = %q", read(m, ".skrin"))
+	}
+	press(m, "shift+down")
+	if got := level(m, ""); got != "Filosofi,Templates,Daily,Welcome.md" {
+		t.Fatalf("a second shift+down: %s", got)
+	}
+	press(m, "U")
+	if got := level(m, ""); got != "Filosofi,Daily,Templates,Welcome.md" {
+		t.Errorf("U should take back the last move only: %s", got)
+	}
+	press(m, "U")
+	if got := level(m, ""); got != "Daily,Filosofi,Templates,Welcome.md" || m.vault.Exists(".skrin") {
+		t.Errorf("undoing the first move should take .skrin away again: %s", got)
+	}
+}
+
+func TestOrderKeepsThroughChangesAndResets(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "1", "j", "j", "l", "shift+down") // in Filosofi: Antik below Stoic
 	if got := level(m, "Filosofi"); got != "Stoic.md,Antik" {
-		t.Fatalf("J: %s", got)
+		t.Fatalf("shift+down: %s", got)
 	}
 	if err := os.WriteFile(m.vault.Abs("Filosofi/Aaa.md"), []byte("# new"), 0o644); err != nil {
 		t.Fatal(err)
@@ -74,9 +96,20 @@ func TestArrangedOrderKeepsThroughChanges(t *testing.T) {
 	if got := level(m, "Filosofi"); got != "Stoic.md,Antik,Aaa.md" {
 		t.Errorf("U should undo the rename, place and all: %s", got)
 	}
-	press(m, "A", "R", "esc")
+	press(m, "R")
 	if got := level(m, "Filosofi"); got != "Antik,Aaa.md,Stoic.md" {
 		t.Errorf("R should put the level back in the default order: %s", got)
+	}
+	if !strings.Contains(m.flash, "default order") {
+		t.Errorf("R should say what it did: %q", m.flash)
+	}
+	press(m, "R")
+	if !strings.Contains(m.flash, "already in the default order") {
+		t.Errorf("R on an unordered level: %q", m.flash)
+	}
+	press(m, "U")
+	if got := level(m, "Filosofi"); got != "Stoic.md,Antik,Aaa.md" {
+		t.Errorf("U should bring the order back after R: %s", got)
 	}
 	if err := os.WriteFile(m.vault.Abs(".skrin"), []byte(`{"Filosofi/": ["Stoic.md", "Aaa.md", "Antik"]}`), 0o644); err != nil {
 		t.Fatal(err)
@@ -91,14 +124,5 @@ func TestArrangedOrderKeepsThroughChanges(t *testing.T) {
 	m.Update(VaultChangedMsg{})
 	if got := level(m, "Filosofi"); got != "Antik,Aaa.md,Stoic.md" {
 		t.Errorf("a broken .skrin should mean the default order: %s", got)
-	}
-}
-
-func TestArrangeModeEndsWhenFilesLosesFocus(t *testing.T) {
-	m := newTestModel(t)
-	ops := m.journal.Len()
-	press(m, "1", "j", "A", "J", "2")
-	if m.arrange != nil || m.journal.Len() != ops+1 {
-		t.Errorf("leaving Files should end arrange mode and record it: arranging %v, ops %d → %d", m.arrange != nil, ops, m.journal.Len())
 	}
 }

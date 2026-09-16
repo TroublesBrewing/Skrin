@@ -129,13 +129,17 @@ func (p *searchPanel) nextField(d int) int {
 	return fields[(i+d+len(fields))%len(fields)]
 }
 
+// searchKey runs the panel's keys through the registry. The keys below the
+// first switch depend on the field you're in, so they wait for it: in the
+// query and replacement they are text.
 func (m *Model) searchKey(k tea.KeyPressMsg) {
 	p := m.search
 	s := k.String()
-	switch s {
-	case "esc":
+	a := actionIn(inSearch, s)
+	switch a {
+	case actCancel:
 		// Esc steps out one layer at a time: replace first, then search.
-		if p.replacing {
+		if s == "esc" && p.replacing {
 			p.replacing = false
 			if p.focus == 1 {
 				p.focus = 0
@@ -145,27 +149,24 @@ func (m *Model) searchKey(k tea.KeyPressMsg) {
 		}
 		m.lastSearch, m.search = p, nil
 		return
-	case "ctrl+c":
-		m.lastSearch, m.search = p, nil
-		return
-	case "alt+r":
+	case actFindReplace:
 		p.replacing = !p.replacing
 		if !p.replacing && p.focus == 1 {
 			p.focus = 0
 		}
 		m.runSearch()
 		return
-	case "alt+c":
+	case actFindCase:
 		p.matchCase = !p.matchCase
 		m.runSearch()
 		return
-	case "alt+w":
+	case actFindWords:
 		if p.replacing {
 			p.wholeWord = !p.wholeWord
 			m.runSearch()
 		}
 		return
-	case "alt+t":
+	case actFindScope:
 		if p.rel == "" {
 			m.flash = "Select a note to search in just that one"
 			return
@@ -173,25 +174,25 @@ func (m *Model) searchKey(k tea.KeyPressMsg) {
 		p.inNote = !p.inNote
 		m.runSearch()
 		return
-	case "tab":
+	case actNextField:
 		p.focus = p.nextField(1)
 		return
-	case "shift+tab":
+	case actPrevField:
 		p.focus = p.nextField(-1)
 		return
-	case "up", "ctrl+p":
+	case actUp:
 		p.move(-1)
 		return
-	case "down", "ctrl+n":
+	case actDown:
 		p.move(1)
 		return
-	case "pgup":
+	case actHalfUp:
 		p.move(-10)
 		return
-	case "pgdown":
+	case actHalfDown:
 		p.move(10)
 		return
-	case "ctrl+s":
+	case actReplaceAll:
 		if p.replacing {
 			m.askReplace()
 		}
@@ -200,30 +201,30 @@ func (m *Model) searchKey(k tea.KeyPressMsg) {
 	switch p.focus {
 	case 0:
 		switch {
-		case s == "enter" && p.replacing:
+		case a == actPick && p.replacing:
 			p.focus = 1
-		case s == "enter":
+		case a == actPick:
 			m.openSelected()
 		case p.in.handle(k):
 			m.runSearch()
 		}
 	case 1:
-		if s == "enter" {
+		if a == actPick {
 			p.focus = 2
 		} else {
 			p.with.handle(k)
 		}
 	case 2:
-		switch s {
-		case "j":
+		switch {
+		case s == "j":
 			p.move(1)
-		case "k":
+		case s == "k":
 			p.move(-1)
-		case "space", " ":
+		case a == actSkipMatch:
 			if p.replacing {
 				p.toggleSkip()
 			}
-		case "enter":
+		case a == actPick:
 			m.openSelected()
 		}
 	}

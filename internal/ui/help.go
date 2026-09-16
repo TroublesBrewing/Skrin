@@ -210,11 +210,10 @@ func (m *Model) manualText(w int) []manualLine {
 	para("In the note, Shift+← and Shift+→ move between the two panes; keys act on the one with the bright border. Esc closes the pane you're in, and z (zen) closes the other.")
 	para("Two is the most, so a new split replaces the older one. Below 80 columns there's no room for one, and splits aren't remembered when you quit.")
 
-	head("Arrange mode")
-	para("A puts the Files level under the cursor in your own order. J and K move the item under the cursor up or down its level, l and h go into a folder and out again, and R puts a level back in the default order. A or Esc leaves.")
+	head("Your own order")
+	para("In Files, Shift+↑ and Shift+↓ move the item under the cursor up and down its level. There's no mode to enter: the arrows move the cursor, and with Shift they move the thing under it. R puts the level back in the default order.")
 	para("Within a level anything can sit anywhere, a file above a folder too. New items appear at the end of an ordered level, and renaming or moving keeps an item's place.")
-	para("The order lives in .skrin at the vault root, a hidden file that travels with the vault. Paths never change, Obsidian keeps its own alphabetical order, and deleting .skrin puts everything back. The whole session is one step: U undoes it.")
-	para("While arranging, n N r m d are paused: arrange mode is about order, not files.")
+	para("The order lives in .skrin at the vault root, a hidden file. Obsidian keeps its own alphabetical order, Sync leaves dotfiles alone (so the order stays on this machine), and deleting .skrin puts everything back. Each move is one step: U takes back the last one.")
 
 	head("Claude")
 	para("c opens the Claude drawer and C puts you straight into typing; Ctrl-k does it from the editor. The drawer sits along the bottom, or on the right with Alt-p or assistant.position = \"right\".")

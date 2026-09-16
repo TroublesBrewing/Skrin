@@ -52,11 +52,11 @@ Go is pinned in `.mise.toml`. If `go` isn't on PATH, prefix commands with `mise 
   - `find.go` has the `/` search panel and Go to note; `replace.go` has the panel's replace mode.
   - `modal.go` has the name prompt, the y/n question and the filterable chooser used for moves, backlinks and the outline.
   - `drawer.go` has the Claude drawer, `propose.go` Claude's tools and the y/n proposals, and `select.go` the line selection in the reading view.
-  - `arrange.go` has arrange mode (`A`): `J`/`K` reorder a level through `.skrin`, and the session becomes one journal step. Moves and renames carry the order along (`orderFollows`, called from `moveNow`).
+  - `arrange.go` keeps Files in your own order, with no mode: `Shift+↑`/`Shift+↓` move the item under the cursor within its level through `.skrin`, `R` puts a level back in the default order, and every move is its own journal step. Moves and renames carry the order along (`orderFollows`, called from `moveNow`).
   - `split.go` has the split view. The other pane waits in `m.split`; `swapPanes` trades it with the focused one, so all the note code keeps working on `m.notePath`.
   - `keys.go` has the keymap registry. It holds every key, with the context it works in (`inMain`, `inEditor`, `inList`, `inDrawer`, …) and help text for that context.
     - `actionIn` looks a key up in its context, and `help.go`'s `?` manual is generated from the same table.
-    - Keys a component handles itself (the editor, the search panel) are registered with `actNone`, so the manual still lists them. A new key must go in the registry.
+    - Components that handle their own keys (the search panel, the `[[` popup, the lists, the drawer) still look the action up here with `actionIn`, so a key is changed in one place and can be overridden later. Keys that are purely the component's own (typing, the editor's vim keys) are registered with `actNone`, so the manual still lists them. A new key must go in the registry.
 
 ## Releases
 

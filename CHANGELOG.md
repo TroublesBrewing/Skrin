@@ -2,6 +2,21 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.11.0 — 2026-09-16
+
+Milestone 11 opens: arranging loses its mode (Amendment 1 in `skrin arrange.md`), the keymap registry reaches the components that handle their own keys, and the open note is findable in Files again.
+
+- **Arranging has no mode any more.** In Files, `Shift+↑` and `Shift+↓` move the item under the cursor up and down its level, and `R` puts a level back in the default order. The arrows move the cursor; with Shift they move the thing under it. `A`, `J` and `K` are free again.
+  - Every move is its own step and says what it did — *"Moved Anteckningar up · U undoes"* — so `U` takes back the last move rather than a whole session.
+  - The first move in a vault still creates `.skrin`, and undoing it takes the file away again.
+  - `n` `N` `r` `m` `d` are never paused now: there's no mode left to pause them in.
+  - The vault row stays put, and at a level's edge the refusal names the level.
+- **Components dispatch through the keymap registry.** The search panel's keys and the `[[` completion popup's keys have real actions in the registry and look them up with `actionIn`, so each key is defined in one place — the groundwork for user keymap overrides.
+  - The completion popup's keys are listed in the `?` manual for the first time.
+  - Keys that are purely a component's own (typing, the editor's vim keys) stay documentation-only, listed in the manual but handled inside the component.
+- **The open note is orange in Files.** It was the accent colour, which gruvbox and many other themes also give to folders, so the note you were reading looked like a folder. Files now keeps one colour per meaning: folders blue, marks yellow, the open note orange.
+- Tests: the registry's one-key-one-meaning guard moved to `keys_test.go` where it can be found, alongside new guards that every binding is documented and that the components' keys resolve through the registry; a colour test keeps Files' meanings apart.
+
 ## v0.10.0 — 2026-09-15
 
 Milestone 10: arrange mode (`skrin arrange.md` in the vault).

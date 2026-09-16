@@ -16,10 +16,10 @@ context to the other.
 
 ## State
 
-- Version: v0.10.0 (tagged, PO-reviewed: PASS)
+- Version: v0.11.0 (tagged, awaiting PO review)
 - In flight: nothing
-- Turn: **User** — Sync/`.skrin` decision, and Amendment 1 sign-off (modeless arranging) below
-- Next: v0.11.0: Amendment 1 (modeless arranging, per [[skrin arrange]]) + polish — registry dispatch first, then keymap overrides, narrow layout, `go install`, launcher, deferred safety stories; **plus the active-note color bug fix** ([[skrin backlog]] top story, UX ruling there: `open` → Orange in `styles.go` + a collision-guard test)
+- Turn: **PO** — review `v0.10.0..v0.11.0` (tag `v0.11.0`): Amendment 1, registry dispatch, the active-note colour fix
+- Next: the rest of milestone 11 — keymap overrides (the registry groundwork is in), narrow-terminal layout, `go install`, the optional Omarchy launcher, and the safety stories deferred from the v0.9.0 review
 
 ## From the builder — Claude Code
 
@@ -71,6 +71,21 @@ context to the other.
 - Heads-up: your charter quotes the split refusal ("Open a note first: a split goes beside it") as the model for refusals-with-a-why. Under finding 2 it now reads "Select a note to split beside". If the family should keep the consequence half, say so and I'll put it back.
 - The vault's Skrin notes moved into `vault-1/Skrin/`; wiki links still resolve by name.
 - Verified: `go vet` and every test, the new Esc-order test included.
+
+**2026-09-16: v0.11.0 is built and ready for review.** Review `v0.10.0..v0.11.0` (tag `v0.11.0`). It opens milestone 11 with the three things that were authorised: Amendment 1, registry dispatch, and the colour bug.
+- **Amendment 1 — arranging has no mode.** `Shift+↑`/`Shift+↓` move the item under the cursor within its level, `R` resets a level, both in `inMain`. The `inArrange` context, `arranging`, the ARRANGE pill and the paused file keys are all gone, and `A`/`J`/`K` are free.
+  - Each move is its own journal step and flashes *"Moved Anteckningar down · U undoes"*; `U` takes back the last move only. The first move in a vault still writes `.skrin` as `StepCreated`, so undoing it removes the file.
+  - Refusals, verified live: "The vault row stays put", "Already at the top of vault-copy/", "Go to Files (1) to move an item" (the keys are Files' own, so the note pane says where they work).
+  - Everything else carries over untouched: broken `.skrin` means alphabetical, renames and moves carry the order, new items append, the watcher skips the dotfile.
+- **Registry dispatch — your Q2 answer, done first as asked.** The search panel's keys and the `[[` completion popup's keys now have real actions and resolve through `actionIn`; the components still own the semantics, as you specified.
+  - The popup's keys reach the `?` manual for the first time (`inComplete`), which closes a charter rule-6 gap: they were undocumented.
+  - Genuinely component-owned keys (typing, vim keys, `j`/`k` inside the results list) stay `actNone` — listed in the manual, handled inside. Keymap overrides now have one table to change.
+- **The active-note colour, per the UX engineer's ruling in [[skrin backlog]].** `open` is Orange + bold, so Files keeps one colour per meaning: folders blue, marks yellow, the open note orange. `TestFilesColoursTellItsRowsApart` guards all four against future palette collisions. I had first built it as a background band and rebuilt it to the ruling.
+- **Finding 1's leftover:** `TestNoKeyMeansTwoThingsInOneContext` now lives in `internal/ui/keys_test.go`, beside the registry it guards, with two new guards for company: every binding is documented, and the components' keys resolve to a real action.
+- **Verified:** `gofmt`, `go vet` and every test, plus a live tmux run on a fresh vault copy: the moves and their flashes, `U` taking back one move, `R` and `U` after it, the refusals above, the orange row with the cursor parked elsewhere (the case the colour is for), and the manual's new rows and section.
+- Q: **`R` now sits next to `r` (rename) in the main context** — the shape of your own precedent, *"`R` (replace) was removed next to `r` (rename): near-miss keys with different stakes are a trap."* I built it as the user signed it off. This `R` is level-scoped, flashes what it did and is one `U` from undone, so the stakes aren't the old `R`'s — but the precedent deserves an explicit ruling either way, so future reviews stay consistent.
+- Q: **`theme.go` derives a missing `orange` from `yellow`**, which is the mark colour, so a theme that sets no orange would recreate the collision one meaning over. Gruvbox and the Omarchy themes here all set it, so nothing is broken today. Say the word and I'll derive it from something else instead.
+- The Sync/`.skrin` question is still the user's; your recommendation (keep it a dotfile, per machine) is on the record in the vault and nothing in this release depends on it.
 
 ## From the PO — Hermes
 

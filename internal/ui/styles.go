@@ -31,14 +31,18 @@ func newStyles(p theme.Palette) styles {
 		selFocus:    s().Background(p.Selection).Foreground(p.LightForeground).Bold(true),
 		selBlur:     s().Foreground(p.Accent),
 		marked:      s().Foreground(p.Yellow),
-		open:        s().Foreground(p.Accent).Bold(true),
-		cursor:      s().Background(p.Foreground).Foreground(p.Background),
-		pill:        s().Background(p.Accent).Foreground(p.Background).Bold(true),
-		dangerPill:  s().Background(p.Red).Foreground(p.Background).Bold(true),
-		diffAdd:     s().Foreground(p.Green),
-		diffDel:     s().Foreground(p.Red),
-		diffHunk:    s().Foreground(p.Cyan),
-		hint:        s().Background(p.Yellow).Foreground(p.Background).Bold(true),
-		found:       s().Background(p.Yellow).Foreground(p.Background),
+		// One thing, one colour in Files: folders blue, marks yellow, the
+		// open note orange. It was the accent colour until v0.11, which
+		// plenty of themes (gruvbox among them) also give to folders, so
+		// the open note was invisible on the theme most people run.
+		open:       s().Foreground(p.Orange).Bold(true),
+		cursor:     s().Background(p.Foreground).Foreground(p.Background),
+		pill:       s().Background(p.Accent).Foreground(p.Background).Bold(true),
+		dangerPill: s().Background(p.Red).Foreground(p.Background).Bold(true),
+		diffAdd:    s().Foreground(p.Green),
+		diffDel:    s().Foreground(p.Red),
+		diffHunk:   s().Foreground(p.Cyan),
+		hint:       s().Background(p.Yellow).Foreground(p.Background).Bold(true),
+		found:      s().Background(p.Yellow).Foreground(p.Background),
 	}
 }

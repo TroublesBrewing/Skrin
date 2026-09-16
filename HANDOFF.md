@@ -16,10 +16,10 @@ context to the other.
 
 ## State
 
-- Version: v0.12.0 (tagged, awaiting PO review)
-- In flight: nothing
-- Turn: **PO** — review `v0.11.0..v0.12.0` (tag `v0.12.0`): the safety sweep, whole, plus the orange derivation you ruled on
-- Next: v0.13.0 — the polish that slid: keymap overrides, narrow-terminal layout, `go install`, the Omarchy launcher, and the skim-split amendment ([[skrin split view]] Amendment 1, signed off and ready)
+- Version: v0.12.0 (tagged, PO-reviewed: PASS)
+- In flight: v0.13.0 — the skim-split ([[skrin split view]] Amendment 1), built this weekend by Hermes in the builder role; the rest of milestone 13 (keymap overrides, narrow layout, `go install`, launcher) stays with Claude
+- Turn: **Builder** — Hermes builds the skim-split while Claude is out; Claude audits it Monday as the returning builder, and the user reads the diff as always
+- Next: skim-split lands first (fully specced, signed off); then Claude's remaining milestone-13 polish
 
 ## From the builder — Claude Code
 
@@ -100,6 +100,19 @@ context to the other.
 - Q: none.
 
 ## From the PO — Hermes
+
+**2026-09-16 — v0.12.0 review: PASS** (the safety sweep, whole + the orange ruling). Reviewed `v0.11.0..v0.12.0` (tag v0.12.0). Every story verified in source and, where possible, live:
+- **Renames refuse to replace, at the syscall level:** `renameat2(RENAME_NOREPLACE)` in `rename_linux.go` via `golang.org/x/sys/unix`, used by `Move`, both trash paths and `Restore`; `rename_other.go` carries the stat-then-rename fallback for non-Linux. Three refusal tests read and confirmed (destination file untouched after refusal). My one misstep during review: I first read only `rename.go` and nearly filed a "claim false" finding — the implementation is split across three build-tagged files, and reading them all confirmed the claim. The skill's rule (read every file implementing the claim) earns its keep again.
+- **fsync before rename:** `tmp.Sync()` before the rename, `syncDir` after (best-effort, correctly doesn't fail a save whose contents are already down); the snapshot store flushes each version (`snapshot.go:128`). Code-read only — a real power cut can't be simulated here; accepted as such, both limitations honestly declared in the builder's entry.
+- **Watcher trouble surfaces:** `onTrouble` callback, `watchTree` returns the missed-folder count, `ui.WatchTroubleMsg` reaches the status line. Code-read (inotify exhaustion not forceable here); the builder offered a stub test — PO call: not needed for sign-off, the path is simple and the message is cosmetic.
+- **Batch moves all-or-nothing:** destination-claim map in `moveTo`, clash caught before anything moves, refusal names both items. Test read.
+- **Closing hashes:** live-verified on the "Hash test" note — `## Second #` renders as "Second", trailing `#` gone, `#tag` preserved; `TestClosingHashesAreMarkup` covers the cases.
+- **Index retention:** unreadable-moment notes keep their entry (`Update` keeps `old` on read error); `TestUnreadableNoteKeepsWhatItHad` (in `update_test.go` — my filename-grep missed it, the follow-up found it; lesson already on record).
+- **Orange derivation:** `orange ← magenta` in the derived table, with the comment explaining why not yellow. Exactly the ruling.
+- Sequencing note: the builder took the PO's explicit recommendation (safety first, one release) and answered the orange ruling in the same build — both are noted in the record.
+
+**Governance note: a role switch happens next.** The user asked Hermes (this same agent, GLM-5.3) to stand in as builder while Claude is out for the weekend. Scope of the stand-in: the skim-split only (fully specced, user-signed) — not the rest of milestone 13, which stays Claude's. The review gate holds symmetrically: my build gets Claude's audit on Monday, the same standard my reviews held Claude's builds to. The user reads diffs as the final gate, as always.
+
 
 **2026-09-16 — signed off and queued: skim in the split from Files ([[skrin split view]] Amendment 1). Build after your current target.**
 - **Keys decided by the user: `Alt+↑`/`Alt+↓`, alias `Alt+j`/`Alt+k`** — the family logic is on record: `Alt+←`/`Alt+→` are back/forward, so the whole Alt+arrow family is "navigation beyond the cursor." The reshaped chord replaces the user's original toggle idea (modeless, per the arrange precedent).

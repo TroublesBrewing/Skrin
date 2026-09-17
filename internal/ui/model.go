@@ -742,12 +742,12 @@ func (m *Model) settle() {
 		m.editor.SetSize(l.noteTextW(), vis)
 	}
 	if m.notePath != "" && m.noteErr == nil && l.noteTextW() != m.renderedW {
-		m.lines = markdown.Render(m.noteSrc, markdown.Options{Width: l.noteTextW(), Palette: m.pal, Resolve: m.resolve, Images: m.imageOptions(m.notePath, vis)})
+		m.lines = markdown.Render(m.noteSrc, markdown.Options{Width: l.noteTextW(), Palette: m.pal, Resolve: m.resolve, Images: m.imageOptions(m.notePath, vis), Embeds: m.embedOptions(m.notePath)})
 		m.renderedW = l.noteTextW()
 	}
 	if s := m.split; s != nil {
 		if w := l.splitW - 4; s.err == nil && w != s.renderedW {
-			s.lines = markdown.Render(s.src, markdown.Options{Width: w, Palette: m.pal, Resolve: m.resolveFrom(s.path), Images: m.imageOptions(s.path, vis)})
+			s.lines = markdown.Render(s.src, markdown.Options{Width: w, Palette: m.pal, Resolve: m.resolveFrom(s.path), Images: m.imageOptions(s.path, vis), Embeds: m.embedOptions(s.path)})
 			s.renderedW = w
 		}
 		s.off = clamp(s.off, 0, max(len(s.lines)-vis, 0))

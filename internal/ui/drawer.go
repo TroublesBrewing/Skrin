@@ -452,7 +452,7 @@ func (m *Model) renderChat(c chatMsg, w int) []string {
 	var out []string
 	switch c.who {
 	case "claude":
-		for _, l := range markdown.Render(c.text, markdown.Options{Width: w, Palette: m.pal, Resolve: m.resolve, Images: markdown.ImageOptions{Meta: m.imageMeta(m.notePath)}}) {
+		for _, l := range markdown.Render(c.text, markdown.Options{Width: w, Palette: m.pal, Resolve: m.resolve, Images: markdown.ImageOptions{Meta: m.imageMeta(m.notePath)}, Embeds: m.embedOptions(m.notePath)}) {
 			out = append(out, l.Text)
 		}
 		return out

@@ -7,6 +7,7 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"os"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -16,6 +17,7 @@ import (
 	_ "golang.org/x/image/webp"
 
 	"github.com/lurioso/skrin/internal/imgmeta"
+	"github.com/lurioso/skrin/internal/index"
 	"github.com/lurioso/skrin/internal/markdown"
 )
 
@@ -57,6 +59,72 @@ func (m *Model) imageOptions(from string, paneVis int) markdown.ImageOptions {
 		opts.CellW, opts.CellH = m.cellW, m.cellH
 	}
 	return opts
+}
+
+// embedOptions is the markdown.EmbedOptions for note from: Content
+// resolves a ![[Note]] block embed's target the same way a wikilink does
+// and hands back its raw source, sliced to just one heading's section
+// when the target names one.
+func (m *Model) embedOptions(from string) markdown.EmbedOptions {
+	return markdown.EmbedOptions{Content: m.embedContent(from)}
+}
+
+// embedContent resolves a note embed's target, as written after "![[",
+// to the source text it transcludes. A "Note#Heading" target slices out
+// just that heading's section; a bare "Note" transcludes the whole note.
+// Anything it can't turn into real content — an unresolved note, or a
+// heading it can't find — reports false, so the caller falls back to a
+// plain link.
+func (m *Model) embedContent(from string) func(target string) (string, bool) {
+	return func(target string) (string, bool) {
+		note, sub, _ := strings.Cut(target, "#")
+		rel, ok := m.idx.Resolve(note, from)
+		if !ok {
+			return "", false
+		}
+		src, err := m.vault.Read(rel)
+		if err != nil {
+			return "", false
+		}
+		if sub == "" {
+			return src, true
+		}
+		line, ok := m.idx.Anchor(rel, sub)
+		if !ok {
+			return "", false
+		}
+		return headingSection(src, m.idx.Headings(rel), line), true
+	}
+}
+
+// headingSection slices src down to one heading's section: from the
+// heading at line to just before the next heading of the same level or
+// higher, or the end of the note — the same end-of-section rule
+// internal/habit.BlockRange uses for its one fixed heading, generalised
+// to any heading.
+func headingSection(src string, heads []index.Heading, line int) string {
+	lines := strings.Split(strings.ReplaceAll(src, "\r\n", "\n"), "\n")
+	if n := len(lines); n > 1 && lines[n-1] == "" {
+		lines = lines[:n-1]
+	}
+	if line >= len(lines) {
+		return ""
+	}
+	end, level := len(lines), 6
+	for i, h := range heads {
+		if h.Line != line {
+			continue
+		}
+		level = h.Level
+		for _, next := range heads[i+1:] {
+			if next.Level <= level {
+				end = next.Line
+				break
+			}
+		}
+		break
+	}
+	return strings.Join(lines[line:min(end, len(lines))], "\n")
 }
 
 // noteOrigin is the 1-indexed terminal row and column of the note pane's

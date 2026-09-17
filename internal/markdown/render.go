@@ -29,6 +29,7 @@ type Line struct {
 	Heading int    // 1–6 on the first display line of a heading, else 0
 	Links   []Link // links whose text starts, or continues, on this line
 	Image   *Image // set on every display line of a rendered image embed
+	Embed   *Embed // set on every display line of a transcluded note embed
 }
 
 // Image marks a display line as (part of) an image embed rendered on a
@@ -73,6 +74,34 @@ const (
 	ImageUnsupported                    // a file is there, but not a format Skrin can decode
 )
 
+// Embed marks a display line as (part of) a transcluded note (a
+// `![[Note]]` embed alone on its own line, the same "block form" rule an
+// image embed follows). Every row the transcluded content occupies
+// carries an Embed with the same Target, Row counting up from 0 and Rows
+// fixed to how many rows it took — the same 1:n Src-mapping discipline as
+// Image.
+type Embed struct {
+	Target string // the embed's target as written ("Note" or "Note#Heading")
+	Row    int    // 0-based row of this display line within the embed
+	Rows   int    // total rows the embed occupies
+}
+
+// EmbedOptions controls how ![[Note]] block embeds render. The zero value
+// (Content == nil) renders every one as the plain "⧉ name" link, same as
+// before this existed — the always-working default.
+type EmbedOptions struct {
+	// Content resolves an embed's target (a note name, optionally with
+	// "#Heading") to the note's raw source text and whether it resolved
+	// at all. A target with "#^blockid" is never passed here — block-id
+	// embeds always fall back to a plain link, since slicing out just
+	// one block isn't supported yet. Content is only ever set on the
+	// outermost Render call: transcluded content is itself rendered with
+	// a zero-value EmbedOptions, so at most one level of transclusion
+	// ever happens. That makes it cycle-safe by construction (A embeds B
+	// embeds A stops at B) without needing a recursion-depth count.
+	Content func(target string) (src string, resolved bool)
+}
+
 // Link is a link as drawn on a display line.
 type Link struct {
 	Col    int    // display column where its text starts on the line
@@ -89,11 +118,13 @@ type Options struct {
 	Resolve func(target string) bool
 	// Images controls how image embeds render; see ImageOptions.
 	Images ImageOptions
+	// Embeds controls how note embeds render; see EmbedOptions.
+	Embeds EmbedOptions
 }
 
 // Render renders src into display lines.
 func Render(src string, o Options) []Line {
-	r := &renderer{width: max(o.Width, 10), pal: o.Palette, resolve: o.Resolve, images: o.Images, st: newStyles(o.Palette)}
+	r := &renderer{width: max(o.Width, 10), pal: o.Palette, resolve: o.Resolve, images: o.Images, embeds: o.Embeds, st: newStyles(o.Palette)}
 	lines := strings.Split(strings.ReplaceAll(src, "\r\n", "\n"), "\n")
 	if n := len(lines); n > 1 && lines[n-1] == "" {
 		lines = lines[:n-1]
@@ -183,6 +214,7 @@ type renderer struct {
 	pal     theme.Palette
 	resolve func(string) bool
 	images  ImageOptions
+	embeds  EmbedOptions
 	st      styles
 	callout *lipgloss.Style // colour of the callout we're inside, if any
 	links   []Link          // every link seen, referenced by span.link
@@ -240,6 +272,9 @@ func (r *renderer) block(i int, l string) {
 			r.image(i, target, alt)
 			return
 		}
+		if target, ok := noteEmbed(t); ok && r.embeds.Content != nil && r.noteEmbed(i, target) {
+			return
+		}
 		r.emit(i, "", "", r.inline(l, r.st.text), 0, wrapWords)
 	}
 }
@@ -254,6 +289,56 @@ func imageEmbed(t string) (target, alt string, ok bool) {
 		return m[2], m[1], true
 	}
 	return "", "", false
+}
+
+// noteEmbed reports whether t (already trimmed) is exactly one wikilink
+// embed and nothing else, and if so its target as written ("Note" or
+// "Note#Heading"). An image embed isn't a note embed — imageEmbed already
+// claims those. A "#^blockid" target is deliberately excluded here: it's
+// still a valid embed, just one that always falls back to a plain link,
+// since slicing out one block isn't supported.
+func noteEmbed(t string) (target string, ok bool) {
+	m := imageEmbedRE.FindStringSubmatch(t) // same "![[...]] alone" shape
+	if m == nil || imgmeta.IsImage(m[1]) {
+		return "", false
+	}
+	if _, sub, cut := strings.Cut(m[1], "#"); cut && strings.HasPrefix(sub, "^") {
+		return "", false
+	}
+	return m[1], true
+}
+
+// noteEmbed transcludes a note embed's content in place, at src's line.
+// It reports whether it managed to (Content resolved the target): a false
+// return leaves the caller to fall back to the plain "⧉ name" link.
+func (r *renderer) noteEmbed(src int, target string) bool {
+	content, ok := r.embeds.Content(target)
+	if !ok {
+		return false
+	}
+	before := len(r.out)
+	// Rendered with a zero-value EmbedOptions: transcluded content never
+	// itself transcludes, which is what keeps this cycle-safe (A embeds B
+	// embeds A stops at B) without a recursion-depth count. It keeps the
+	// same Resolve and Images the outer note used, so links and images
+	// inside the section still show correctly in the common case; only a
+	// relative path written differently than the outer note's own would
+	// resolve wrongly — a known first-pass limitation.
+	for _, l := range Render(content, Options{Width: r.width, Palette: r.pal, Resolve: r.resolve, Images: r.images}) {
+		l.Src = src // every transcluded row maps back to the ![[...]] line
+		r.out = append(r.out, l)
+	}
+	rows := len(r.out) - before
+	if rows == 0 {
+		// An embed resolved to nothing (an empty note, or an empty
+		// heading section) still needs a row of its own to sit on.
+		r.out = append(r.out, Line{Src: src})
+		rows = 1
+	}
+	for i := before; i < len(r.out); i++ {
+		r.out[i].Embed = &Embed{Target: target, Row: i - before, Rows: rows}
+	}
+	return true
 }
 
 func (r *renderer) quote(i int, l string) {

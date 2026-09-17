@@ -111,13 +111,41 @@ func TestOverrideReplacesTheDefaultKey(t *testing.T) {
 // when the keys matter most.
 func TestUnknownOverridesAreIgnored(t *testing.T) {
 	km := newKeymap(map[string]map[string][]string{
-		inMain: {"edit": {"ctrl+e"}, "teleport": {"ctrl+t"}, "rename": nil},
+		inMain: {"edit": {"ctrl+e"}, "teleport": {"ctrl+t"}},
 	})
 	if km.act(inMain, "ctrl+e") != actEdit {
 		t.Error("the good override should still apply")
 	}
 	if km.act(inMain, "r") != actRename {
-		t.Error("an override with no keys should leave the default alone")
+		t.Error("an action with no override should keep its default")
+	}
+}
+
+// A binding whose key was given away is saved with no keys at all. That
+// has to survive a restart: handing the default back would leave two
+// bindings claiming the same key.
+func TestABindingLeftWithNoKeyStaysThatWay(t *testing.T) {
+	km := newKeymap(map[string]map[string][]string{
+		inMain: {"zen": {"e"}, "edit": {}},
+	})
+	if km.act(inMain, "e") != actZen {
+		t.Error("the key that was given away should belong to its new action")
+	}
+	if len(km.bound(inMain, actEdit)) != 0 {
+		t.Errorf("the binding it came from should still have no key, got %v", km.bound(inMain, actEdit))
+	}
+	// The invariant the whole registry rests on, across a restart.
+	seen := map[string]action{}
+	for _, b := range defaultBindings {
+		if b.act == actNone || b.where != inMain {
+			continue
+		}
+		for _, k := range km.bound(inMain, b.act) {
+			if a, ok := seen[k]; ok && a != b.act {
+				t.Errorf("%q means two things after reloading the keymap", k)
+			}
+			seen[k] = b.act
+		}
 	}
 }
 

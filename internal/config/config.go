@@ -15,43 +15,47 @@ import (
 	"github.com/lurioso/skrin/internal/obsidian"
 )
 
-// Config mirrors ~/.config/skrin/config.toml.
+// Config mirrors ~/.config/skrin/config.toml. Everything is omitempty, so
+// Save writes back only what is actually set rather than filling the
+// user's config with empty keys for every setting Skrin has. A *bool that
+// was deliberately set to false still writes: only an unset one is left
+// out, which is what keeps "off" apart from "not chosen".
 type Config struct {
-	Vault string `toml:"vault"`
+	Vault string `toml:"vault,omitempty"`
 	// rawVault and rawExternal keep the file's own spelling (e.g. a "~/"
 	// shorthand) so Save doesn't turn it into an absolute path just
 	// because Load expanded it for use at runtime.
 	rawVault    string `toml:"-"`
 	rawExternal string `toml:"-"`
 	General     struct {
-		RestoreLastNote *bool `toml:"restore_last_note"` // unset means off: fresh runs start at the welcome screen
-	} `toml:"general"`
+		RestoreLastNote *bool `toml:"restore_last_note,omitempty"` // unset means off: fresh runs start at the welcome screen
+	} `toml:"general,omitempty"`
 	Daily struct {
-		RolloverTodos *bool `toml:"rollover_todos"` // unset means on
-	} `toml:"daily"`
+		RolloverTodos *bool `toml:"rollover_todos,omitempty"` // unset means on
+	} `toml:"daily,omitempty"`
 	Editor struct {
-		Vim      bool   `toml:"vim"`      // vim-style keys in the built-in editor
-		External string `toml:"external"` // command for E; default $VISUAL, $EDITOR, nvim
-	} `toml:"editor"`
+		Vim      bool   `toml:"vim,omitempty"`      // vim-style keys in the built-in editor
+		External string `toml:"external,omitempty"` // command for E; default $VISUAL, $EDITOR, nvim
+	} `toml:"editor,omitempty"`
 	Assistant struct {
-		Enabled  *bool  `toml:"enabled"`  // unset means on
-		Position string `toml:"position"` // "bottom" (the default) or "right"
-		Model    string `toml:"model"`    // "" for Claude Code's default
-		Command  string `toml:"command"`  // the claude binary; default claude on $PATH
-	} `toml:"assistant"`
+		Enabled  *bool  `toml:"enabled,omitempty"`  // unset means on
+		Position string `toml:"position,omitempty"` // "bottom" (the default) or "right"
+		Model    string `toml:"model,omitempty"`    // "" for Claude Code's default
+		Command  string `toml:"command,omitempty"`  // the claude binary; default claude on $PATH
+	} `toml:"assistant,omitempty"`
 	Library struct {
-		Folder        string `toml:"folder"`         // default: "Books"
-		CoversFolder  string `toml:"covers_folder"`  // default: "Assets/Covers"
-		DefaultStatus string `toml:"default_status"` // default: "reading"
-	} `toml:"library"`
+		Folder        string `toml:"folder,omitempty"`         // default: "Books"
+		CoversFolder  string `toml:"covers_folder,omitempty"`  // default: "Assets/Covers"
+		DefaultStatus string `toml:"default_status,omitempty"` // default: "reading"
+	} `toml:"library,omitempty"`
 	Render struct {
-		Images *bool `toml:"images"` // unset means on
-	} `toml:"render"`
+		Images *bool `toml:"images,omitempty"` // unset means on
+	} `toml:"render,omitempty"`
 	// Keys is the user's own keymap, written by the Keys tab of `?`:
 	// context ("main", "editor", …) → action name → the keys that work
 	// for it. Only what was changed is here, so new default keys still
 	// arrive with a new Skrin.
-	Keys map[string]map[string][]string `toml:"keys"`
+	Keys map[string]map[string][]string `toml:"keys,omitempty"`
 }
 
 // AssistantEnabled reports whether the Claude drawer is available. It is on

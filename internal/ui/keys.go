@@ -400,9 +400,14 @@ func newKeymap(over map[string]map[string][]string) *keymap {
 	km := &keymap{over: map[string]map[string][]string{}}
 	for where, acts := range over {
 		for name, keys := range acts {
-			if _, ok := actionByName[name]; !ok || len(keys) == 0 {
-				continue // an action this Skrin no longer has, or no keys
+			if _, ok := actionByName[name]; !ok {
+				continue // an action this Skrin no longer has
 			}
+			// An empty list is kept, not skipped: it means a binding
+			// deliberately left with no key, usually because its key was
+			// given to something else. Treating it as "no override" would
+			// hand the default back and leave two bindings claiming the
+			// same key after a restart.
 			km.setOver(where, name, keys)
 		}
 	}

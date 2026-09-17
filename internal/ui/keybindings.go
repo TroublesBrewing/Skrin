@@ -289,7 +289,10 @@ func (m *Model) captureBinding(k tea.KeyPressMsg) {
 }
 
 // askTake asks whether to take a key from the binding that has it, and if
-// so moves the cursor there so it can be given a new one on the spot.
+// so moves the cursor there so it can be given a new one on the spot. The
+// question names the key, what holds it and what it would cost, short
+// enough that the cost is still on screen in a narrow terminal — the
+// binding it would go to is the highlighted row already.
 func (m *Model) askTake(b bindRef, other action, s, label, help, holder string) {
 	h := m.manual
 	left := len(m.keys.bound(b.where, other)) - 1
@@ -299,7 +302,7 @@ func (m *Model) askTake(b bindRef, other action, s, label, help, holder string) 
 	}
 	h.mode = keysAsking
 	h.ask = &keysAsk{
-		text: label + " is already " + quote(holder) + " here. Give it to " + quote(help) + "? " + tail,
+		text: "Take " + label + " from " + quote(holder) + "? " + tail,
 		yes: func() {
 			m.bindKey(b, s)
 			m.manual.note = label + " is now " + quote(help) + "."

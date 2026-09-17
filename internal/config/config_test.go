@@ -202,3 +202,67 @@ func TestSaveRoundTripsAndKeepsHomeShorthand(t *testing.T) {
 		t.Errorf("Save should keep the ~/ shorthand rather than an absolute path:\n%s", saved)
 	}
 }
+
+// Save writes the settings screen's changes into a file the user also
+// edits by hand, so it must not fill it with an empty key for every
+// setting Skrin happens to have.
+func TestSaveWritesOnlyWhatIsSet(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", home)
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	off := false
+	c.Render.Images = &off
+	if err := Save(c); err != nil {
+		t.Fatal(err)
+	}
+	saved, err := os.ReadFile(Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(saved); strings.Contains(got, `vault = ""`) || strings.Contains(got, `external = ""`) || strings.Contains(got, "[library]") {
+		t.Errorf("Save should leave untouched settings out of the file:\n%s", got)
+	}
+	// But a setting deliberately turned off is not "unset", and has to
+	// survive: dropping it would silently turn the thing back on.
+	if !strings.Contains(string(saved), "images = false") {
+		t.Errorf("an explicit off should be written:\n%s", saved)
+	}
+	back, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if back.RenderImages() {
+		t.Error("images should still be off after a round trip")
+	}
+	if !back.RolloverTodos() || !back.AssistantEnabled() {
+		t.Error("settings that were never touched should keep their defaults")
+	}
+}
+
+func TestSaveRoundTripsTheKeymap(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", home)
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.Keys = map[string]map[string][]string{"main": {"zen": {"e"}, "edit": {}}}
+	if err := Save(c); err != nil {
+		t.Fatal(err)
+	}
+	back, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := back.Keys["main"]["zen"]; len(got) != 1 || got[0] != "e" {
+		t.Errorf("zen = %v, want [e]", got)
+	}
+	if got, ok := back.Keys["main"]["edit"]; !ok || len(got) != 0 {
+		t.Errorf("edit = %v (present %v), want an empty list that survives", got, ok)
+	}
+}

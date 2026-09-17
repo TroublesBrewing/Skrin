@@ -2,6 +2,16 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.16.1 — 2026-09-17
+
+Three quick reports from daily use (`Quick reports/`), including a first pass at note transclusion.
+
+- **Fixed: the split view's pane-switch key was undiscoverable.** `shift+←/→` already worked and had manual text, but the status line's right-side hint never mentioned it. It now reads `shift+←/→ switch panes · ? manual · ...` whenever a split is open.
+- **Fixed: Quick Notes and the Book Card's Notes & Reflections field ran text off the right edge instead of wrapping.** Both now word-wrap to their box width, hard-breaking a single word longer than the width; the cursor stays correctly positioned on its wrapped row.
+- **Fixed: images couldn't be found or linked to.** `[[` completion and Go to note only ever looked at notes. Both now also list images — completing `[[` inserts a proper embed target, and choosing an image from Go to note reveals it in Files (it has no note pane of its own to open).
+- **New: `![[Note]]` embeds transclude, a first pass.** A block embed (alone on its own line, same rule as image embeds) now shows the target note's actual content in place, instead of sitting as a plain `⧉ name` link forever. `![[Note#Heading]]` transcludes just that heading's section. A `#^blockid` target, or one that doesn't resolve, still falls back to the plain link. Transclusion is one level deep only — content embedded inside a transcluded note renders as a link rather than transcluding again, which is what keeps it safe from cycles. Applies everywhere notes render: the note pane, splits, zen mode and the Claude drawer. **Known limitation**: a link or image inside transcluded content resolves relative to the note doing the embedding, not the embedded note's own folder — right for absolute or unique targets, wrong for a same-named or relative one written differently. No vault spec note exists yet for this feature; it was scoped live rather than through the usual proposal-and-sign-off process, worth a retroactive ticket.
+- Tests: a new status-line hint case; `wrapPlain`/`textArea.wrapped` word-wrap and cursor-mapping tests plus both call sites' regressions (`internal/ui`); `Index.Images()` and its wiring into completion and the switcher (`internal/index`, `internal/ui`); transclusion's resolve/fallback/heading-section/block-id/recursion-safety cases at the renderer level (`internal/markdown`) and end-to-end through the note pane (`internal/ui`). Full suite green.
+
 ## v0.16.0 — 2026-09-17
 
 Images in notes ([[skrin images]]): image embeds finally render, instead of sitting as plain links — real sixel pixels where the terminal supports them, a tidy placeholder frame everywhere else.

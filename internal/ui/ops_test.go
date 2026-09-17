@@ -356,6 +356,37 @@ func TestDailyTidyIsUndoableWithU(t *testing.T) {
 	}
 }
 
+// TestHabitsNeverRollOverToTomorrow is the Rollover non-interference check
+// the amendment specs: the real Rollover Daily Todos plugin scans the
+// whole previous note for any unchecked checkbox, with no regard for
+// section (templateHeading only says where rolled todos land, not what
+// counts as one) — so an unfinished habit checkbox left unguarded would
+// roll into tomorrow's Todo's list, and — with deleteOnComplete on — get
+// deleted from yesterday's note too. Habits deliberately reset daily, so
+// neither must happen.
+func TestHabitsNeverRollOverToTomorrow(t *testing.T) {
+	m := newTestModel(t)
+	settings := `{"templateHeading":"### Todo's","deleteOnComplete":true,"removeEmptyTodos":true,"rolloverChildren":true,"doneStatusMarkers":"xX-"}`
+	if err := os.WriteFile(m.vault.Abs(".obsidian/plugins/obsidian-rollover-daily-todos/data.json"), []byte(settings), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	yesterday := "### Habits\n- [ ] Meditera 10 min\n- [x] Läsa 30 min\n\n### Todo's\n- [ ] call mum\n"
+	if err := os.WriteFile(m.vault.Abs("Daily/2026-09-13.md"), []byte(yesterday), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	press(m, "t")
+	tomorrow := read(m, "Daily/2026-09-15.md")
+	if strings.Contains(tomorrow, "Meditera") {
+		t.Errorf("tomorrow's note should not carry the habit over:\n%s", tomorrow)
+	}
+	if !strings.Contains(tomorrow, "call mum") {
+		t.Errorf("the real todo should still roll over:\n%s", tomorrow)
+	}
+	if got := read(m, "Daily/2026-09-13.md"); !strings.Contains(got, "Meditera 10 min") {
+		t.Errorf("deleteOnComplete must not remove the unfinished habit from yesterday's note:\n%s", got)
+	}
+}
+
 const wantDaily = "# Tuesday 15 September\n### Todo's\n- [ ] call mum\n  - about sunday\n* [ ] star task\n\n### Notes\n"
 
 func TestDailyNoteWithRollover(t *testing.T) {

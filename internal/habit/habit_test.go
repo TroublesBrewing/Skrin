@@ -2,6 +2,7 @@ package habit
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -175,5 +176,39 @@ func TestStreakEmptyDayNoteStopsTheCount(t *testing.T) {
 	}
 	if n := Streak(g, "walk"); n != 1 {
 		t.Errorf("streak = %d, want 1", n)
+	}
+}
+
+func TestBlockRangeFindsTheSameSpanParseUses(t *testing.T) {
+	note := "### Reflection\n\n### Habits\n- [ ] Meditera 10 min\n- [x] Läsa 30 min\n- [ ] Stretching\n\n### Notes\nSome prose.\n"
+	lines := strings.Split(note, "\n")
+	start, end, ok := BlockRange(lines)
+	if !ok {
+		t.Fatal("no range found")
+	}
+	if lines[start] != Heading {
+		t.Errorf("start = %d (%q), want the heading line", start, lines[start])
+	}
+	// The span must cover exactly the heading and the three checkbox
+	// lines, and nothing of "### Notes" or its prose — the same
+	// boundary Parse itself finds.
+	got := strings.Join(lines[start:end], "\n")
+	want := "### Habits\n- [ ] Meditera 10 min\n- [x] Läsa 30 min\n- [ ] Stretching\n"
+	if got != want {
+		t.Errorf("span =\n%q\nwant\n%q", got, want)
+	}
+}
+
+func TestBlockRangeAbsent(t *testing.T) {
+	if _, _, ok := BlockRange(strings.Split("### Todo's\n- [ ] x\n", "\n")); ok {
+		t.Error("a Todo's-only note has no Habits range")
+	}
+}
+
+func TestBlockRangeToTheEndOfTheNote(t *testing.T) {
+	lines := strings.Split("### Habits\n- [ ] walk\n", "\n")
+	start, end, ok := BlockRange(lines)
+	if !ok || start != 0 || end != len(lines) {
+		t.Errorf("start=%d end=%d ok=%v, want the whole note", start, end, ok)
 	}
 }

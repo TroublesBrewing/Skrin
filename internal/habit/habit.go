@@ -96,6 +96,42 @@ func Parse(note string) (Block, bool) {
 	return b, in
 }
 
+// BlockRange finds the "### Habits" section within lines (as Lines
+// already splits a note) and returns its span [start, end): start is the
+// heading's own line, end is one past the section's last content line —
+// exactly the boundary Parse uses. ok is false when there is no section.
+// This is how callers outside this package (the rollover mirror) can
+// exclude the block's lines from a scan without duplicating Parse's own
+// boundary rule.
+func BlockRange(lines []string) (start, end int, ok bool) {
+	in := false
+	for i, l := range lines {
+		t := strings.TrimSpace(l)
+		if isHeading(t) {
+			if in {
+				return start, i, true // the next heading ends the block
+			}
+			if t == Heading {
+				in, start = true, i
+			}
+			continue
+		}
+		if !in {
+			continue // before the block
+		}
+		if t == "" || isTag(t) {
+			continue // a blank or tag line inside the block
+		}
+		if _, ok := parseCheckbox(t); !ok {
+			return start, i, true // prose ends the block
+		}
+	}
+	if in {
+		return start, len(lines), true
+	}
+	return 0, 0, false
+}
+
 // Block is the "### Habits" section of one note, parsed.
 type Block struct {
 	Items []Item

@@ -289,7 +289,7 @@ var defaultBindings = []binding{
 	{actUp, []string{"k", "up"}, "up a habit (grid: up a row)", groupHabits, inHabits},
 	{actDown, []string{"j", "down"}, "down a habit (grid: down a row)", groupHabits, inHabits},
 	{actLeft, []string{"h", "left"}, "grid: left a day · today: nothing to the left", groupHabits, inHabits},
-	{actRight, []string{"l", "right"}, "grid: right a day · today: over to the note", groupHabits, inHabits},
+	{actRight, []string{"l", "right"}, "grid: right a day · today: nothing to the right", groupHabits, inHabits},
 	{actMark, []string{"space"}, "tick / untick the habit under the cursor", groupHabits, inHabits},
 	{actHabitTab, []string{"H"}, "today → this week → this month → today", groupHabits, inHabits},
 	{actUndoOp, []string{"U"}, "undo the last tick you made from here", groupHabits, inHabits},

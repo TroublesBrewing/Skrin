@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/lurioso/skrin/internal/daily"
+	"github.com/lurioso/skrin/internal/habit"
 	"github.com/lurioso/skrin/internal/obsidian"
 	"github.com/lurioso/skrin/internal/vault"
 )
@@ -487,7 +488,20 @@ func (m *Model) openDaily() {
 		prev = daily.Previous(m.vault.Exists, s.Daily, now)
 		if src, err := m.vault.Read(prev); prev != "" && err == nil {
 			prevSrc = src
-			all := daily.UnfinishedTodos(daily.Lines(src), s.Rollover.RolloverChildren, s.Rollover.DoneStatusMarkers)
+			// The real Rollover plugin scans the whole previous note for
+			// any unchecked checkbox, with no regard for section — its
+			// templateHeading setting only says where rolled todos land
+			// in the new note, not what counts as one. Left alone, that
+			// would roll unfinished habits into tomorrow's Todo's list
+			// (and delete them from yesterday's note under
+			// deleteOnComplete) — the opposite of "habits reset daily."
+			// The Habits block is excluded from the scan before it ever
+			// reaches the rollover mirror.
+			lines := daily.Lines(src)
+			if start, end, ok := habit.BlockRange(lines); ok {
+				lines = append(append([]string{}, lines[:start]...), lines[end:]...)
+			}
+			all := daily.UnfinishedTodos(lines, s.Rollover.RolloverChildren, s.Rollover.DoneStatusMarkers)
 			rolled = all
 			if s.Rollover.RemoveEmptyTodos {
 				rolled = daily.DropEmpty(all)

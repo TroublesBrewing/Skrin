@@ -222,7 +222,7 @@ func (m *Model) propose(tool string, arg func(string) string) (*proposal, error)
 // proposalKey is y or n on the proposal in view, or j/k to scroll its diff.
 func (m *Model) proposalKey(k tea.KeyPressMsg) {
 	p := m.proposals[0]
-	switch actionIn(inProposal, k.String()) {
+	switch m.actionIn(inProposal, k.String()) {
 	case actApply:
 		m.proposals = m.proposals[1:]
 		done, err := p.apply()

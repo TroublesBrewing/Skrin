@@ -47,6 +47,11 @@ type Config struct {
 	Render struct {
 		Images *bool `toml:"images"` // unset means on
 	} `toml:"render"`
+	// Keys is the user's own keymap, written by the Keys tab of `?`:
+	// context ("main", "editor", …) → action name → the keys that work
+	// for it. Only what was changed is here, so new default keys still
+	// arrive with a new Skrin.
+	Keys map[string]map[string][]string `toml:"keys"`
 }
 
 // AssistantEnabled reports whether the Claude drawer is available. It is on

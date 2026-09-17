@@ -126,7 +126,7 @@ func quickNoteName(firstLine string) (string, error) {
 
 func (m *Model) quickNoteKey(k tea.KeyPressMsg) {
 	c := m.quickNote
-	switch actionIn(inQuickNote, k.String()) {
+	switch m.actionIn(inQuickNote, k.String()) {
 	case actCancel:
 		m.quickNote = nil
 		m.flash = "Nothing saved"

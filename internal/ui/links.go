@@ -423,7 +423,7 @@ func filterSuggestions(items []suggestion, q string) []suggestion {
 // completionKey handles the popup's own keys; the rest go to the editor.
 func (m *Model) completionKey(k tea.KeyPressMsg) bool {
 	c := m.complete
-	switch actionIn(inComplete, k.String()) {
+	switch m.actionIn(inComplete, k.String()) {
 	case actUp:
 		c.cur = max(c.cur-1, 0)
 	case actDown:

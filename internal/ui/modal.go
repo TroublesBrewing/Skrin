@@ -209,7 +209,7 @@ func (m *Model) openChooser(c *chooser) {
 // registry; the rest edit the filter.
 func (m *Model) chooserKey(k tea.KeyPressMsg) {
 	c := m.chooser
-	switch a := actionIn(inList, k.String()); a {
+	switch a := m.actionIn(inList, k.String()); a {
 	case actCancel:
 		m.chooser = nil
 	case actSplitLeft, actSplitRight:

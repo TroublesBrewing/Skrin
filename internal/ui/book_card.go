@@ -489,7 +489,7 @@ type bookSaveMsg struct {
 func (m *Model) bookCardKey(k tea.KeyPressMsg) tea.Cmd {
 	c := m.book
 	key := k.String()
-	switch actionIn(inBookCard, key) {
+	switch m.actionIn(inBookCard, key) {
 	case actCancel:
 		m.book = nil
 		m.flash = "Book Card closed"

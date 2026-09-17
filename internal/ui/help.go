@@ -9,24 +9,34 @@ import (
 	"github.com/lurioso/skrin/internal/version"
 )
 
-// manualTab is which of the ? overlay's two tabs is showing.
+// manualTab is which of the ? overlay's tabs is showing.
 type manualTab int
 
 const (
 	manualTabKeys manualTab = iota
 	manualTabSettings
+	manualTabGuide
+	manualTabs // how many there are
 )
 
-// manual is the ? overlay: Skrin's manual, full screen and scrollable, plus
-// a Settings tab for the toggles config.toml also holds. The Keys tab's
-// tables come from the keymap registry, so they can't drift from what the
-// keys do.
+var manualTabNames = [manualTabs]string{"Keys", "Settings", "Guide"}
+
+// manual is the ? overlay: every key Skrin knows and what it does, the
+// settings config.toml also holds, and the guide to how it all fits
+// together. The Keys tab is built from the keymap in force, so it can't
+// drift from what the keys actually do — and it is where they are
+// changed.
 type manual struct {
 	tab       manualTab
-	in        lineInput // the Keys tab's / filter
+	in        lineInput // the / filter, on the Keys and Guide tabs
 	filtering bool      // typing into the filter
 	off       int
 	setCur    int // the cursor row in the Settings tab
+
+	cur  bindRef  // the binding under the cursor in the Keys tab
+	mode keysMode // browsing it, waiting for a key, or asking
+	ask  *keysAsk // the question waiting for y or n
+	note string   // a line under the list: what just happened, or why not
 }
 
 // manualLine is one line of the manual. Level 1 is a section heading and 2
@@ -34,36 +44,72 @@ type manual struct {
 type manualLine struct {
 	plain, styled string
 	level         int
+	// search is what the filter matches on: the line as shown, plus the
+	// keys as they are written in the config, so looking for "ctrl+k"
+	// finds the row that shows Ctrl-k.
+	search string
+	// bind is set on a row for a key that can be changed, naming which.
+	bind *bindRef
 }
 
 // manualKeyW is the width of the key column in the key tables.
 const manualKeyW = 18
 
-func (m *Model) openManual() { m.manual = &manual{} }
+func (m *Model) openManual() {
+	m.manual = &manual{}
+	m.firstBinding()
+}
 
 // manualWidth is the manual's text width: a readable column.
 func (m *Model) manualWidth() int { return max(min(88, m.width-6), 20) }
 
+// manualVis is how many lines of the body show at once: the box's height
+// less its border, the tab strip and the status line.
+func (m *Model) manualVis() int { return max(m.height-6, 1) }
+
 func (m *Model) manualKey(k tea.KeyPressMsg) {
 	h := m.manual
-	switch k.String() {
-	case "tab", "shift+tab":
-		if h.tab == manualTabKeys {
-			h.tab = manualTabSettings
-		} else {
-			h.tab = manualTabKeys
+	// Tab moves between tabs from anywhere that isn't mid-question or
+	// mid-capture — those two own every key while they last, because the
+	// whole point of capture is that any key can be the answer.
+	if h.mode == keysBrowse {
+		switch k.String() {
+		case "tab":
+			m.manualGoTab((h.tab + 1) % manualTabs)
+			return
+		case "shift+tab":
+			m.manualGoTab((h.tab + manualTabs - 1) % manualTabs)
+			return
+		case "?":
+			m.manual = nil
+			return
 		}
-		h.off, h.filtering = 0, false
-		h.in.set("")
-		return
-	case "?":
-		m.manual = nil
-		return
 	}
-	if h.tab == manualTabSettings {
+	switch h.tab {
+	case manualTabSettings:
 		m.settingsKey(k)
 		return
+	case manualTabKeys:
+		m.keysTabKey(k)
+		return
 	}
+	m.guideKey(k)
+}
+
+// manualGoTab shows tab t, from the top, with nothing left over from the
+// tab before it.
+func (m *Model) manualGoTab(t manualTab) {
+	h := m.manual
+	h.tab, h.off, h.filtering, h.note = t, 0, false, ""
+	h.in.set("")
+	if t == manualTabKeys {
+		m.firstBinding()
+	}
+}
+
+// guideKey scrolls the Guide tab: the prose half of the manual.
+func (m *Model) guideKey(k tea.KeyPressMsg) {
+	h := m.manual
 	if h.filtering {
 		switch k.String() {
 		case "esc":
@@ -77,7 +123,7 @@ func (m *Model) manualKey(k tea.KeyPressMsg) {
 		h.off = 0
 		return
 	}
-	vis := m.height - 5
+	vis := m.manualVis()
 	maxOff := max(len(m.manualLines(m.manualWidth()))-vis, 0)
 	switch k.String() {
 	case "esc":
@@ -113,12 +159,15 @@ func (m *Model) manualView() string {
 	h := m.manual
 	w := m.manualWidth()
 	margin := strings.Repeat(" ", max((m.width-2-w)/2, 1))
-	tabs := m.st.bold.Render("Keys") + "   " + m.st.muted.Render("Settings")
-	if h.tab == manualTabSettings {
-		tabs = m.st.muted.Render("Keys") + "   " + m.st.bold.Render("Settings")
+	var strip []string
+	for t, name := range manualTabNames {
+		if manualTab(t) == h.tab {
+			strip = append(strip, m.st.pill.Render(" "+name+" "))
+			continue
+		}
+		strip = append(strip, m.st.muted.Render(" "+name+" "))
 	}
-	var body []string
-	body = append(body, margin+tabs, "")
+	body := []string{margin + strings.Join(strip, " "), ""}
 	switch h.tab {
 	case manualTabSettings:
 		for _, l := range m.settingsView(w) {
@@ -126,35 +175,44 @@ func (m *Model) manualView() string {
 		}
 	default:
 		lines := m.manualLines(w)
-		vis := m.height - 5
+		vis := m.manualVis()
 		for i := h.off; i < min(len(lines), h.off+vis); i++ {
 			body = append(body, margin+lines[i].styled)
 		}
 		if len(lines) == 0 {
-			body = append(body, "", margin+m.st.muted.Render("Nothing in the manual matches."))
+			body = append(body, "", margin+m.st.muted.Render("Nothing here matches “"+h.in.value()+"”."))
 		}
 	}
-	out := m.box("Manual", body, m.width, m.height-1, true)
-	var status string
+	return strings.Join(append(m.box("Manual", body, m.width, m.height-1, true), m.manualStatus()), "\n")
+}
+
+// manualStatus is the overlay's status line: what you can do from here,
+// and on the Keys tab whatever it is waiting for.
+func (m *Model) manualStatus() string {
+	h := m.manual
 	switch {
-	case h.tab == manualTabSettings:
-		status = spread(m.st.pill.Render(" SETTINGS ")+" "+m.st.text.Render("saved to config.toml as you go"), m.st.muted.Render("j/k move · enter toggle · tab keys · esc close"), m.width)
+	case h.tab == manualTabKeys:
+		return m.keysStatus()
 	case h.filtering:
-		status = spread(m.st.pill.Render(" FILTER ")+" "+h.in.view(m.st.text, m.st.cursor), m.st.muted.Render("enter keep · esc clear"), m.width)
+		return spread(m.st.pill.Render(" FILTER ")+" "+h.in.view(m.st.text, m.st.cursor), m.st.muted.Render("enter keep · esc clear"), m.width)
+	case h.tab == manualTabSettings:
+		return spread(m.st.pill.Render(" SETTINGS ")+" "+m.st.text.Render("saved to config.toml as you go"), m.st.muted.Render("j/k move · enter toggle · tab keys · esc close"), m.width)
 	default:
-		left := m.st.pill.Render(" MANUAL ")
+		left := m.st.pill.Render(" GUIDE ")
 		if q := h.in.value(); q != "" {
 			left += " " + m.st.text.Render("matching “"+q+"” · esc shows everything")
 		}
-		status = spread(left, m.st.muted.Render("j/k scroll · / filter · tab settings · esc close"), m.width)
+		return spread(left, m.st.muted.Render("j/k scroll · / filter · tab keys · esc close"), m.width)
 	}
-	return strings.Join(append(out, status), "\n")
 }
 
-// manualLines is the manual as shown at text width w: all of it, or with a
+// manualLines is the tab's text as shown at width w: all of it, or with a
 // filter only the matching lines, under their headings.
 func (m *Model) manualLines(w int) []manualLine {
-	all := m.manualText(w)
+	all := m.guideText(w)
+	if m.manual.tab == manualTabKeys {
+		all = m.keyLines(w)
+	}
 	q := strings.ToLower(strings.TrimSpace(m.manual.in.value()))
 	if q == "" {
 		return all
@@ -171,7 +229,11 @@ func (m *Model) manualLines(w int) []manualLine {
 			sub = l
 			continue
 		}
-		if l.plain == "" || !strings.Contains(strings.ToLower(l.plain), q) {
+		hay := l.search
+		if hay == "" {
+			hay = l.plain
+		}
+		if l.plain == "" || !strings.Contains(strings.ToLower(hay), q) {
 			continue
 		}
 		if sec != nil {
@@ -190,20 +252,20 @@ func (m *Model) manualLines(w int) []manualLine {
 	return out
 }
 
-// manualText is the whole manual at text width w.
-func (m *Model) manualText(w int) []manualLine {
+// guideText is the Guide tab at text width w: how Skrin fits together,
+// in prose. The keys themselves live in the Keys tab, where they can be
+// changed as well as read.
+func (m *Model) guideText(w int) []manualLine {
 	var out []manualLine
-	add := func(level int, plain, styled string) { out = append(out, manualLine{plain, styled, level}) }
+	add := func(level int, plain, styled string) {
+		out = append(out, manualLine{plain: plain, styled: styled, level: level})
+	}
 	blank := func() { add(0, "", "") }
 	head := func(s string) {
 		if len(out) > 0 {
 			blank()
 		}
 		add(1, s, m.st.titleFocus.Render(s))
-	}
-	sub := func(s string) {
-		blank()
-		add(2, s, m.st.bold.Render(s))
 	}
 	para := func(s string) {
 		for _, l := range wrap(s, w) {
@@ -229,17 +291,6 @@ func (m *Model) manualText(w int) []manualLine {
 	blank()
 	add(0, "", pad(m.st.brand.Render("Skrin")+m.st.muted.Render(" v"+version.Version)))
 	add(0, "", pad(m.st.muted.Render("a terminal home for your vault")))
-
-	head("Keys")
-	para("Every key Skrin knows, by where it works. The list comes from the keymap itself, so it can't fall behind it.")
-	group := ""
-	for _, b := range defaultBindings {
-		if b.group != group {
-			group = b.group
-			sub(group)
-		}
-		key(keyLabel(b.keys), b.help)
-	}
 
 	head("Files and the note")
 	para("Files holds the vault's folders and files. The note under the cursor opens at once, so j and k skim through your notes; on a folder, the last note stays open. Enter moves over to the note.")
@@ -304,6 +355,13 @@ func (m *Model) manualText(w int) []manualLine {
 	code(`enabled = true          # the Claude drawer`)
 	code(`position = "bottom"     # or "right"`)
 	code(`model = ""              # else Claude Code's default, e.g. "sonnet"`)
+	blank()
+	para("Keys you change in the Keys tab are saved under [keys], one table per context, against the name of the thing the key does:")
+	blank()
+	code(`[keys.main]`)
+	code(`zen = ["ctrl+g"]        # z becomes Ctrl-g`)
+	blank()
+	para("Only what you changed is kept there, so everything else still follows Skrin's own keys as they change. Deleting the table, or R in the Keys tab, puts the lot back.")
 	blank()
 	para("Colours come from the Omarchy theme and follow it live. A skrin.toml next to the theme's colors.toml can override them.")
 	para("Where you were (open folders, the cursor, the open note, the Claude conversation) is kept per vault in ~/.local/state/skrin/session, but the note itself only reopens if restore_last_note is on: off by default, so a vault with private notes never opens one by surprise.")

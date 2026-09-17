@@ -100,8 +100,9 @@ const (
 	inHints     = "hints"
 	inAsk       = "ask" // a name to type, or a y/n question
 	inConflict  = "conflict"
-	inManual    = "manual"
-	inSettings  = "settings"  // the ? overlay's Settings tab
+	inManual    = "manual"    // the ? overlay's Keys tab
+	inSettings  = "settings"  // its Settings tab
+	inGuide     = "guide"     // its Guide tab
 	inComplete  = "complete"  // the [[ popup in the editor
 	inBookCard  = "bookcard"  // the B card: bibliographic fields, quotes, notes
 	inHabits    = "habits"    // the T overlay: today's list, the week and month grids
@@ -136,8 +137,9 @@ const (
 	groupHints     = "Following links (f)"
 	groupAsk       = "When Skrin asks"
 	groupConflict  = "On a save conflict"
-	groupManual    = "In this manual"
+	groupManual    = "In the Keys tab (?)"
 	groupSettings  = "In Settings"
+	groupGuide     = "In the Guide"
 	groupComplete  = "In link completion ([[)"
 	groupBookCard  = "In the Book Card (B)"
 	groupHabits    = "In the habits view (T)"
@@ -287,15 +289,22 @@ var defaultBindings = []binding{
 	{actSaveBook, []string{"ctrl+s"}, "save the book note and download its cover", groupBookCard, inBookCard},
 	{actCancel, []string{"esc"}, "step back: close a result list, then the card", groupBookCard, inBookCard},
 
-	{actNone, []string{"j", "k", "ctrl+d", "ctrl+u", "space"}, "scroll", groupManual, inManual},
-	{actNone, []string{"home", "g", "G", "end"}, "top / bottom", groupManual, inManual},
-	{actNone, []string{"/"}, "filter the manual", groupManual, inManual},
-	{actNone, []string{"tab"}, "switch Keys / Settings", groupManual, inManual},
+	{actNone, []string{"tab", "shift+tab"}, "Keys → Settings → Guide, and back", groupManual, inManual},
+	{actNone, []string{"j", "k"}, "move between keys", groupManual, inManual},
+	{actNone, []string{"enter"}, "give the key under the cursor a new key", groupManual, inManual},
+	{actNone, []string{"r"}, "put that one key back to Skrin's own", groupManual, inManual},
+	{actNone, []string{"R"}, "put every key back to Skrin's own", groupManual, inManual},
+	{actNone, []string{"/"}, "find a key by what it does, or by the key itself", groupManual, inManual},
 	{actNone, []string{"esc", "?", "q"}, "clear the filter, then close", groupManual, inManual},
 	{actNone, []string{"j", "k"}, "move between settings", groupSettings, inSettings},
 	{actNone, []string{"enter", "space"}, "toggle the setting under the cursor", groupSettings, inSettings},
-	{actNone, []string{"tab"}, "switch Keys / Settings", groupSettings, inSettings},
+	{actNone, []string{"tab", "shift+tab"}, "Keys → Settings → Guide, and back", groupSettings, inSettings},
 	{actNone, []string{"esc", "q"}, "close", groupSettings, inSettings},
+	{actNone, []string{"j", "k", "ctrl+d", "ctrl+u", "space"}, "scroll", groupGuide, inGuide},
+	{actNone, []string{"home", "g", "G", "end"}, "top / bottom", groupGuide, inGuide},
+	{actNone, []string{"/"}, "filter the guide", groupGuide, inGuide},
+	{actNone, []string{"tab", "shift+tab"}, "Keys → Settings → Guide, and back", groupGuide, inGuide},
+	{actNone, []string{"esc", "?", "q"}, "clear the filter, then close", groupGuide, inGuide},
 
 	{actUp, []string{"k", "up"}, "up a habit (grid: up a row)", groupHabits, inHabits},
 	{actDown, []string{"j", "down"}, "down a habit (grid: down a row)", groupHabits, inHabits},
@@ -315,22 +324,210 @@ var defaultBindings = []binding{
 	{actCancel, []string{"esc", "ctrl+c"}, "close, write nothing", groupQuickNote, inQuickNote},
 }
 
-// keymaps is each context's keymap: key → action.
-var keymaps = func() map[string]map[string]action {
-	out := map[string]map[string]action{}
-	for _, b := range defaultBindings {
-		if b.act == actNone {
-			continue
-		}
-		if out[b.where] == nil {
-			out[b.where] = map[string]action{}
-		}
-		for _, k := range b.keys {
-			out[b.where][k] = b.act
-		}
+// actionName is the name each action goes by in config.toml's [keys]
+// tables, in collision messages and in the Keys tab. A user's overrides
+// are stored against these names, so they are part of the config format:
+// add to this table, never rename in it. TestEveryActionHasAName keeps it
+// complete.
+var actionName = map[action]string{
+	actUp: "up", actDown: "down", actTop: "top", actBottom: "bottom",
+	actHalfDown: "half-down", actHalfUp: "half-up",
+	actLeft: "left", actRight: "right",
+	actNextPane: "next-pane", actPrevPane: "prev-pane",
+	actPane1: "pane-files", actPane2: "pane-note",
+	actPaneLeft: "pane-left", actPaneRight: "pane-right",
+	actOpen: "open", actParent: "parent", actCollapseAll: "collapse-all",
+	actNewNote: "new-note", actNewFolder: "new-folder",
+	actRename: "rename", actMove: "move", actDelete: "delete",
+	actMark: "mark", actVisual: "visual", actMarkAll: "mark-all",
+	actEscape: "escape", actUndoOp: "undo-op", actDaily: "daily",
+	actEdit: "edit", actEditExternal: "edit-external",
+	actUndoEdit: "undo-edit", actRedoEdit: "redo-edit",
+	actHints: "hints", actBacklinks: "backlinks", actOutline: "outline",
+	actNextHeading: "next-heading", actPrevHeading: "prev-heading",
+	actBack: "back", actForward: "forward",
+	actSearch: "search", actSwitcher: "switcher",
+	actClaude: "claude", actClaudeInput: "claude-input",
+	actZen: "zen", actHelp: "help", actQuit: "quit",
+	actAskClaude: "ask-claude", actPick: "pick", actCancel: "cancel",
+	actSplitLeft: "split-left", actSplitRight: "split-right",
+	actSend: "send", actNewLine: "new-line", actLeaveDrawer: "leave-drawer",
+	actFlipDrawer: "flip-drawer", actNewChat: "new-chat",
+	actScrollBack: "scroll-back", actScrollOn: "scroll-on",
+	actApply: "apply", actReject: "reject",
+	actOrderUp: "order-up", actOrderDown: "order-down", actOrderReset: "order-reset",
+	actSkimDown: "skim-down", actSkimUp: "skim-up",
+	actFindScope: "find-scope", actFindCase: "find-case",
+	actFindWords: "find-words", actFindReplace: "find-replace",
+	actNextField: "next-field", actPrevField: "prev-field",
+	actReplaceAll: "replace-all", actSkipMatch: "skip-match",
+	actNewBook: "new-book", actFetchBook: "fetch-book",
+	actAddQuote: "add-quote", actSaveBook: "save-book",
+	actFolderJumpUp: "folder-jump-up", actFolderJumpDown: "folder-jump-down",
+	actHabits: "habits", actHabitTab: "habit-tab", actQuickNote: "quick-note",
+}
+
+// actionByName is actionName the other way round, for reading overrides
+// back out of config.toml.
+var actionByName = func() map[string]action {
+	out := map[string]action{}
+	for a, n := range actionName {
+		out[n] = a
 	}
 	return out
 }()
 
-// actionIn is the action key stands for in context where, or actNone.
-func actionIn(where, key string) action { return keymaps[where][key] }
+// keymap is the keymap in force: the registry's defaults with whatever
+// the user changed in config.toml's [keys] laid over them. The Keys tab
+// of `?` edits it, and every key Skrin handles is looked up through it.
+type keymap struct {
+	// over is what the user changed: context → action name → its keys.
+	// It is exactly what goes in and out of config.toml, so an override
+	// survives Skrin learning new default keys for everything else.
+	over map[string]map[string][]string
+
+	lookup map[string]map[string]action   // context → key → action
+	keys   map[string]map[action][]string // context → action → its keys
+	// taken names what holds each key in a context, rebindable or not,
+	// so a clash with a component's own key (the editor's vim keys, a
+	// list's typing) can be refused by name rather than silently lost.
+	taken map[string]map[string]string
+}
+
+// newKeymap builds the keymap in force from the user's overrides, which
+// may be nil for the defaults alone.
+func newKeymap(over map[string]map[string][]string) *keymap {
+	km := &keymap{over: map[string]map[string][]string{}}
+	for where, acts := range over {
+		for name, keys := range acts {
+			if _, ok := actionByName[name]; !ok || len(keys) == 0 {
+				continue // an action this Skrin no longer has, or no keys
+			}
+			km.setOver(where, name, keys)
+		}
+	}
+	km.rebuild()
+	return km
+}
+
+func (km *keymap) setOver(where, name string, keys []string) {
+	if km.over[where] == nil {
+		km.over[where] = map[string][]string{}
+	}
+	km.over[where][name] = keys
+}
+
+// rebuild works the lookups out again from the defaults and the
+// overrides. It runs on every change: the registry is small enough that
+// there is nothing to gain from being cleverer, and everything to lose
+// from the two halves drifting apart.
+func (km *keymap) rebuild() {
+	km.lookup = map[string]map[string]action{}
+	km.keys = map[string]map[action][]string{}
+	km.taken = map[string]map[string]string{}
+	for _, b := range defaultBindings {
+		keys := b.keys
+		if b.act != actNone {
+			if over, ok := km.over[b.where][actionName[b.act]]; ok {
+				keys = over
+			}
+		}
+		if km.taken[b.where] == nil {
+			km.taken[b.where] = map[string]string{}
+			km.lookup[b.where] = map[string]action{}
+			km.keys[b.where] = map[action][]string{}
+		}
+		for _, k := range keys {
+			km.taken[b.where][k] = b.help
+		}
+		if b.act == actNone {
+			continue
+		}
+		km.keys[b.where][b.act] = keys
+		for _, k := range keys {
+			km.lookup[b.where][k] = b.act
+		}
+	}
+}
+
+// act is the action key stands for in context where, or actNone.
+func (km *keymap) act(where, key string) action { return km.lookup[where][key] }
+
+// bound is the keys that work for action a in context where.
+func (km *keymap) bound(where string, a action) []string { return km.keys[where][a] }
+
+// changed reports whether the user gave this binding its own keys.
+func (km *keymap) changed(where string, a action) bool {
+	_, ok := km.over[where][actionName[a]]
+	return ok
+}
+
+// defaultKeys is what the registry ships for this binding, whatever the
+// user has since made of it.
+func defaultKeys(where string, a action) []string {
+	for _, b := range defaultBindings {
+		if b.where == where && b.act == a {
+			return b.keys
+		}
+	}
+	return nil
+}
+
+// holder names what already has key k in context where, and whether that
+// can be rebound. An empty name means the key is free.
+func (km *keymap) holder(where, key string) (help string, rebindable bool) {
+	help, ok := km.taken[where][key]
+	if !ok {
+		return "", false
+	}
+	return help, km.lookup[where][key] != actNone
+}
+
+// set gives action a the single key k in context where, dropping k from
+// whatever else had it there. It returns the action k was taken from, if
+// any, so the caller can offer to give that one a new key on the spot.
+func (km *keymap) set(where string, a action, k string) (displaced action) {
+	if prev := km.lookup[where][k]; prev != actNone && prev != a {
+		rest := []string{}
+		for _, old := range km.bound(where, prev) {
+			if old != k {
+				rest = append(rest, old)
+			}
+		}
+		km.setOver(where, actionName[prev], rest)
+		displaced = prev
+	}
+	km.setOver(where, actionName[a], []string{k})
+	km.rebuild()
+	return displaced
+}
+
+// reset puts one binding back to the keys the registry ships.
+func (km *keymap) reset(where string, a action) {
+	delete(km.over[where], actionName[a])
+	if len(km.over[where]) == 0 {
+		delete(km.over, where)
+	}
+	km.rebuild()
+}
+
+// resetAll drops every override: the whole keymap as it ships.
+func (km *keymap) resetAll() {
+	km.over = map[string]map[string][]string{}
+	km.rebuild()
+}
+
+// overrides is the user's changes, for config.toml. It is nil when
+// nothing was changed, so an untouched config keeps no [keys] table at
+// all.
+func (km *keymap) overrides() map[string]map[string][]string {
+	if len(km.over) == 0 {
+		return nil
+	}
+	return km.over
+}
+
+// actionIn is the action key stands for in context where, under the
+// keymap in force for this Skrin: the defaults, plus whatever the user
+// changed in the Keys tab of `?`.
+func (m *Model) actionIn(where, key string) action { return m.keys.act(where, key) }

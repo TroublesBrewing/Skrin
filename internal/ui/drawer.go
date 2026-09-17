@@ -166,7 +166,7 @@ func (m *Model) leaveDrawer() {
 // from the keymap registry; the rest go to the input.
 func (m *Model) drawerKey(k tea.KeyPressMsg) {
 	d := &m.drawer
-	switch actionIn(inDrawer, k.String()) {
+	switch m.actionIn(inDrawer, k.String()) {
 	case actSend:
 		m.sendToClaude()
 	case actNewLine:

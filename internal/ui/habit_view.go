@@ -310,7 +310,7 @@ func (m *Model) habitKey(k tea.KeyPressMsg) {
 	if h == nil {
 		return
 	}
-	switch a := actionIn(inHabits, k.String()); a {
+	switch a := m.actionIn(inHabits, k.String()); a {
 	case actCancel:
 		m.habits = nil
 	case actUp:

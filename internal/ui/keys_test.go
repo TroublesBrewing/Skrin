@@ -33,13 +33,142 @@ func TestEveryBindingIsDocumented(t *testing.T) {
 // The components that handle their own keys still look them up in the
 // registry, so a key only has to be changed in one place.
 func TestComponentsDispatchThroughTheRegistry(t *testing.T) {
+	km := newKeymap(nil)
 	for _, c := range []struct{ where, key string }{
 		{inSearch, "alt+r"}, {inSearch, "tab"}, {inSearch, "ctrl+s"}, {inSearch, "esc"},
 		{inComplete, "enter"}, {inComplete, "esc"}, {inEditor, "ctrl+k"},
 		{inList, "enter"}, {inDrawer, "alt+n"},
 	} {
-		if actionIn(c.where, c.key) == actNone {
+		if km.act(c.where, c.key) == actNone {
 			t.Errorf("%q in %s has no action: it can't be dispatched or overridden", c.key, c.where)
 		}
+	}
+}
+
+// Overrides are stored against the action's name, so every action the
+// registry dispatches needs one, and no two may share it.
+func TestEveryActionHasAName(t *testing.T) {
+	seen := map[string]action{}
+	for _, b := range defaultBindings {
+		if b.act == actNone {
+			continue
+		}
+		n, ok := actionName[b.act]
+		if !ok || n == "" {
+			t.Errorf("the action of %q in %s has no name: it can't be overridden or saved", b.help, b.where)
+			continue
+		}
+		if a, ok := seen[n]; ok && a != b.act {
+			t.Errorf("two actions are both called %q", n)
+		}
+		seen[n] = b.act
+		for _, r := range n {
+			if !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '-') {
+				t.Errorf("action name %q can't be a bare key in config.toml", n)
+				break
+			}
+		}
+	}
+}
+
+// An override names a context and an action, so one action must not be
+// listed twice in one context: there would be no saying which row an
+// override belongs to.
+func TestEachActionAppearsOnceInAContext(t *testing.T) {
+	seen := map[string]string{}
+	for _, b := range defaultBindings {
+		if b.act == actNone {
+			continue
+		}
+		id := b.where + " " + actionName[b.act]
+		if first, ok := seen[id]; ok {
+			t.Errorf("%s is in %s twice: %q and %q", actionName[b.act], b.where, first, b.help)
+		}
+		seen[id] = b.help
+	}
+}
+
+func TestOverrideReplacesTheDefaultKey(t *testing.T) {
+	km := newKeymap(map[string]map[string][]string{
+		inMain: {"edit": {"ctrl+e"}},
+	})
+	if km.act(inMain, "ctrl+e") != actEdit {
+		t.Error("the override's key should work")
+	}
+	if km.act(inMain, "e") != actNone {
+		t.Error("the default key should stop working once it's been replaced")
+	}
+	if !km.changed(inMain, actEdit) {
+		t.Error("the binding should count as changed")
+	}
+	if km.act(inMain, "n") != actNewNote {
+		t.Error("everything else should keep its default key")
+	}
+}
+
+// An override for an action this Skrin no longer has must not stop the
+// rest of the keymap loading: an old config outliving a rename is exactly
+// when the keys matter most.
+func TestUnknownOverridesAreIgnored(t *testing.T) {
+	km := newKeymap(map[string]map[string][]string{
+		inMain: {"edit": {"ctrl+e"}, "teleport": {"ctrl+t"}, "rename": nil},
+	})
+	if km.act(inMain, "ctrl+e") != actEdit {
+		t.Error("the good override should still apply")
+	}
+	if km.act(inMain, "r") != actRename {
+		t.Error("an override with no keys should leave the default alone")
+	}
+}
+
+func TestSetTakesTheKeyFromWhoeverHadIt(t *testing.T) {
+	km := newKeymap(nil)
+	displaced := km.set(inMain, actNewNote, "e")
+	if displaced != actEdit {
+		t.Fatalf("displaced = %q, want the action that had e", actionName[displaced])
+	}
+	if km.act(inMain, "e") != actNewNote {
+		t.Error("e should now be the new action's")
+	}
+	if len(km.bound(inMain, actEdit)) != 0 {
+		t.Errorf("the displaced action should be left with no keys, got %v", km.bound(inMain, actEdit))
+	}
+	km.reset(inMain, actNewNote)
+	km.reset(inMain, actEdit)
+	if km.act(inMain, "e") != actEdit || km.act(inMain, "n") != actNewNote {
+		t.Error("resetting both should put the defaults back")
+	}
+	if km.overrides() != nil {
+		t.Errorf("with nothing changed there should be no [keys] to save, got %v", km.overrides())
+	}
+}
+
+// A key a component handles itself can't be given away, so the Keys tab
+// has to tell that apart from a free key and from one it can offer to
+// take.
+func TestHolderTellsRebindableKeysFromTheComponentsOwn(t *testing.T) {
+	km := newKeymap(nil)
+	if help, rebindable := km.holder(inMain, "e"); help == "" || !rebindable {
+		t.Errorf("e in main: help %q, rebindable %v; want a rebindable holder", help, rebindable)
+	}
+	if help, rebindable := km.holder(inEditor, "ctrl+s"); help == "" || rebindable {
+		t.Errorf("ctrl+s in the editor: help %q, rebindable %v; want the editor's own", help, rebindable)
+	}
+	if help, _ := km.holder(inMain, "ctrl+alt+shift+f9"); help != "" {
+		t.Errorf("an unused key should be free, got %q", help)
+	}
+}
+
+func TestResetAllDropsEveryOverride(t *testing.T) {
+	km := newKeymap(map[string]map[string][]string{
+		inMain:   {"edit": {"ctrl+e"}},
+		inHabits: {"habit-tab": {"w"}},
+	})
+	km.resetAll()
+	if km.act(inMain, "e") != actEdit || km.act(inHabits, "H") != actHabitTab {
+		t.Error("every default should be back")
+	}
+	if km.overrides() != nil {
+		t.Error("nothing should be left to save")
 	}
 }

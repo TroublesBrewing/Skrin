@@ -102,7 +102,7 @@ func (m *Model) openEditor(rel string) {
 }
 
 func (m *Model) editorKey(k tea.KeyPressMsg) {
-	if actionIn(inEditor, k.String()) == actAskClaude {
+	if m.actionIn(inEditor, k.String()) == actAskClaude {
 		m.openDrawer()
 		return
 	}

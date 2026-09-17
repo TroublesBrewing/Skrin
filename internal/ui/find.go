@@ -135,7 +135,7 @@ func (p *searchPanel) nextField(d int) int {
 func (m *Model) searchKey(k tea.KeyPressMsg) {
 	p := m.search
 	s := k.String()
-	a := actionIn(inSearch, s)
+	a := m.actionIn(inSearch, s)
 	switch a {
 	case actCancel:
 		// Esc steps out one layer at a time: replace first, then search.

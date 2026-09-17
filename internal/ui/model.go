@@ -116,6 +116,8 @@ type Model struct {
 	files files       // the Files pane; its cursor sits on the open note
 	order vault.Order // Files' manual order, from skrin.json
 
+	keys *keymap // the keymap in force: the registry plus the user's own
+
 	// The focused note pane. With a split, the other pane waits in split.
 	notePath  string // the open note, "" when none is
 	noteSrc   string
@@ -193,7 +195,7 @@ func New(v *vault.Vault, pal theme.Palette, opts Options) (*Model, error) {
 	m := &Model{
 		vault: v, idx: index.New(), snaps: snapshot.Open(v.Root), files: newFiles(),
 		opts: opts, marks: map[string]bool{}, jumpSrc: -1, events: make(chan tea.Msg, 256),
-		thumbCache: map[string]thumbEntry{},
+		thumbCache: map[string]thumbEntry{}, keys: newKeymap(opts.Config.Keys),
 	}
 	m.journal.Keep = m.snaps.Save // U keeps what's on disk before it restores
 	m.drawer.input = editor.New("", false, pal)
@@ -336,7 +338,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.lastG = time.Now()
 			}
-			if act := actionIn(inMain, key); act != actNone {
+			if act := m.actionIn(inMain, key); act != actNone {
 				if act == actQuit {
 					return m, tea.Quit
 				}

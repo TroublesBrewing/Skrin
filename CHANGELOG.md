@@ -2,6 +2,13 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.18.2 — 2026-09-17
+
+Fix: Skrin was still reopening the last open note on startup even when "Remember last open note" was disabled.
+
+- **Fixed: startup no longer peeks the note under the restored Files cursor.** In v0.17.0, `restore_last_note = false` correctly avoided restoring the active note path in session state, but `settle()` would peek the note under the cursor upon subsequent background lifecycle events (such as theme discovery or opening modals). Peeking is now strictly driven by user cursor movement (`lastPeekCur`/`lastPeekRel`), keeping the welcome splash screen intact on launch until the user explicitly moves the cursor or presses `Enter`/`l`.
+- Tests: multi-event lifecycle tests verifying the welcome screen remains visible across background `ThemeMsg`, window resizes, and modal toggles when `restore_last_note` is false, while navigation and explicit `Enter`/`l` actions continue to open notes seamlessly.
+
 ## v0.18.1 — 2026-09-17
 
 Asked for as "a zoom indicator for when increasing and decreasing text size with Ctrl+- and Ctrl++".

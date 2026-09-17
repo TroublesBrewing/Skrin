@@ -190,6 +190,8 @@ func (m *Model) open(rel string) {
 func (m *Model) show() {
 	m.focus = paneNote
 	m.files.reveal(m.notePath)
+	m.lastPeekCur = m.files.cur
+	m.lastPeekRel = m.files.selected().Rel
 }
 
 func (m *Model) openExternal(target string) {

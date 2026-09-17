@@ -16,16 +16,22 @@ context to the other.
 
 ## State
 
-- Version: **v0.16.0** (tagged). v0.13.1, v0.14.0, v0.15.0 and v0.16.0 all released this run of sessions, in order, none skipped.
-- **v0.14.0 (habits)** released: built by Hermes (`d514552`), audited and fixed by me (rollover-interference bug + stale help text — see the trimmed builder history for `d514552..afbe82a` if detail's needed), tagged `v0.14.0`.
-- **v0.15.0 (quick notes)** released: built from the fully user-signed [[skrin quick notes]], tagged `v0.15.0` (`v0.14.0..v0.15.0`).
-- **v0.16.0 (images)** released: built from the fully user-signed [[skrin images]] (UX, PO, user boxes all ticked), tagged `v0.16.0` (`v0.15.0..v0.16.0`). See builder entry below for the full shape and, importantly, its verification limits.
-- **The backlog moved to one-note-per-ticket ([[Backlog procedure]], 2026-09-17):** tickets in `Backlog/Inbox` → `Refined` → `Archived`; milestone planning in [[tui]] links them. **Both of us now read stories from the tickets**, not from the old single-file note (retired to a signpost). The Refined set: [[Book lookup says offline when it isn't]] (v0.13.1 — closes on PO review) and [[Render images in notes]] (v0.16.0 — closes on PO review, once the user has confirmed the sixel draw in `foot`). [[Quick notes]] should move toward Archived now that v0.15.0 has shipped.
-- Turn: **PO** — four releases queued for review: v0.13.1 (`v0.13.0..v0.13.1`, honest lookup outcomes), v0.14.0 (`v0.13.1..v0.14.0`, habits + my audit fixes), v0.15.0 (`v0.14.0..v0.15.0`, quick notes), v0.16.0 (`v0.15.0..v0.16.0`, images). All four are tagged, none user-reviewed yet in `tui.md` — that's still the user's sign-off to give per milestone, per CLAUDE.md; this file only tracks that a PO review is queued.
-- **Important limit on v0.16.0's own verification**: the placeholder path, config-off path, capability-gating and every other rule are code-read and test-verified here; the actual sixel pixel draw is not — this sandbox only has tmux, which never claims sixel by design, so the pixel-draw path has never actually painted a real pixel in front of anyone yet. The user needs to open a real image note in `foot` before this milestone can be called done, exactly as the spec's own verification plan says.
-- Still waiting on the user: the user's own read of all four tagged releases above, `foot` verification of v0.16.0's sixel draw specifically.
+- Version: **v0.18.2** (tagged).
+- **v0.18.2 (fix startup note restore)** released: fixed regression where background events (`ThemeMsg`, window resizes, settings modal toggles) triggered `peek()` on the restored Files cursor even when `restore_last_note` was false. Peeking now strictly tracks user cursor movement (`lastPeekCur`/`lastPeekRel`), keeping the welcome splash screen intact until user navigation.
+- **v0.18.1 (zoom indicator)** released: terminal size flash for 2 seconds on resize with under-80 columns explanation.
+- **v0.18.0 (keymap overrides)** released: 3-tab `?` (Keys, Settings, Guide), customizable bindings saved to `[keys]` in config.toml, live collision resolution, `/` filter by action and key.
+- **v0.17.0 (settings interface)** released: `[general] restore_last_note` (opt-in, default off), settings checklist tab.
+- **v0.16.0 (images)** released: sixel image embeds and placeholders.
+- Turn: **PO** — releases queued for review: v0.16.0..v0.18.2.
+- Still waiting on the user: user sign-offs in `tui.md`, `foot` verification of sixel images.
 
 ## From the builder — Claude Code
+
+**2026-09-17: v0.18.2 (fix startup note restore) built and released.**
+- Diagnosed and fixed issue where Skrin reopened the last note on startup despite `restore_last_note = false` in settings.
+- Replaced the single-message `suppressPeekOnce` flag with cursor position tracking (`lastPeekCur` and `lastPeekRel`) in `settle()`.
+- Welcome splash screen now stays visible across all non-navigational background events (`ThemeMsg`, `WindowSizeMsg`, opening/closing settings) until the user explicitly moves the Files cursor (`j`/`k`/etc.) or presses `Enter`/`l`.
+- Tests added in `internal/ui/ui_test.go` verifying the welcome splash remains intact across lifecycle events and opens when requested. Full test suite passing.
 
 **2026-09-17: v0.16.0 (images) built and released from the fully signed-off [[skrin images]].** Image embeds alone on their own line (`![[photo.png]]` or `![alt](Assets/photo.png)`) now render instead of sitting as plain links.
 - **The renderer (`internal/markdown`)**: a new `Line.Image` field and `Image`/`ImageOptions`/`ImageStatus` types; block-form-only detection (an embed mixed with other text keeps rendering as the existing inline `⧉ name` link — a scoping call I made, not spec'd either way, flagged here for visibility); the placeholder frame (`▗▖  name · w×h · size`, or the missing/unsupported reasons) reuses `emit()`'s own wrap/clip logic rather than hand-rolling it; `imageRows()` computes how many rows a pixel block needs (pane-width-scaled, height-capped), keeping the 1:n Src mapping true across every row the same way wrapped text already does.

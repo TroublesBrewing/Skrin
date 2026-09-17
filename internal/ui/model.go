@@ -192,11 +192,13 @@ type Model struct {
 
 	flash string // one-shot status message, cleared by the next key
 
-	// suppressPeekOnce skips settle's first peek when RestoreLastNote is
-	// off and the cursor was restored to where the last-open note used
-	// to be: without it, that peek would reopen the note the setting
-	// just turned off.
-	suppressPeekOnce bool
+	// lastPeekCur and lastPeekRel track the Files row peeked last time.
+	// notes only open when the cursor moves to a different row in Files
+	// (or when explicitly opened with Enter/l), so background events
+	// (window resize, theme reload, fsnotify) or opening modals (? settings)
+	// never reopen a note by surprise when RestoreLastNote is off.
+	lastPeekCur int
+	lastPeekRel string
 }
 
 // New builds the model for vault v, back where opts.Session left off.
@@ -235,14 +237,9 @@ func New(v *vault.Vault, pal theme.Palette, opts Options) (*Model, error) {
 	if rel := opts.Session.Open; opts.RestoreLastNote && vault.IsNote(rel) && m.vault.Exists(rel) {
 		m.showNote(rel)
 		m.noteOff = opts.Session.Offset // clamped once the note is rendered
-	} else {
-		// The cursor may still land on the note that was open last time
-		// (Session.Cursor tracks it independently); settle's first peek
-		// would open it right back up. Skip that one peek so a vault
-		// with private notes never opens one by surprise; j/k from here
-		// on open notes as always.
-		m.suppressPeekOnce = true
 	}
+	m.lastPeekCur = m.files.cur
+	m.lastPeekRel = m.files.selected().Rel
 	return m, nil
 }
 
@@ -613,6 +610,8 @@ func (m *Model) openRow() {
 	default:
 		m.openExternal(m.vault.Abs(e.Rel))
 	}
+	m.lastPeekCur = m.files.cur
+	m.lastPeekRel = m.files.selected().Rel
 }
 
 // peek opens the note under the Files cursor: notes follow the cursor. A
@@ -743,6 +742,8 @@ func (m *Model) reload() error {
 	}
 	m.loadNote()
 	m.loadSplit()
+	m.lastPeekCur = m.files.cur
+	m.lastPeekRel = m.files.selected().Rel
 	return nil
 }
 
@@ -782,9 +783,9 @@ func (m *Model) settle() {
 		return
 	}
 	if m.focus == paneFiles && m.editor == nil {
-		if m.suppressPeekOnce {
-			m.suppressPeekOnce = false
-		} else {
+		if m.files.cur != m.lastPeekCur || m.files.selected().Rel != m.lastPeekRel {
+			m.lastPeekCur = m.files.cur
+			m.lastPeekRel = m.files.selected().Rel
 			m.peek()
 		}
 	}

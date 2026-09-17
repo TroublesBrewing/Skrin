@@ -315,6 +315,55 @@ func TestSessionNoteNotRestoredByDefault(t *testing.T) {
 	if again.files.selected().Rel != s.Cursor {
 		t.Errorf("Files' cursor should still be restored: got %q, want %q", again.files.selected().Rel, s.Cursor)
 	}
+
+	// Background messages (theme reload, window resize, opening/closing ?)
+	// must NOT reopen the note under the cursor.
+	again.Update(ThemeMsg{Palette: theme.Default()})
+	if again.notePath != "" {
+		t.Errorf("ThemeMsg reopened note: %q", again.notePath)
+	}
+	again.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	if again.notePath != "" {
+		t.Errorf("WindowSizeMsg reopened note: %q", again.notePath)
+	}
+	press(again, "?", "tab", "esc")
+	if again.notePath != "" {
+		t.Errorf("Opening/closing settings reopened note: %q", again.notePath)
+	}
+
+	// Navigating with j/k peeks notes as expected once cursor moves to a note.
+	// k moves to Filosofi/Antik (a folder), so no note peeks yet:
+	press(again, "k")
+	if again.notePath != "" {
+		t.Errorf("Moving cursor onto folder should not open note, got %q", again.notePath)
+	}
+	// j moves back to Filosofi/Stoic.md (a note), so it peeks:
+	press(again, "j")
+	if again.notePath != "Filosofi/Stoic.md" {
+		t.Errorf("Moving cursor onto Stoic.md should peek it, got %q", again.notePath)
+	}
+	// G moves to Welcome.md (a note):
+	press(again, "G")
+	if again.notePath != "Welcome.md" {
+		t.Errorf("Moving cursor to bottom should peek Welcome.md, got %q", again.notePath)
+	}
+}
+
+func TestSessionNoteEnterOpensDirectly(t *testing.T) {
+	m := newTestModel(t)
+	inFilosofi(m)
+	press(m, "j", "enter")
+	s := m.Session()
+
+	again := newTestModelWith(t, Options{Session: s})
+	if again.notePath != "" {
+		t.Fatalf("note should not be open on start: got %q", again.notePath)
+	}
+	// Pressing Enter on the restored cursor row should open it and focus note pane:
+	press(again, "enter")
+	if again.notePath != "Filosofi/Stoic.md" || again.focus != paneNote {
+		t.Errorf("Enter on restored cursor row: note %q, focus %v", again.notePath, again.focus)
+	}
 }
 
 func TestSkrinsOwnBrandingAndSplash(t *testing.T) {

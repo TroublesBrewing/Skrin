@@ -94,25 +94,30 @@ func TestNonImageEmbedIsUnaffected(t *testing.T) {
 	}
 }
 
-func TestImagesFalseConfigNeverDrawsPixels(t *testing.T) {
-	// The zero ImageOptions (config images = false, or the terminal never
-	// answered) always renders the placeholder, even when Meta finds a
-	// perfectly good image.
+func TestImagesOffAlwaysShowsPlaceholder(t *testing.T) {
+	// The zero ImageOptions (config images = false, or Thumbnail unset)
+	// always renders the placeholder, even when Meta finds a perfectly
+	// good image.
 	lines := renderImages(t, "![[Assets/photo.png]]", 80, ImageOptions{
 		Meta: func(string) (int, int, int64, ImageStatus) { return 1920, 1080, 100, ImageOK },
 	})
-	if lines[0].Image.Pixels {
-		t.Errorf("Image.Pixels = true without a cell size, want the placeholder")
+	if lines[0].Image.Rows != 1 {
+		t.Errorf("Image.Rows = %d, want 1 (the placeholder), without a Thumbnail func", lines[0].Image.Rows)
+	}
+	if text := ansi.Strip(lines[0].Text); !strings.Contains(text, "1920×1080") {
+		t.Errorf("placeholder text = %q, want its dimensions", text)
 	}
 }
 
-func TestImagePixelsSpanTheRightNumberOfRowsAndKeepSrcMapping(t *testing.T) {
-	// A 1000x2000 image (portrait) at 80 columns, 8x16px cells: pane is
-	// 640px wide, scaled height is 1280px, at 16px/row that's 80 rows.
-	lines := renderImages(t, "before\n![[Assets/tall.png]]\nafter", 80, ImageOptions{
-		Meta:  func(string) (int, int, int64, ImageStatus) { return 1000, 2000, 100, ImageOK },
-		CellW: 8,
-		CellH: 16,
+func TestImageThumbnailRendersWhenReady(t *testing.T) {
+	want := []string{"AAAA", "BBBB", "CCCC"}
+	var gotCols, gotRows int
+	lines := renderImages(t, "before\n![[Assets/photo.png]]\nafter", 80, ImageOptions{
+		Meta: func(string) (int, int, int64, ImageStatus) { return 1000, 2000, 100, ImageOK },
+		Thumbnail: func(target string, cols, rows int) ([]string, bool) {
+			gotCols, gotRows = cols, rows
+			return want, true
+		},
 	})
 	var imgLines []Line
 	for _, l := range lines {
@@ -120,53 +125,61 @@ func TestImagePixelsSpanTheRightNumberOfRowsAndKeepSrcMapping(t *testing.T) {
 			imgLines = append(imgLines, l)
 		}
 	}
-	if len(imgLines) != 80 {
-		t.Fatalf("got %d image display lines, want 80", len(imgLines))
+	if len(imgLines) != len(want) {
+		t.Fatalf("got %d image display lines, want %d", len(imgLines), len(want))
 	}
 	for i, l := range imgLines {
-		if !l.Image.Pixels {
-			t.Errorf("row %d: Pixels = false, want true", i)
+		if ansi.Strip(l.Text) != want[i] {
+			t.Errorf("row %d: Text = %q, want %q", i, ansi.Strip(l.Text), want[i])
 		}
 		if l.Image.Row != i {
 			t.Errorf("row %d: Image.Row = %d, want %d", i, l.Image.Row, i)
 		}
-		if l.Image.Rows != 80 {
-			t.Errorf("row %d: Image.Rows = %d, want 80", i, l.Image.Rows)
+		if l.Image.Rows != len(want) {
+			t.Errorf("row %d: Image.Rows = %d, want %d", i, l.Image.Rows, len(want))
 		}
 		if l.Src != 1 {
 			t.Errorf("row %d: Src = %d, want 1 (every row maps back to its source line)", i, l.Src)
+		}
+		if len(l.Links) != 1 || l.Links[0].Target != "Assets/photo.png" {
+			t.Errorf("row %d: Links = %+v, want the embed to stay a link", i, l.Links)
 		}
 	}
 	if plainAt(lines, 0) != "before" || plainAt(lines, 2) != "after" {
 		t.Errorf("surrounding lines disturbed: %q / %q", plainAt(lines, 0), plainAt(lines, 2))
 	}
-}
-
-func TestImagePixelsCapAtPaneHeight(t *testing.T) {
-	lines := renderImages(t, "![[Assets/tall.png]]", 80, ImageOptions{
-		Meta:       func(string) (int, int, int64, ImageStatus) { return 1000, 2000, 100, ImageOK },
-		CellW:      8,
-		CellH:      16,
-		PaneHeight: 20,
-	})
-	if len(lines) != 20 {
-		t.Fatalf("got %d rows, want the pane-height cap of 20", len(lines))
+	if gotCols == 0 || gotRows == 0 {
+		t.Errorf("Thumbnail was asked for a zero-sized box: cols=%d rows=%d", gotCols, gotRows)
 	}
 }
 
-func TestImageRowsMath(t *testing.T) {
+func TestImageThumbnailCacheMissFallsBackToPlaceholder(t *testing.T) {
+	lines := renderImages(t, "![[Assets/photo.png]]", 80, ImageOptions{
+		Meta:      func(string) (int, int, int64, ImageStatus) { return 1920, 1080, 100, ImageOK },
+		Thumbnail: func(string, int, int) ([]string, bool) { return nil, false },
+	})
+	if lines[0].Image.Rows != 1 {
+		t.Errorf("Image.Rows = %d, want 1 (the placeholder) on a cache miss", lines[0].Image.Rows)
+	}
+	if text := ansi.Strip(lines[0].Text); !strings.Contains(text, "1920×1080") {
+		t.Errorf("placeholder text = %q, want its dimensions", text)
+	}
+}
+
+func TestThumbSizeMath(t *testing.T) {
 	cases := []struct {
-		w, h, cellsWide, cellW, cellH, maxRows, want int
+		w, h, maxCols, maxRows, wantCols, wantRows int
 	}{
-		{1920, 1080, 80, 8, 16, 0, 23},  // 640px pane width -> 360px tall -> ceil(360/16)
-		{100, 100, 80, 8, 16, 0, 40},    // square at full pane width
-		{0, 0, 80, 8, 16, 0, 1},         // unknown dimensions: never crash, always at least 1
-		{1000, 2000, 80, 8, 16, 10, 10}, // capped
+		{1920, 1080, 28, 12, 28, 8},  // landscape, well within the row cap
+		{100, 100, 28, 12, 24, 12},   // square: rows would be 14, so rows cap to 12 and cols shrink
+		{1000, 2000, 28, 12, 12, 12}, // tall portrait: capped by rows, cols shrink to keep aspect
+		{0, 0, 28, 12, 28, 1},        // unknown dimensions: never crash, always at least 1 row
+		{1920, 1080, 0, 12, 1, 1},    // no columns to work with at all
 	}
 	for _, c := range cases {
-		got := imageRows(c.w, c.h, c.cellsWide, c.cellW, c.cellH, c.maxRows)
-		if got != c.want {
-			t.Errorf("imageRows(%d,%d,%d,%d,%d,%d) = %d, want %d", c.w, c.h, c.cellsWide, c.cellW, c.cellH, c.maxRows, got, c.want)
+		gotCols, gotRows := thumbSize(c.w, c.h, c.maxCols, c.maxRows)
+		if gotCols != c.wantCols || gotRows != c.wantRows {
+			t.Errorf("thumbSize(%d,%d,%d,%d) = %d,%d, want %d,%d", c.w, c.h, c.maxCols, c.maxRows, gotCols, gotRows, c.wantCols, c.wantRows)
 		}
 	}
 }

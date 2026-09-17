@@ -11,8 +11,6 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	uv "github.com/charmbracelet/ultraviolet"
-	"github.com/charmbracelet/x/ansi"
 
 	"github.com/lurioso/skrin/internal/editor"
 	"github.com/lurioso/skrin/internal/index"
@@ -80,9 +78,9 @@ type Options struct {
 	// Library sets up the Book Card (B): folders, default status and the
 	// metadata/cover lookups it makes.
 	Library LibraryOptions
-	// Images turns on sixel pixels for image embeds when the terminal has
-	// them; off means the placeholder frame always, everywhere. Either way
-	// a found embed's name, dimensions and size still show.
+	// Images turns on block-art previews for image embeds; off means the
+	// placeholder frame always, everywhere. Either way a found embed's
+	// name, dimensions and size still show.
 	Images bool
 	// Now is the clock; tests pin it.
 	Now func() time.Time
@@ -152,14 +150,15 @@ type Model struct {
 	noteSel   *lineSel     // v in the reading view
 	events    chan tea.Msg // from Claude and its tools, on other goroutines
 
-	// Sixel capability, learned once at startup from the terminal's own
-	// replies. sixel stays false (placeholders only) until both a DA1 that
-	// claims it and a cell size arrive; tmux never claims it.
-	sixel         bool
-	cellW, cellH  int
-	imgCache      map[string]sixelImage // by vault-relative path, keyed on mtime+size
-	painted       []paintedRect         // rects imageDraws currently has painted, compared each frame to skip a no-op redraw
-	pendingEncode map[string]bool       // abs paths with an encodeSixel already in flight, so a slow file isn't re-encoded every keystroke
+	// thumbCache holds block-art previews for image embeds, keyed by
+	// file path + box size (thumbKey); wantThumb is what settle() just
+	// asked for and didn't have cached, drained into background jobs at
+	// the tail of Update; pendingThumb tracks which file+box combos
+	// already have a job in flight, so a slow file isn't re-decoded
+	// every keystroke.
+	thumbCache   map[string]thumbEntry
+	wantThumb    []thumbRequest
+	pendingThumb map[string]bool
 
 	flash string // one-shot status message, cleared by the next key
 }
@@ -178,7 +177,7 @@ func New(v *vault.Vault, pal theme.Palette, opts Options) (*Model, error) {
 	m := &Model{
 		vault: v, idx: index.New(), snaps: snapshot.Open(v.Root), files: newFiles(),
 		opts: opts, marks: map[string]bool{}, jumpSrc: -1, events: make(chan tea.Msg, 256),
-		imgCache: map[string]sixelImage{},
+		thumbCache: map[string]thumbEntry{},
 	}
 	m.journal.Keep = m.snaps.Save // U keeps what's on disk before it restores
 	m.drawer.input = editor.New("", false, pal)
@@ -221,16 +220,7 @@ func (m *Model) Session() session.State {
 func (m *Model) Flash(s string) { m.flash = s }
 
 func (m *Model) Init() tea.Cmd {
-	if !m.opts.Images {
-		return m.listen()
-	}
-	// Ask the terminal whether it can draw sixel pixels (DA1 attribute 4)
-	// and, if so, how big a cell is in pixels — tmux answers DA1 itself
-	// and never claims sixel, so this is a no-op there.
-	return tea.Batch(m.listen(),
-		tea.Raw(ansi.RequestPrimaryDeviceAttributes),
-		tea.Raw(ansi.WindowOp(16)),
-	)
+	return m.listen()
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -238,25 +228,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-	case uv.PrimaryDeviceAttributesEvent:
-		for _, attr := range msg {
-			if attr == 4 {
-				m.sixel = true
-				m.renderedW = 0
-				if m.split != nil {
-					m.split.renderedW = 0
-				}
-				break
-			}
-		}
-	case uv.CellSizeEvent:
-		if msg.Width > 0 && msg.Height > 0 {
-			m.cellW, m.cellH = msg.Width, msg.Height
-			m.renderedW = 0
-			if m.split != nil {
-				m.split.renderedW = 0
-			}
-		}
 	case ThemeMsg:
 		m.setPalette(msg.Palette)
 		m.renderedW = 0
@@ -285,11 +256,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.bookLookupDone(msg)
 	case bookSaveMsg:
 		m.finishBookSave(msg)
-	case imagePixelsMsg:
+	case imageThumbMsg:
 		if msg.stated {
-			m.imgCache[msg.abs] = sixelImage{mtime: msg.mtime, size: msg.size, cellsW: msg.targetW, data: msg.data}
+			key := thumbKey(msg.abs, msg.cols, msg.rows)
+			m.thumbCache[key] = thumbEntry{mtime: msg.mtime, size: msg.size, lines: msg.lines}
+			m.renderedW = 0
+			if m.split != nil {
+				m.split.renderedW = 0
+			}
 		}
-		delete(m.pendingEncode, msg.abs)
+		delete(m.pendingThumb, thumbKey(msg.abs, msg.cols, msg.rows))
 	case tea.PasteMsg:
 		m.paste(msg.Content)
 	case tea.KeyPressMsg:
@@ -346,7 +322,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	m.settle()
-	return m, tea.Batch(cmd, m.imageDraws())
+	return m, tea.Batch(cmd, m.startThumbnails())
 }
 
 // setPalette recolours everything, the logo included.

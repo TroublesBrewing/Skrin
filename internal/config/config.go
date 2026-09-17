@@ -78,10 +78,10 @@ func (c Config) LibraryDefaultStatus() string {
 	return "reading"
 }
 
-// RenderImages reports whether image embeds may draw real sixel pixels on
-// a terminal that has them. It is on unless turned off; either way, a
-// found embed's name, dimensions and size still show in the placeholder —
-// this only gates whether pixels are ever attempted.
+// RenderImages reports whether image embeds may show a block-art preview
+// of the file. It is on unless turned off; either way, a found embed's
+// name, dimensions and size still show in the placeholder — this only
+// gates whether a preview is ever attempted.
 func (c Config) RenderImages() bool {
 	return c.Render.Images == nil || *c.Render.Images
 }

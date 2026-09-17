@@ -10,6 +10,7 @@ package markdown
 import (
 	"fmt"
 	"image/color"
+	"math"
 	"regexp"
 	"strings"
 	"unicode"
@@ -41,12 +42,6 @@ type Image struct {
 	Path string // vault-relative
 	Row  int    // 0-based row of this display line within the image block
 	Rows int    // total rows the image occupies (1 for a placeholder frame)
-	// Pixels is true when Text is blank filler and the caller (internal/ui)
-	// is expected to draw real pixels over this row; false means Text
-	// already carries the fully rendered placeholder frame and nothing
-	// further needs drawing.
-	Pixels        bool
-	Width, Height int // the image's real pixel dimensions, when known
 }
 
 // ImageOptions controls how image embeds render. The zero value renders
@@ -56,13 +51,17 @@ type ImageOptions struct {
 	// Meta looks up an embed's target file. Nil treats every target as
 	// not found, which still renders safely.
 	Meta func(target string) (w, h int, size int64, status ImageStatus)
-	// CellW, CellH are the terminal's own cell size in pixels. Either
-	// being 0 means the terminal hasn't answered (or sixel is off), so
-	// every embed renders as the placeholder frame regardless of Meta.
-	CellW, CellH int
-	// PaneHeight caps how many rows one image may occupy, keeping aspect;
-	// 0 means unconstrained.
-	PaneHeight int
+	// Thumbnail looks up a block-art preview of target scaled to fit
+	// within cols×rows terminal cells (aspect kept). ok is false for a
+	// cold cache miss — the caller is expected to have queued (or will
+	// queue) a background job to build it, and the placeholder frame
+	// shows until it's ready. Nil (images off, or the feature disabled)
+	// always renders the placeholder frame instead, regardless of Meta.
+	Thumbnail func(target string, cols, rows int) (lines []string, ok bool)
+	// MaxCols, MaxRows bound the thumbnail's box; 0 picks a sane package
+	// default for each. PaneHeight further caps rows to what's actually
+	// visible; 0 means unconstrained.
+	MaxCols, MaxRows, PaneHeight int
 }
 
 // ImageStatus is what Meta found for an image embed's target.
@@ -407,10 +406,10 @@ func (r *renderer) listItem(i int, m []string) {
 	r.emit(i, prefix, strings.Repeat(" ", ansi.StringWidth(prefix)), r.inline(m[5], base), 0, wrapWords)
 }
 
-// image renders an image embed on a line of its own: real sixel pixels
-// when the terminal has answered that it can show them and the file's
-// dimensions are known, a placeholder frame otherwise. Either way the
-// embed stays a link (f/Enter still work on it).
+// image renders an image embed on a line of its own: a small block-art
+// preview when one is ready, a placeholder frame otherwise (the found
+// file's own name, dimensions and size, or the reason it can't show
+// those). Either way the embed stays a link (f/Enter still work on it).
 func (r *renderer) image(src int, target, alt string) {
 	id := r.addLink(target, true)
 	var w, h int
@@ -423,12 +422,39 @@ func (r *renderer) image(src int, target, alt string) {
 	if slash := strings.LastIndexByte(name, '/'); slash >= 0 {
 		name = name[slash+1:]
 	}
-	canDrawPixels := status == ImageOK && r.images.CellW > 0 && r.images.CellH > 0 && w > 0 && h > 0
-	if !canDrawPixels {
-		r.emitImagePlaceholder(src, id, target, name, w, h, size, status)
-		return
+	if status == ImageOK && r.images.Thumbnail != nil && w > 0 && h > 0 {
+		cols, rows := thumbSize(w, h, r.thumbMaxCols(), r.thumbMaxRows())
+		if lines, ok := r.images.Thumbnail(target, cols, rows); ok && len(lines) > 0 {
+			r.emitThumbnail(src, target, lines)
+			return
+		}
 	}
-	r.emitImagePixels(src, target, w, h)
+	r.emitImagePlaceholder(src, id, target, name, w, h, size, status)
+}
+
+// thumbMaxCols and thumbMaxRows are the thumbnail's box for this render:
+// ImageOptions' own bounds, defaulted when unset and capped to what's
+// actually available (the pane's width, and PaneHeight for rows).
+func (r *renderer) thumbMaxCols() int {
+	cols := r.images.MaxCols
+	if cols <= 0 {
+		cols = defaultThumbCols
+	}
+	if cols > r.width {
+		cols = r.width
+	}
+	return max(cols, 1)
+}
+
+func (r *renderer) thumbMaxRows() int {
+	rows := r.images.MaxRows
+	if rows <= 0 {
+		rows = defaultThumbRows
+	}
+	if r.images.PaneHeight > 0 && r.images.PaneHeight < rows {
+		rows = r.images.PaneHeight
+	}
+	return max(rows, 1)
 }
 
 // emitImagePlaceholder is the always-working default: one line naming the
@@ -455,40 +481,56 @@ func (r *renderer) emitImagePlaceholder(src, id int, target, name string, w, h i
 	}
 }
 
-// emitImagePixels reserves rows for a real sixel image, scaled to the pane's
-// width and, when that would make it too tall, to the pane's height instead
-// — aspect kept either way. internal/ui does the actual decode/scale/draw;
-// here we only need to agree with it on how many rows the image takes, so
-// the 1:n Src mapping holds for every one of them.
-func (r *renderer) emitImagePixels(src int, path string, w, h int) {
-	rows := imageRows(w, h, r.width, r.images.CellW, r.images.CellH, r.images.PaneHeight)
-	for row := range rows {
+// emitThumbnail lays out a ready block-art preview: one display line per
+// row the caller's Thumbnail returned, each carrying the same link and
+// Row/Rows accounting as the placeholder frame, so f/Enter and the 1:n
+// Src mapping both still hold for a multi-row preview the same way they
+// do for any other block.
+func (r *renderer) emitThumbnail(src int, path string, lines []string) {
+	rows := len(lines)
+	for row, text := range lines {
 		r.out = append(r.out, Line{
-			Text:  strings.Repeat(" ", r.width),
+			Text:  ansi.Truncate(text, r.width, ""),
 			Src:   src,
 			Links: []Link{{Col: 0, Target: path, Wiki: true}},
-			Image: &Image{Path: path, Row: row, Rows: rows, Pixels: true, Width: w, Height: h},
+			Image: &Image{Path: path, Row: row, Rows: rows},
 		})
 	}
 }
 
-// imageRows is how many terminal rows an image of w×h real pixels occupies
-// once scaled to fit cellsWide character columns, each cellW×cellH pixels —
-// capped to maxRows (keeping aspect) when set.
-func imageRows(w, h, cellsWide, cellW, cellH, maxRows int) int {
-	if w <= 0 || h <= 0 || cellW <= 0 || cellH <= 0 || cellsWide <= 0 {
-		return 1
+// defaultThumbCols and defaultThumbRows bound a thumbnail's box when
+// ImageOptions doesn't set its own — chosen once, after comparing a real
+// cover rendered at several sizes side by side; see thumbMaxCols/Rows.
+const (
+	defaultThumbCols = 28
+	defaultThumbRows = 12
+)
+
+// thumbSize is how many columns and rows a w×h image occupies once
+// scaled to fit inside a maxCols×maxRows box, aspect kept. Each terminal
+// row holds two stacked image pixel-rows (one half-block cell) — the
+// same assumption internal/logo's chest art makes, which is what keeps a
+// roughly square-looking preview instead of a squashed or stretched one.
+func thumbSize(w, h, maxCols, maxRows int) (cols, rows int) {
+	if w <= 0 || h <= 0 || maxCols <= 0 {
+		return max(maxCols, 1), 1
 	}
-	paneWidthPx := cellsWide * cellW
-	scaledH := float64(h) * float64(paneWidthPx) / float64(w)
-	rows := (int(scaledH) + cellH - 1) / cellH // round up
+	cols = maxCols
+	rows = int(math.Round(float64(h) * float64(cols) / float64(w) / 2))
 	if rows < 1 {
 		rows = 1
 	}
 	if maxRows > 0 && rows > maxRows {
 		rows = maxRows
+		cols = int(math.Round(float64(w) * float64(rows) * 2 / float64(h)))
+		if cols < 1 {
+			cols = 1
+		}
+		if cols > maxCols {
+			cols = maxCols
+		}
 	}
-	return rows
+	return cols, rows
 }
 
 // humanSize formats a byte count the way a reader thinks about file sizes:

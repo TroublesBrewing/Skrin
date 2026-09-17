@@ -2,7 +2,6 @@ package ui
 
 import (
 	"bytes"
-	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -13,12 +12,11 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 )
 
 // writePNG drops a tiny real PNG at rel inside root, so imgmeta can read
-// its real header.
+// its real header and renderThumbnail can actually decode it.
 func writePNG(t *testing.T, root, rel string, w, h int) {
 	t.Helper()
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
@@ -53,15 +51,57 @@ func newImageTestModel(t *testing.T, opts Options) *Model {
 	return m
 }
 
-// Without a real terminal answering DA1, sixel never turns on: every image
-// embed renders as the placeholder frame, and the frame still fills the
-// terminal exactly.
-func TestImageEmbedRendersAsPlaceholderWithoutSixel(t *testing.T) {
+// flattenCmd runs cmd and every Cmd it fans out to via tea.Batch,
+// collecting the leaf Msgs.
+func flattenCmd(cmd tea.Cmd) []tea.Msg {
+	if cmd == nil {
+		return nil
+	}
+	return flattenMsg(cmd())
+}
+
+func flattenMsg(msg tea.Msg) []tea.Msg {
+	if msg == nil {
+		return nil
+	}
+	if bm, ok := msg.(tea.BatchMsg); ok {
+		var out []tea.Msg
+		for _, c := range bm {
+			out = append(out, flattenCmd(c)...)
+		}
+		return out
+	}
+	if v := reflect.ValueOf(msg); v.Kind() == reflect.Slice && v.Type().Elem() == reflect.TypeOf((*tea.Cmd)(nil)).Elem() {
+		var out []tea.Msg
+		for i := 0; i < v.Len(); i++ {
+			if c, ok := v.Index(i).Interface().(tea.Cmd); ok {
+				out = append(out, flattenCmd(c)...)
+			}
+		}
+		return out
+	}
+	return []tea.Msg{msg}
+}
+
+func imageThumbMsgs(msgs []tea.Msg) []imageThumbMsg {
+	var out []imageThumbMsg
+	for _, msg := range msgs {
+		if t, ok := msg.(imageThumbMsg); ok {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// Before its background decode has run, a found image still renders as
+// the placeholder frame — never blank, never garbled — and the frame
+// still fills the terminal exactly.
+func TestImageEmbedRendersAsPlaceholderBeforeDecoding(t *testing.T) {
 	m := newImageTestModel(t, Options{Images: true})
 	press(m, "1")
 	m.files.selectPath("Pic.md")
 	press(m, "enter")
-	checkFrame(t, m, "note with an image embed, no sixel")
+	checkFrame(t, m, "note with an image embed, not yet decoded")
 
 	var found bool
 	for _, l := range m.lines {
@@ -69,8 +109,8 @@ func TestImageEmbedRendersAsPlaceholderWithoutSixel(t *testing.T) {
 			continue
 		}
 		found = true
-		if l.Image.Pixels {
-			t.Errorf("line has Image.Pixels set without sixel capability: %+v", l.Image)
+		if l.Image.Rows != 1 {
+			t.Errorf("Image.Rows = %d, want 1 (the placeholder) before decoding finishes", l.Image.Rows)
 		}
 		text := ansi.Strip(l.Text)
 		if l.Image.Path == "Assets/photo.png" && !strings.Contains(text, "1920×1080") {
@@ -85,66 +125,57 @@ func TestImageEmbedRendersAsPlaceholderWithoutSixel(t *testing.T) {
 	}
 }
 
-// Turning the config option off must force placeholders even once the
-// terminal has claimed sixel and answered a cell size.
+// Turning the config option off must force placeholders forever, never
+// queuing a decode at all.
 func TestImageEmbedConfigOffForcesPlaceholder(t *testing.T) {
 	m := newImageTestModel(t, Options{Images: false})
-	m.Update(uv.PrimaryDeviceAttributesEvent{1, 2, 4})
-	m.Update(uv.CellSizeEvent{Width: 8, Height: 16})
 	press(m, "1")
 	m.files.selectPath("Pic.md")
-	press(m, "enter")
+	_, cmd := m.Update(key("enter"))
 	checkFrame(t, m, "note with an image embed, images off in config")
 
 	for _, l := range m.lines {
-		if l.Image != nil && l.Image.Pixels {
-			t.Errorf("Image.Pixels set with images off in config: %+v", l.Image)
+		if l.Image != nil && l.Image.Rows != 1 {
+			t.Errorf("Image.Rows = %d, want 1 (the placeholder) with images off in config", l.Image.Rows)
 		}
+	}
+	if len(imageThumbMsgs(flattenCmd(cmd))) != 0 {
+		t.Error("images off in config should never queue a thumbnail decode")
 	}
 }
 
-// Once the terminal claims sixel and reports a cell size, a found image
-// switches to pixel rows instead of the placeholder frame — and the frame
-// still fills the terminal exactly, since the filler rows are blank text.
-func TestImageEmbedDrawsPixelsOnceSixelIsKnown(t *testing.T) {
+// Opening a note with a found, never-before-seen image queues a
+// background decode; once its imageThumbMsg comes back, the note
+// re-renders with the real preview in place of the placeholder.
+func TestImageEmbedSwitchesToThumbnailOnceDecoded(t *testing.T) {
 	m := newImageTestModel(t, Options{Images: true})
 	press(m, "1")
 	m.files.selectPath("Pic.md")
-	press(m, "enter")
+	_, cmd := m.Update(key("enter"))
 
-	m.Update(uv.PrimaryDeviceAttributesEvent{1, 2, 4}) // 4: claims sixel
-	m.Update(uv.CellSizeEvent{Width: 8, Height: 16})
-	checkFrame(t, m, "note with an image embed, sixel known")
+	got := imageThumbMsgs(flattenCmd(cmd))
+	if len(got) != 1 {
+		t.Fatalf("got %d imageThumbMsg, want 1 for the never-before-seen image", len(got))
+	}
+	msg := got[0]
+	if msg.abs != m.vault.Abs("Assets/photo.png") || msg.lines == nil {
+		t.Fatalf("imageThumbMsg = %+v, want a populated decode of the real PNG", msg)
+	}
+
+	m.Update(msg)
+	checkFrame(t, m, "note with an image embed, thumbnail decoded")
 
 	var pixelRows int
 	for _, l := range m.lines {
 		if l.Image != nil && l.Image.Path == "Assets/photo.png" {
-			if !l.Image.Pixels {
-				t.Errorf("found image line didn't switch to pixels once sixel is known: %+v", l.Image)
-			}
 			pixelRows++
 		}
 	}
-	if pixelRows == 0 {
-		t.Error("no pixel rows reserved for the found image")
+	if pixelRows != len(msg.lines) {
+		t.Errorf("got %d image display lines, want %d (one per decoded row)", pixelRows, len(msg.lines))
 	}
-}
-
-// A cell-size event of 0 (a terminal that answered nonsense) must not turn
-// pixels on.
-func TestImageEmbedIgnoresZeroCellSize(t *testing.T) {
-	m := newImageTestModel(t, Options{Images: true})
-	m.Update(uv.PrimaryDeviceAttributesEvent{1, 2, 4})
-	m.Update(uv.CellSizeEvent{Width: 0, Height: 0})
-	press(m, "1")
-	m.files.selectPath("Pic.md")
-	press(m, "enter")
-	checkFrame(t, m, "note with an image embed, zero cell size")
-
-	for _, l := range m.lines {
-		if l.Image != nil && l.Image.Pixels {
-			t.Error("Image.Pixels set from a zero cell size")
-		}
+	if pixelRows <= 1 {
+		t.Error("expected more than the one-row placeholder once decoded")
 	}
 }
 
@@ -204,210 +235,57 @@ func TestGoToNoteListsImagesAndRevealsThemInFiles(t *testing.T) {
 	}
 }
 
-func TestNoteOriginIsNoneWhenAModalIsUp(t *testing.T) {
+// A cache miss must not decode, scale and encode the image inline while
+// rendering: that work has to happen inside the Cmd Update returns, off
+// the main goroutine, or a keystroke that first scrolls a
+// never-before-seen cover into view would block the whole program until
+// the decode finishes.
+func TestImageThumbnailDefersDecodingOfACacheMiss(t *testing.T) {
 	m := newImageTestModel(t, Options{Images: true})
 	press(m, "1")
 	m.files.selectPath("Pic.md")
-	press(m, "enter")
-	m.Update(uv.PrimaryDeviceAttributesEvent{1, 2, 4})
-	m.Update(uv.CellSizeEvent{Width: 8, Height: 16})
-	if _, _, ok := m.noteOrigin(); !ok {
-		t.Fatal("noteOrigin should be usable with a note open and nothing over it")
+	_, cmd := m.Update(key("enter"))
+
+	abs := m.vault.Abs("Assets/photo.png")
+	for key := range m.thumbCache {
+		t.Fatalf("test setup: %q must not be cached yet", key)
 	}
-	press(m, "?") // opens the manual
-	if _, _, ok := m.noteOrigin(); ok {
-		t.Error("noteOrigin should refuse to draw under the manual")
+	got := imageThumbMsgs(flattenCmd(cmd))
+	if len(got) != 1 {
+		t.Fatalf("got %d imageThumbMsg, want 1", len(got))
 	}
-	press(m, "esc")
+	if got[0].abs != abs {
+		t.Errorf("imageThumbMsg.abs = %q, want %q", got[0].abs, abs)
+	}
+
+	m.Update(got[0])
+	key := thumbKey(got[0].abs, got[0].cols, got[0].rows)
+	if e, ok := m.thumbCache[key]; !ok || e.lines == nil {
+		t.Error("Update should cache the thumbnail once imageThumbMsg arrives")
+	}
+	if m.pendingThumb[key] {
+		t.Error("pendingThumb should be cleared once the result comes back")
+	}
 }
 
-// flattenCmd runs cmd and every Cmd it fans out to via tea.Batch or
-// tea.Sequence, collecting the leaf Msgs. tea.Sequence's own message type
-// is unexported, so a slice-of-Cmd is unwrapped by reflection rather than
-// a type switch.
-func flattenCmd(cmd tea.Cmd) []tea.Msg {
-	if cmd == nil {
-		return nil
-	}
-	return flattenMsg(cmd())
-}
-
-func flattenMsg(msg tea.Msg) []tea.Msg {
-	if msg == nil {
-		return nil
-	}
-	if bm, ok := msg.(tea.BatchMsg); ok {
-		var out []tea.Msg
-		for _, c := range bm {
-			out = append(out, flattenCmd(c)...)
-		}
-		return out
-	}
-	if v := reflect.ValueOf(msg); v.Kind() == reflect.Slice && v.Type().Elem() == reflect.TypeOf((*tea.Cmd)(nil)).Elem() {
-		var out []tea.Msg
-		for i := 0; i < v.Len(); i++ {
-			if c, ok := v.Index(i).Interface().(tea.Cmd); ok {
-				out = append(out, flattenCmd(c)...)
-			}
-		}
-		return out
-	}
-	return []tea.Msg{msg}
-}
-
-func rawStrings(msgs []tea.Msg) []string {
-	var out []string
-	for _, msg := range msgs {
-		if r, ok := msg.(tea.RawMsg); ok {
-			out = append(out, fmt.Sprint(r.Msg))
-		}
-	}
-	return out
-}
-
-// Drawing an image, then losing noteOrigin (an overlay opens over the
-// note), must still clear the rectangle the image was painted into —
-// imageDraws can't just return nil once there's nothing new to draw, or
-// the sixel pixels from the last frame never get erased and linger as a
-// smear over whatever's drawn there next.
-func TestImageDrawsClearsPaintedRectWhenNoteGoesAway(t *testing.T) {
+// Once a note's image is cached, opening it again must not queue another
+// decode — the whole point of the cache is that a file already seen
+// doesn't get re-decoded on every visit.
+func TestImageThumbnailCacheIsReusedOnReopen(t *testing.T) {
 	m := newImageTestModel(t, Options{Images: true})
 	press(m, "1")
 	m.files.selectPath("Pic.md")
-	press(m, "enter")
-	m.Update(uv.PrimaryDeviceAttributesEvent{1, 2, 4})
-	m.Update(uv.CellSizeEvent{Width: 8, Height: 16})
+	_, cmd := m.Update(key("enter"))
+	got := imageThumbMsgs(flattenCmd(cmd))
+	if len(got) != 1 {
+		t.Fatalf("got %d imageThumbMsg, want 1", len(got))
+	}
+	m.Update(got[0])
 
-	rel := "Assets/photo.png"
-	abs := m.vault.Abs(rel)
-	// A cached entry must match the real file's mtime/size to count as
-	// fresh, so stat it for real rather than faking those fields.
-	fi, err := os.Stat(abs)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m.imgCache[abs] = sixelImage{mtime: fi.ModTime().UnixNano(), size: fi.Size(), cellsW: m.layout().noteTextW() * m.cellW, data: "SIXELDATA"}
-
-	msgs := flattenCmd(m.imageDraws())
-	draws := rawStrings(msgs)
-	if len(draws) == 0 {
-		t.Fatal("expected at least one raw draw once the image is cached")
-	}
-	if len(m.painted) == 0 {
-		t.Fatal("expected imageDraws to record what it painted")
-	}
-	painted := m.painted[0]
-
-	// Update() itself calls imageDraws() at the tail of every message, so
-	// grab the Cmd from the "?" press directly rather than pressing then
-	// calling imageDraws() again — by then m.painted would already be
-	// cleared by that automatic call.
-	_, drawCmd := m.Update(key("?")) // opens the manual: noteOrigin now refuses to draw
-	msgs = flattenCmd(drawCmd)
-	clears := rawStrings(msgs)
-	if len(clears) == 0 {
-		t.Fatal("expected imageDraws to clear the previously painted rect once the note is hidden")
-	}
-	want := ansi.SetCursorPosition(painted.col, painted.row)
-	if !strings.Contains(clears[0], want) {
-		t.Errorf("clear command = %q, want it positioned at the painted rect (%q)", clears[0], want)
-	}
-	if strings.Contains(clears[0], "SIXELDATA") {
-		t.Error("clear command should only write blanks, not repaint sixel data")
-	}
-	if m.painted != nil {
-		t.Error("painted should be nil once nothing is drawn")
-	}
-	press(m, "esc")
-}
-
-// A cold cache miss must not decode, scale and encode the image inline in
-// imageDraws: that work has to happen inside the Cmd it returns, off the
-// main goroutine, or a keystroke that first scrolls a never-before-seen
-// cover into view would block the whole program until the encode
-// finishes.
-func TestImageDrawsDefersEncodingOfACacheMiss(t *testing.T) {
-	m := newImageTestModel(t, Options{Images: true})
-	press(m, "1")
+	press(m, "esc") // back to Files, closing the note
 	m.files.selectPath("Pic.md")
-	press(m, "enter")
-	m.Update(uv.PrimaryDeviceAttributesEvent{1, 2, 4})
-	// The CellSizeEvent's own Update call already runs imageDraws() once
-	// at its tail (every Update does), so capture that Cmd directly
-	// rather than calling imageDraws() again afterward — a second call
-	// would see the file already marked as mid-encode by the first and
-	// skip requesting it again.
-	_, cmd := m.Update(uv.CellSizeEvent{Width: 8, Height: 16})
-
-	rel := "Assets/photo.png"
-	abs := m.vault.Abs(rel)
-	if _, ok := m.imgCache[abs]; ok {
-		t.Fatal("test setup: image must not be cached yet")
-	}
-
-	if cmd == nil {
-		t.Fatal("expected a Cmd to encode the cache miss")
-	}
-	if _, ok := m.imgCache[abs]; ok {
-		t.Fatal("imageDraws must not decode or encode synchronously on a cache miss")
-	}
-
-	msgs := flattenCmd(cmd)
-	var got imagePixelsMsg
-	var found bool
-	for _, msg := range msgs {
-		if p, ok := msg.(imagePixelsMsg); ok {
-			got, found = p, true
-		}
-	}
-	if !found {
-		t.Fatal("expected an imagePixelsMsg once the deferred encode runs")
-	}
-	if got.abs != abs || got.data == "" {
-		t.Errorf("imagePixelsMsg = %+v, want a populated result for %q", got, abs)
-	}
-
-	if _, cmd := m.Update(got); cmd != nil {
-		flattenCmd(cmd) // drain: a follow-up draw once the image is cached
-	}
-	if _, ok := m.imgCache[abs]; !ok {
-		t.Error("Update should cache the image once imagePixelsMsg arrives")
-	}
-}
-
-// Once an image is drawn, a further Update carrying nothing that actually
-// changes what should be on screen — an unrelated key, a watcher tick,
-// anything — must not clear and redraw it again. Every clear-then-redraw
-// is a real, visible flicker on a terminal that has to rasterize sixel
-// data, so doing that on every single message even when nothing changed
-// is exactly the kind of "blinking on rerenders" the bug report
-// described.
-func TestImageDrawsSkipsARedrawWhenNothingChanged(t *testing.T) {
-	m := newImageTestModel(t, Options{Images: true})
-	press(m, "1")
-	m.files.selectPath("Pic.md")
-	press(m, "enter")
-	m.Update(uv.PrimaryDeviceAttributesEvent{1, 2, 4})
-	m.Update(uv.CellSizeEvent{Width: 8, Height: 16})
-
-	rel := "Assets/photo.png"
-	abs := m.vault.Abs(rel)
-	fi, err := os.Stat(abs)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m.imgCache[abs] = sixelImage{mtime: fi.ModTime().UnixNano(), size: fi.Size(), cellsW: m.layout().noteTextW() * m.cellW, data: "SIXELDATA"}
-
-	if len(rawStrings(flattenCmd(m.imageDraws()))) == 0 {
-		t.Fatal("expected the first draw once the image is cached")
-	}
-	if len(m.painted) == 0 {
-		t.Fatal("expected imageDraws to record what it painted")
-	}
-
-	// Nothing about the note, scroll position or cache changed, so a
-	// second call must be a pure no-op: no clear, no redraw.
-	if cmd := m.imageDraws(); cmd != nil {
-		t.Errorf("expected nil (no terminal writes) when nothing changed, got %v", flattenCmd(cmd))
+	_, cmd = m.Update(key("enter"))
+	if more := imageThumbMsgs(flattenCmd(cmd)); len(more) != 0 {
+		t.Errorf("reopening a cached image queued another decode: %+v", more)
 	}
 }

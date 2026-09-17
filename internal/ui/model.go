@@ -129,14 +129,15 @@ type Model struct {
 	noComplete bool        // the popup was dismissed for this link
 
 	// At most one of these is open; it takes all keys while it is.
-	hints   *hintState
-	prompt  *prompt
-	confirm *confirm
-	chooser *chooser
-	search  *searchPanel
-	manual  *manual
-	book    *bookCard
-	habits  *habitView
+	hints     *hintState
+	prompt    *prompt
+	confirm   *confirm
+	chooser   *chooser
+	search    *searchPanel
+	manual    *manual
+	book      *bookCard
+	habits    *habitView
+	quickNote *quickNote
 
 	lastSearch *searchPanel // reopened by the next /
 
@@ -270,6 +271,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd = m.bookCardKey(msg)
 		case m.habits != nil:
 			m.habitKey(msg)
+		case m.quickNote != nil:
+			m.quickNoteKey(msg)
 		case m.search != nil:
 			m.searchKey(msg)
 		default:
@@ -346,6 +349,8 @@ func (m *Model) do(a action) tea.Cmd {
 		m.openBookCard()
 	case actHabits:
 		m.openHabits()
+	case actQuickNote:
+		m.openQuickNote()
 	case actEscape:
 		switch {
 		case m.noteSel != nil:

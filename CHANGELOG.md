@@ -2,6 +2,17 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.15.0 — 2026-09-17
+
+Quick notes ([[skrin quick notes]]): `i` opens a small overlay anywhere in Skrin for capturing a thought without leaving what you're doing, then drops it as a new note and closes without opening it.
+
+- **`i` opens the capture overlay** from Files or an open note (main context only, not from inside another overlay). A multi-line text area takes the note's body; `enter` saves, `shift+enter`/`alt+enter` insert a newline (matching the drawer's own convention).
+- **The first line names the note**: trimmed, leading `#`s stripped (so starting a line with a heading marker doesn't leak into the filename), cut at 50 runes, then run through the same `vault.CheckName` every other naming path in Skrin uses.
+- **Folder defaults to Obsidian's own "new note" location** — `tab` swaps focus to a folder row seeded with that default, typeable and fuzzy-filtered like the other choosers. Per the signed-off ticket ruling: a declared `NewFileLocation` folder is used as-is; unset, `"current"` (quick notes have no note to be relative to), or a folder that's since been deleted all fall back to the vault root. No new settings — it's read live from Obsidian's own config, same as the dangling-wikilink `offerCreate` flow already did.
+- **Three refusals, all inline**: an empty first line, a name that collides with an existing note, and a typed folder that doesn't exist. Nothing is written until all three are clear.
+- Saves without ever opening the note — the flash names the path it landed at and that `U` undoes it, and `U` really does undo the create.
+- Tests: 16 new cases in `internal/ui/quick_note_test.go` covering opening from both contexts, naming (trim, `#`-strip, 50-cut, both newline chords), all three refusals, every folder-default branch (unset, declared, declared-then-deleted), the tab-filter-pick flow, `U`, that it never opens the note, and frame-fits-at-every-size. Full suite green; live-verified in tmux end to end, including the exact flash wording the spec calls for.
+
 ## v0.14.0 — 2026-09-17
 
 Habits in the daily notes ([[skrin habits]]): checkboxes under `### Habits` in each day's note, with a `T` overlay for today's list and the week/month grids. Built by Hermes as stand-in builder over the weekend (commit `d514552`), then audited by Claude to the same standard PO reviews hold builder builds to — two real problems found and fixed before release.

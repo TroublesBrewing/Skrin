@@ -83,26 +83,28 @@ const (
 	actSaveBook
 	actFolderJumpUp // Ctrl+↑/↓: cursor to the previous/next folder row
 	actFolderJumpDown
-	actHabits   // T: the habits overlay
-	actHabitTab // H inside it: today → this week → this month
+	actHabits    // T: the habits overlay
+	actHabitTab  // H inside it: today → this week → this month
+	actQuickNote // i: the quick-note overlay
 )
 
 // Contexts say where a binding works. Each gets its own keymap, built from
 // the registry below.
 const (
-	inMain     = "main" // Files and the note
-	inEditor   = "editor"
-	inList     = "list" // Go to note, backlinks, the outline, the move picker
-	inSearch   = "search"
-	inDrawer   = "drawer"
-	inProposal = "proposal"
-	inHints    = "hints"
-	inAsk      = "ask" // a name to type, or a y/n question
-	inConflict = "conflict"
-	inManual   = "manual"
-	inComplete = "complete" // the [[ popup in the editor
-	inBookCard = "bookcard" // the B card: bibliographic fields, quotes, notes
-	inHabits   = "habits"   // the T overlay: today's list, the week and month grids
+	inMain      = "main" // Files and the note
+	inEditor    = "editor"
+	inList      = "list" // Go to note, backlinks, the outline, the move picker
+	inSearch    = "search"
+	inDrawer    = "drawer"
+	inProposal  = "proposal"
+	inHints     = "hints"
+	inAsk       = "ask" // a name to type, or a y/n question
+	inConflict  = "conflict"
+	inManual    = "manual"
+	inComplete  = "complete"  // the [[ popup in the editor
+	inBookCard  = "bookcard"  // the B card: bibliographic fields, quotes, notes
+	inHabits    = "habits"    // the T overlay: today's list, the week and month grids
+	inQuickNote = "quicknote" // the i overlay: capture text, folder row
 )
 
 // binding is one row of the keymap registry. Every key Skrin handles is
@@ -118,25 +120,26 @@ type binding struct {
 }
 
 const (
-	groupMove     = "Moving around"
-	groupFiles    = "Files and folders"
-	groupNote     = "The note"
-	groupSearch   = "Search"
-	groupClaude   = "Claude"
-	groupSkrin    = "Skrin"
-	groupEditor   = "In the editor"
-	groupVim      = "Vim keys in the editor (editor.vim = true)"
-	groupList     = "In lists: Go to note, backlinks, the outline, moving"
-	groupFind     = "In search (/)"
-	groupDrawer   = "In the Claude drawer"
-	groupProposal = "On a change Claude proposes"
-	groupHints    = "Following links (f)"
-	groupAsk      = "When Skrin asks"
-	groupConflict = "On a save conflict"
-	groupManual   = "In this manual"
-	groupComplete = "In link completion ([[)"
-	groupBookCard = "In the Book Card (B)"
-	groupHabits   = "In the habits view (T)"
+	groupMove      = "Moving around"
+	groupFiles     = "Files and folders"
+	groupNote      = "The note"
+	groupSearch    = "Search"
+	groupClaude    = "Claude"
+	groupSkrin     = "Skrin"
+	groupEditor    = "In the editor"
+	groupVim       = "Vim keys in the editor (editor.vim = true)"
+	groupList      = "In lists: Go to note, backlinks, the outline, moving"
+	groupFind      = "In search (/)"
+	groupDrawer    = "In the Claude drawer"
+	groupProposal  = "On a change Claude proposes"
+	groupHints     = "Following links (f)"
+	groupAsk       = "When Skrin asks"
+	groupConflict  = "On a save conflict"
+	groupManual    = "In this manual"
+	groupComplete  = "In link completion ([[)"
+	groupBookCard  = "In the Book Card (B)"
+	groupHabits    = "In the habits view (T)"
+	groupQuickNote = "In the quick note (i)"
 )
 
 var defaultBindings = []binding{
@@ -174,6 +177,7 @@ var defaultBindings = []binding{
 	{actDaily, []string{"t"}, "open or create today's daily note", groupFiles, inMain},
 	{actHabits, []string{"T"}, "habits: today's list, and the week/month grids", groupFiles, inMain},
 	{actNewBook, []string{"B"}, "Book Card: catalogue a book, or edit the open book note", groupFiles, inMain},
+	{actQuickNote, []string{"i"}, "quick note: capture into a folder, first line names it", groupFiles, inMain},
 	{actOrderUp, []string{"shift+up"}, "move the item under the cursor up its level", groupFiles, inMain},
 	{actOrderDown, []string{"shift+down"}, "move it down its level", groupFiles, inMain},
 	{actOrderReset, []string{"R"}, "put this level back in the default order", groupFiles, inMain},
@@ -294,6 +298,14 @@ var defaultBindings = []binding{
 	{actHabitTab, []string{"H"}, "today → this week → this month → today", groupHabits, inHabits},
 	{actUndoOp, []string{"U"}, "undo the last tick you made from here", groupHabits, inHabits},
 	{actCancel, []string{"esc", "ctrl+c"}, "close the habits view", groupHabits, inHabits},
+
+	{actPick, []string{"enter"}, "text: save · folder row: pick the highlighted match", groupQuickNote, inQuickNote},
+	{actNewLine, []string{"shift+enter", "alt+enter"}, "a new line", groupQuickNote, inQuickNote},
+	{actNextField, []string{"tab"}, "text ↔ folder", groupQuickNote, inQuickNote},
+	{actPrevField, []string{"shift+tab"}, "text ↔ folder", groupQuickNote, inQuickNote},
+	{actUp, []string{"up"}, "folder row: through the matches · text: up a line", groupQuickNote, inQuickNote},
+	{actDown, []string{"down"}, "folder row: through the matches · text: down a line", groupQuickNote, inQuickNote},
+	{actCancel, []string{"esc", "ctrl+c"}, "close, write nothing", groupQuickNote, inQuickNote},
 }
 
 // keymaps is each context's keymap: key → action.

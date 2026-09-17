@@ -2,6 +2,14 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.16.3 — 2026-09-17
+
+Quick report from daily use (`Quick reports/Testing Quick Note window and finding limitation.md`): once a Quick Note capture grew past the overlay's 8-row cap, the cursor scrolled out of the visible window with no way to bring it back — typing just seemed to vanish.
+
+- **Fixed: the Quick Note capture box now scrolls to keep the cursor visible** once its wrapped text outgrows the 8-row growth cap, instead of freezing on the first 8 lines forever. Same pattern the manual overlay (`internal/ui/help.go`) already used for its own scrolling.
+- **Related, not fixed here**: Book Card's "Notes & Reflections" field shares the same text-field type and the same unbounded-render pattern, so a long enough note could show the same symptom. Left for its own ticket — the form around it needs its own look before deciding how it should scroll.
+- Tests: a new case typing past the 8-row cap and asserting the cursor's own line stays visible in the rendered box (`internal/ui`). Full suite green.
+
 ## v0.16.2 — 2026-09-17
 
 Priority-1 bug from daily use (`Quick reports/img rendering bug.md`): a book cover's sixel pixels could smear across the screen, black out the Files tree, blink on every scroll, and sometimes make Skrin stop responding to keys entirely. Two fix passes at the sixel drawing code (tracking and clearing painted rectangles, sequencing clears before draws, deferring decode/encode off the main goroutine, skipping a redraw when nothing changed) stopped the freeze and the blinking, but the ghosting, the oversized cover and the corrupted Files tree persisted — because the real problem was architectural, not a bug in the drawing logic: sixel pixels are painted with raw escape sequences entirely outside Bubble Tea's own cell diffing, so nothing in `internal/ui` could ever reliably clear or clip them once the terminal had rasterized them somewhere.

@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -128,5 +129,76 @@ func TestLibraryReadsOverrides(t *testing.T) {
 	}
 	if c.LibraryFolder() != "Library" || c.LibraryCoversFolder() != "Covers" || c.LibraryDefaultStatus() != "want" {
 		t.Errorf("library config = %+v", c.Library)
+	}
+}
+
+func TestRestoreLastNoteDefaultsOff(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.RestoreLastNote() {
+		t.Error("RestoreLastNote should default to off: a fresh run starts at the welcome screen")
+	}
+}
+
+func TestRestoreLastNoteReadsOverride(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", home)
+	dir := filepath.Join(home, "skrin")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	conf := "[general]\nrestore_last_note = true\n"
+	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte(conf), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.RestoreLastNote() {
+		t.Error("restore_last_note = true should turn it on")
+	}
+}
+
+func TestSaveRoundTripsAndKeepsHomeShorthand(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", home)
+	dir := filepath.Join(home, "skrin")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	conf := "vault = \"~/notes\"\n\n[editor]\nexternal = \"~/bin/ed --wait\"\n"
+	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte(conf), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := true
+	c.General.RestoreLastNote = &b
+	if err := Save(c); err != nil {
+		t.Fatal(err)
+	}
+	reloaded, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reloaded.RestoreLastNote() {
+		t.Error("Save then Load should round-trip the new setting")
+	}
+	if reloaded.Vault != filepath.Join(home, "notes") {
+		t.Errorf("Load after Save: vault = %q", reloaded.Vault)
+	}
+	saved, err := os.ReadFile(filepath.Join(dir, "config.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(saved), `vault = "~/notes"`) {
+		t.Errorf("Save should keep the ~/ shorthand rather than an absolute path:\n%s", saved)
 	}
 }

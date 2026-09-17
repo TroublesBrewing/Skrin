@@ -12,6 +12,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/lurioso/skrin/internal/config"
 	"github.com/lurioso/skrin/internal/editor"
 	"github.com/lurioso/skrin/internal/index"
 	"github.com/lurioso/skrin/internal/logo"
@@ -73,6 +74,10 @@ type Options struct {
 	Open func(target string) error
 	// Session is where the last run in this vault left off.
 	Session session.State
+	// RestoreLastNote reopens Session.Open on start; off means a fresh
+	// welcome screen every run, so a vault with private notes never
+	// opens one by surprise. Editable from the Settings tab of `?`.
+	RestoreLastNote bool
 	// Assistant sets up the Claude drawer.
 	Assistant AssistantOptions
 	// Library sets up the Book Card (B): folders, default status and the
@@ -82,6 +87,11 @@ type Options struct {
 	// placeholder frame always, everywhere. Either way a found embed's
 	// name, dimensions and size still show.
 	Images bool
+	// Config is the config.toml Skrin loaded, kept so the Settings tab
+	// of `?` can show and persist toggles back to it. Its own bare
+	// fields (Vim, RolloverTodos, ...) above are what the rest of Skrin
+	// actually reads; a settings toggle updates both.
+	Config config.Config
 	// Now is the clock; tests pin it.
 	Now func() time.Time
 }
@@ -161,6 +171,12 @@ type Model struct {
 	pendingThumb map[string]bool
 
 	flash string // one-shot status message, cleared by the next key
+
+	// suppressPeekOnce skips settle's first peek when RestoreLastNote is
+	// off and the cursor was restored to where the last-open note used
+	// to be: without it, that peek would reopen the note the setting
+	// just turned off.
+	suppressPeekOnce bool
 }
 
 // New builds the model for vault v, back where opts.Session left off.
@@ -196,9 +212,16 @@ func New(v *vault.Vault, pal theme.Palette, opts Options) (*Model, error) {
 		return nil, err
 	}
 	m.files.selectPath(opts.Session.Cursor)
-	if rel := opts.Session.Open; vault.IsNote(rel) && m.vault.Exists(rel) {
+	if rel := opts.Session.Open; opts.RestoreLastNote && vault.IsNote(rel) && m.vault.Exists(rel) {
 		m.showNote(rel)
 		m.noteOff = opts.Session.Offset // clamped once the note is rendered
+	} else {
+		// The cursor may still land on the note that was open last time
+		// (Session.Cursor tracks it independently); settle's first peek
+		// would open it right back up. Skip that one peek so a vault
+		// with private notes never opens one by surprise; j/k from here
+		// on open notes as always.
+		m.suppressPeekOnce = true
 	}
 	return m, nil
 }
@@ -714,7 +737,11 @@ func (m *Model) settle() {
 		return
 	}
 	if m.focus == paneFiles && m.editor == nil {
-		m.peek()
+		if m.suppressPeekOnce {
+			m.suppressPeekOnce = false
+		} else {
+			m.peek()
+		}
 	}
 	if m.split != nil && m.width < splitMinWidth {
 		m.flash = "No room for a split: closed " + displayName(m.split.path)

@@ -36,8 +36,9 @@ func newTestModel(t *testing.T) *Model {
 
 func newTestModelWith(t *testing.T, opts Options) *Model {
 	t.Helper()
-	t.Setenv("XDG_DATA_HOME", t.TempDir())  // keep the real trash out of it
-	t.Setenv("XDG_STATE_HOME", t.TempDir()) // and the real snapshots
+	t.Setenv("XDG_DATA_HOME", t.TempDir())   // keep the real trash out of it
+	t.Setenv("XDG_STATE_HOME", t.TempDir())  // and the real snapshots
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir()) // and the real config.toml
 	root := t.TempDir()
 	for f, body := range fixture {
 		p := filepath.Join(root, filepath.FromSlash(f))
@@ -289,9 +290,30 @@ func TestSessionIsRestored(t *testing.T) {
 	if s.Open != "Filosofi/Stoic.md" || s.Cursor != "Filosofi/Stoic.md" || s.Offset == 0 || strings.Join(s.Expanded, ",") != "Filosofi" {
 		t.Fatalf("session = %+v", s)
 	}
-	again := newTestModelWith(t, Options{Session: s})
+	again := newTestModelWith(t, Options{Session: s, RestoreLastNote: true})
 	if again.notePath != s.Open || again.files.selected().Rel != s.Cursor || again.noteOff != s.Offset {
 		t.Errorf("restored: open %q, cursor %q, offset %d; want %+v", again.notePath, again.files.selected().Rel, again.noteOff, s)
+	}
+}
+
+// TestSessionNoteNotRestoredByDefault covers the privacy fix: unless
+// RestoreLastNote is turned on, a fresh run starts at the welcome screen
+// even though the session remembers what was open, so a vault with
+// private notes never opens one by surprise.
+func TestSessionNoteNotRestoredByDefault(t *testing.T) {
+	m := newTestModel(t)
+	inFilosofi(m)
+	press(m, "j", "enter")
+	s := m.Session()
+	if s.Open == "" {
+		t.Fatal("the session should still remember the open note")
+	}
+	again := newTestModelWith(t, Options{Session: s})
+	if again.notePath != "" {
+		t.Errorf("with RestoreLastNote off, a fresh run should start with no note open, got %q", again.notePath)
+	}
+	if again.files.selected().Rel != s.Cursor {
+		t.Errorf("Files' cursor should still be restored: got %q, want %q", again.files.selected().Rel, s.Cursor)
 	}
 }
 

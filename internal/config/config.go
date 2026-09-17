@@ -2,6 +2,7 @@
 package config
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -17,6 +18,14 @@ import (
 // Config mirrors ~/.config/skrin/config.toml.
 type Config struct {
 	Vault string `toml:"vault"`
+	// rawVault and rawExternal keep the file's own spelling (e.g. a "~/"
+	// shorthand) so Save doesn't turn it into an absolute path just
+	// because Load expanded it for use at runtime.
+	rawVault    string `toml:"-"`
+	rawExternal string `toml:"-"`
+	General     struct {
+		RestoreLastNote *bool `toml:"restore_last_note"` // unset means off: fresh runs start at the welcome screen
+	} `toml:"general"`
 	Daily struct {
 		RolloverTodos *bool `toml:"rollover_todos"` // unset means on
 	} `toml:"daily"`
@@ -50,6 +59,14 @@ func (c Config) AssistantEnabled() bool {
 // daily note. It is on unless turned off.
 func (c Config) RolloverTodos() bool {
 	return c.Daily.RolloverTodos == nil || *c.Daily.RolloverTodos
+}
+
+// RestoreLastNote reports whether a fresh run reopens the note that was
+// open when Skrin last quit. It is off unless turned on: the default is a
+// clean welcome screen, so a vault with private notes never opens one by
+// surprise.
+func (c Config) RestoreLastNote() bool {
+	return c.General.RestoreLastNote != nil && *c.General.RestoreLastNote
 }
 
 // LibraryFolder is where new book notes are created: Books, unless set.
@@ -89,16 +106,45 @@ func (c Config) RenderImages() bool {
 // Load reads the config file. A missing file is not an error.
 func Load() (Config, error) {
 	var c Config
-	path := filepath.Join(configHome(), "skrin", "config.toml")
+	path := Path()
 	if _, err := toml.DecodeFile(path, &c); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return c, nil
 		}
 		return c, fmt.Errorf("reading %s: %w", path, err)
 	}
+	c.rawVault, c.rawExternal = c.Vault, c.Editor.External
 	c.Vault = expandHome(c.Vault)
 	c.Editor.External = expandHome(c.Editor.External)
 	return c, nil
+}
+
+// Path is where config.toml lives: ~/.config/skrin/config.toml, unless
+// XDG_CONFIG_HOME says otherwise.
+func Path() string {
+	return filepath.Join(configHome(), "skrin", "config.toml")
+}
+
+// Save writes c to config.toml, for the settings screen (`?`, Settings
+// tab) to persist a toggle. It keeps the file's own spelling of vault and
+// editor.external (e.g. a "~/" shorthand) rather than the expanded paths
+// Load hands to the rest of Skrin.
+func Save(c Config) error {
+	path := Path()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	out := c
+	out.Vault, out.Editor.External = c.rawVault, c.rawExternal
+	var buf bytes.Buffer
+	if err := toml.NewEncoder(&buf).Encode(out); err != nil {
+		return err
+	}
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, buf.Bytes(), 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
 }
 
 // ObsidianRegistry is where Obsidian keeps its list of vaults.

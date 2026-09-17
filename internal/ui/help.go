@@ -9,13 +9,24 @@ import (
 	"github.com/lurioso/skrin/internal/version"
 )
 
-// manual is the ? overlay: Skrin's manual, full screen and scrollable. Its
-// key tables come from the keymap registry, so they can't drift from what
-// the keys do.
+// manualTab is which of the ? overlay's two tabs is showing.
+type manualTab int
+
+const (
+	manualTabKeys manualTab = iota
+	manualTabSettings
+)
+
+// manual is the ? overlay: Skrin's manual, full screen and scrollable, plus
+// a Settings tab for the toggles config.toml also holds. The Keys tab's
+// tables come from the keymap registry, so they can't drift from what the
+// keys do.
 type manual struct {
-	in        lineInput // the / filter
+	tab       manualTab
+	in        lineInput // the Keys tab's / filter
 	filtering bool      // typing into the filter
 	off       int
+	setCur    int // the cursor row in the Settings tab
 }
 
 // manualLine is one line of the manual. Level 1 is a section heading and 2
@@ -35,6 +46,24 @@ func (m *Model) manualWidth() int { return max(min(88, m.width-6), 20) }
 
 func (m *Model) manualKey(k tea.KeyPressMsg) {
 	h := m.manual
+	switch k.String() {
+	case "tab", "shift+tab":
+		if h.tab == manualTabKeys {
+			h.tab = manualTabSettings
+		} else {
+			h.tab = manualTabKeys
+		}
+		h.off, h.filtering = 0, false
+		h.in.set("")
+		return
+	case "?":
+		m.manual = nil
+		return
+	}
+	if h.tab == manualTabSettings {
+		m.settingsKey(k)
+		return
+	}
 	if h.filtering {
 		switch k.String() {
 		case "esc":
@@ -48,7 +77,7 @@ func (m *Model) manualKey(k tea.KeyPressMsg) {
 		h.off = 0
 		return
 	}
-	vis := m.height - 3
+	vis := m.height - 5
 	maxOff := max(len(m.manualLines(m.manualWidth()))-vis, 0)
 	switch k.String() {
 	case "esc":
@@ -59,7 +88,7 @@ func (m *Model) manualKey(k tea.KeyPressMsg) {
 		}
 		m.manual = nil
 		return
-	case "?", "q":
+	case "q":
 		m.manual = nil
 		return
 	case "/":
@@ -83,19 +112,33 @@ func (m *Model) manualKey(k tea.KeyPressMsg) {
 func (m *Model) manualView() string {
 	h := m.manual
 	w := m.manualWidth()
-	lines := m.manualLines(w)
-	vis := m.height - 3
 	margin := strings.Repeat(" ", max((m.width-2-w)/2, 1))
-	var body []string
-	for i := h.off; i < min(len(lines), h.off+vis); i++ {
-		body = append(body, margin+lines[i].styled)
+	tabs := m.st.bold.Render("Keys") + "   " + m.st.muted.Render("Settings")
+	if h.tab == manualTabSettings {
+		tabs = m.st.muted.Render("Keys") + "   " + m.st.bold.Render("Settings")
 	}
-	if len(lines) == 0 {
-		body = append(body, "", margin+m.st.muted.Render("Nothing in the manual matches."))
+	var body []string
+	body = append(body, margin+tabs, "")
+	switch h.tab {
+	case manualTabSettings:
+		for _, l := range m.settingsView(w) {
+			body = append(body, margin+l)
+		}
+	default:
+		lines := m.manualLines(w)
+		vis := m.height - 5
+		for i := h.off; i < min(len(lines), h.off+vis); i++ {
+			body = append(body, margin+lines[i].styled)
+		}
+		if len(lines) == 0 {
+			body = append(body, "", margin+m.st.muted.Render("Nothing in the manual matches."))
+		}
 	}
 	out := m.box("Manual", body, m.width, m.height-1, true)
 	var status string
 	switch {
+	case h.tab == manualTabSettings:
+		status = spread(m.st.pill.Render(" SETTINGS ")+" "+m.st.text.Render("saved to config.toml as you go"), m.st.muted.Render("j/k move · enter toggle · tab keys · esc close"), m.width)
 	case h.filtering:
 		status = spread(m.st.pill.Render(" FILTER ")+" "+h.in.view(m.st.text, m.st.cursor), m.st.muted.Render("enter keep · esc clear"), m.width)
 	default:
@@ -103,7 +146,7 @@ func (m *Model) manualView() string {
 		if q := h.in.value(); q != "" {
 			left += " " + m.st.text.Render("matching “"+q+"” · esc shows everything")
 		}
-		status = spread(left, m.st.muted.Render("j/k scroll · / filter · esc close"), m.width)
+		status = spread(left, m.st.muted.Render("j/k scroll · / filter · tab settings · esc close"), m.width)
 	}
 	return strings.Join(append(out, status), "\n")
 }
@@ -247,9 +290,11 @@ func (m *Model) manualText(w int) []manualLine {
 	para("Earlier versions of each note are kept in ~/.local/state/skrin/snapshots, the last 20 per note.")
 
 	head("Config")
-	para("~/.config/skrin/config.toml:")
+	para("The Settings tab of this manual (Tab) toggles the everyday ones without an editor; everything else, plus anything hand-set, lives in ~/.config/skrin/config.toml:")
 	blank()
 	code(`vault = "~/notes"        # the vault to open; else Obsidian's own list`)
+	code(`[general]`)
+	code(`restore_last_note = false  # reopen the last note on start`)
 	code(`[daily]`)
 	code(`rollover_todos = true   # t carries unfinished todos over`)
 	code(`[editor]`)
@@ -261,7 +306,7 @@ func (m *Model) manualText(w int) []manualLine {
 	code(`model = ""              # else Claude Code's default, e.g. "sonnet"`)
 	blank()
 	para("Colours come from the Omarchy theme and follow it live. A skrin.toml next to the theme's colors.toml can override them.")
-	para("Where you were (open folders, the cursor, the open note, the Claude conversation) is kept per vault in ~/.local/state/skrin/session.")
+	para("Where you were (open folders, the cursor, the open note, the Claude conversation) is kept per vault in ~/.local/state/skrin/session, but the note itself only reopens if restore_last_note is on: off by default, so a vault with private notes never opens one by surprise.")
 	return out
 }
 

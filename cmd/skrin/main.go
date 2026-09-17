@@ -89,10 +89,12 @@ func run(vaultArg string) error {
 	}
 	sock := filepath.Join(runtimeDir(), fmt.Sprintf("skrin-%d.sock", os.Getpid()))
 	m, err := ui.New(v, pal, ui.Options{
-		Session:        session.Load(v.Root),
-		RolloverTodos:  cfg.RolloverTodos(),
-		Vim:            cfg.Editor.Vim,
-		ExternalEditor: cfg.Editor.External,
+		Session:         session.Load(v.Root),
+		RolloverTodos:   cfg.RolloverTodos(),
+		RestoreLastNote: cfg.RestoreLastNote(),
+		Vim:             cfg.Editor.Vim,
+		ExternalEditor:  cfg.Editor.External,
+		Config:          cfg,
 		ObsidianOpen: func() bool {
 			if !obsidian.Running() {
 				return false

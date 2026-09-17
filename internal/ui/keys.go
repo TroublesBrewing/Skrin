@@ -101,6 +101,7 @@ const (
 	inAsk       = "ask" // a name to type, or a y/n question
 	inConflict  = "conflict"
 	inManual    = "manual"
+	inSettings  = "settings"  // the ? overlay's Settings tab
 	inComplete  = "complete"  // the [[ popup in the editor
 	inBookCard  = "bookcard"  // the B card: bibliographic fields, quotes, notes
 	inHabits    = "habits"    // the T overlay: today's list, the week and month grids
@@ -136,6 +137,7 @@ const (
 	groupAsk       = "When Skrin asks"
 	groupConflict  = "On a save conflict"
 	groupManual    = "In this manual"
+	groupSettings  = "In Settings"
 	groupComplete  = "In link completion ([[)"
 	groupBookCard  = "In the Book Card (B)"
 	groupHabits    = "In the habits view (T)"
@@ -288,7 +290,12 @@ var defaultBindings = []binding{
 	{actNone, []string{"j", "k", "ctrl+d", "ctrl+u", "space"}, "scroll", groupManual, inManual},
 	{actNone, []string{"home", "g", "G", "end"}, "top / bottom", groupManual, inManual},
 	{actNone, []string{"/"}, "filter the manual", groupManual, inManual},
+	{actNone, []string{"tab"}, "switch Keys / Settings", groupManual, inManual},
 	{actNone, []string{"esc", "?", "q"}, "clear the filter, then close", groupManual, inManual},
+	{actNone, []string{"j", "k"}, "move between settings", groupSettings, inSettings},
+	{actNone, []string{"enter", "space"}, "toggle the setting under the cursor", groupSettings, inSettings},
+	{actNone, []string{"tab"}, "switch Keys / Settings", groupSettings, inSettings},
+	{actNone, []string{"esc", "q"}, "close", groupSettings, inSettings},
 
 	{actUp, []string{"k", "up"}, "up a habit (grid: up a row)", groupHabits, inHabits},
 	{actDown, []string{"j", "down"}, "down a habit (grid: down a row)", groupHabits, inHabits},

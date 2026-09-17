@@ -2,6 +2,8 @@ package ui
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -65,6 +67,57 @@ func TestManualFilterAndScroll(t *testing.T) {
 	press(m, "esc")
 	if m.manual != nil {
 		t.Error("esc should close the manual")
+	}
+}
+
+func TestManualSettingsTabTogglesAndSaves(t *testing.T) {
+	m := newTestModel(t)
+	if m.opts.Images {
+		t.Fatal("test setup should start with images off, to check the toggle turns it on")
+	}
+	press(m, "?")
+	if m.manual.tab != manualTabKeys {
+		t.Fatal("? should open on the Keys tab")
+	}
+	press(m, "tab")
+	if m.manual.tab != manualTabSettings {
+		t.Fatal("tab should switch to Settings")
+	}
+	text := ansi.Strip(m.manualView())
+	for _, s := range []string{"Remember last open note", "Carry over yesterday's todos", "Vim keys", "Claude drawer", "Image previews"} {
+		if !strings.Contains(text, s) {
+			t.Errorf("the Settings tab lacks %q:\n%s", s, text)
+		}
+	}
+	items := settingsItems()
+	var imagesRow int
+	for i, it := range items {
+		if it.label == "Image previews" {
+			imagesRow = i
+		}
+	}
+	m.manual.setCur = imagesRow
+	press(m, "enter")
+	if !m.opts.Images {
+		t.Fatal("enter on Image previews should turn it on")
+	}
+	if m.opts.Config.Render.Images == nil || !*m.opts.Config.Render.Images {
+		t.Fatal("toggling should also update the config, so it's saved")
+	}
+	saved, err := os.ReadFile(filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "skrin", "config.toml"))
+	if err != nil {
+		t.Fatalf("settings should save to config.toml: %v", err)
+	}
+	if !strings.Contains(string(saved), "images = true") {
+		t.Errorf("config.toml should record the toggle:\n%s", saved)
+	}
+	press(m, "tab")
+	if m.manual.tab != manualTabKeys {
+		t.Fatal("tab again should return to Keys")
+	}
+	press(m, "?")
+	if m.manual != nil {
+		t.Error("? should close the manual from the Keys tab")
 	}
 }
 

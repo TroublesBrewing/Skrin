@@ -2,6 +2,15 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.17.0 — 2026-09-17
+
+Milestone: a settings interface, from the last open Quick report (`Quick reports/We need to talk information security features. Lik.md`). The report asked for two things — a way to turn off the privacy risk of Skrin always reopening the last note on start, and a settings menu to put that and future preferences in — both land together here.
+
+- **New: a Settings tab in `?`.** The manual is now two tabs, switched with `Tab`: Keys (everything it showed before, unchanged) and Settings, a `j`/`k` + `enter`/`space` checklist of the everyday config.toml toggles — remember last open note, carry over yesterday's todos, vim keys in the editor, the Claude drawer, image previews. Each toggle saves to config.toml at once, so the UI and hand-editing never fight over it.
+- **Fixed: remembering the last open note is now opt-in, off by default.** Skrin used to always reopen whatever note was open when it last quit; a vault used for anything sensitive could pop that note open the moment it started, in front of whoever's looking. A fresh run now starts at the welcome screen unless "Remember last open note" is turned on in Settings (or `restore_last_note = true` in config.toml) — the Files cursor still comes back to where it was, only the note itself waits for you to ask.
+- Config gained `[general] restore_last_note` (default off) and a `Save` path so the Settings tab can write back to config.toml without disturbing anything else in it, including a hand-set `~/` vault path.
+- Tests: config round-trip for the new setting and `Save` (`internal/config`); UI coverage for the tab switch, toggling and saving a setting, and both the restore-on and restore-off session paths (`internal/ui`). Full suite green.
+
 ## v0.16.4 — 2026-09-17
 
 Quick report from daily use (`Quick reports/Alt key navigation in file tree.md`): Alt+↓/↑ skims the file tree, opening each note beside the one already open, but Alt+←/→ were pinned globally to note history back/forward — so there was no way to expand or collapse the folder under the cursor without letting go of Alt first, breaking the "hold Alt and browse" gesture.

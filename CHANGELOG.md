@@ -10,6 +10,7 @@ Priority-1 bug from daily use (`Quick reports/img rendering bug.md`): a book cov
 - The preview's box is fixed at 28×12 cells, aspect kept — sized by comparing an actual cover rendered at five candidate sizes side by side, big enough to recognise a book cover without ever ballooning across the screen the way sixel sometimes did.
 - Decoding a never-before-seen cover still happens off the main goroutine (file IO and image decode can be slow even if the output is tiny), and only when a note that references it is actually opened or resized — not on every keystroke — so a slow or broken file can't be re-attempted every frame.
 - `f`/`Enter` on an image embed already opened it with the desktop's default viewer; that's unchanged and is how you see a cover at full size.
+- Retested live and confirmed fixed: no more oversized covers, ghosting or Files-tree corruption.
 - Tests: placeholder-before-decoding, switching to the real thumbnail once decoded, deferring the decode into the returned `Cmd` rather than doing it inline, and the cache being reused rather than re-decoding on reopen (`internal/ui`); the aspect-fit box-sizing math at several width/height ratios (`internal/markdown`). Full suite green.
 
 ## v0.16.1 — 2026-09-17

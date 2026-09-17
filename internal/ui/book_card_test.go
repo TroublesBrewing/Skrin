@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -10,6 +11,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/lurioso/skrin/internal/book"
 )
@@ -451,6 +453,29 @@ func TestQuickNoteBoxWrapsLongLinesInsteadOfRunningOff(t *testing.T) {
 		if w := lipgloss.Width(l); w > m.width {
 			t.Fatalf("quick note line wider (%d) than terminal (%d): %q", w, m.width, l)
 		}
+	}
+}
+
+// Once the text field's wrapped lines outgrow its 8-row cap, the window
+// must scroll to keep the cursor visible instead of freezing on the
+// first 8 rows forever — the report was that the box "stopped growing"
+// with the cursor's own line invisible and no way to scroll to it.
+func TestQuickNoteBoxScrollsToKeepCursorVisibleOnceItStopsGrowing(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "i")
+	for i := 0; i < 12; i++ {
+		if i > 0 {
+			press(m, "shift+enter")
+		}
+		typeText(m, fmt.Sprintf("line%d", i))
+	}
+	body := m.quickNoteBox()
+	text := ansi.Strip(strings.Join(body, "\n"))
+	if !strings.Contains(text, "line11") {
+		t.Errorf("cursor's own line (line11) not visible once the field outgrew its cap:\n%s", text)
+	}
+	if strings.Contains(text, "line0\n") || strings.Contains(text, "line0 ") {
+		t.Errorf("expected the window to have scrolled past line0:\n%s", text)
 	}
 }
 

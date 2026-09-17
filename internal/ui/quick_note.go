@@ -250,13 +250,23 @@ func (m *Model) quickNoteBox() []string {
 	var body []string
 	lines, curRow, curCol := c.text.wrapped(inner - 2)
 	rows := clamp(len(lines), 3, 8)
+	// Once the text outgrows rows (the box has stopped growing), scroll
+	// the window to keep the cursor's line visible instead of always
+	// showing the first rows lines — otherwise typing past the cap
+	// leaves the cursor off-screen with no way to see it, which is what
+	// the report described as the window "stopping" with no scroll.
+	off := 0
+	if len(lines) > rows {
+		off = clamp(curRow-rows+1, 0, len(lines)-rows)
+	}
 	for i := 0; i < rows; i++ {
-		if i >= len(lines) {
+		li := off + i
+		if li >= len(lines) {
 			body = append(body, "")
 			continue
 		}
-		l := lines[i]
-		if c.area == quickNoteText && i == curRow {
+		l := lines[li]
+		if c.area == quickNoteText && li == curRow {
 			r := []rune(l)
 			at := " "
 			if curCol < len(r) {

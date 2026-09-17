@@ -452,6 +452,9 @@ func (m *Model) openSwitcher() {
 			c.items = append(c.items, choice{label: a, detail: "alias of " + displayName(rel), rel: rel, do: func() { m.goTo(rel, "") }})
 		}
 	}
+	for _, rel := range m.idx.Images() {
+		c.items = append(c.items, choice{label: displayName(rel), detail: parentOf(rel) + " · image", rel: rel, do: func() { m.revealInFiles(rel) }})
+	}
 	c.none = m.offerCreate
 	c.split = m.openSplit
 	m.openChooser(c)

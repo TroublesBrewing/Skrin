@@ -4,10 +4,12 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/lurioso/skrin/internal/book"
 )
@@ -389,6 +391,66 @@ func TestBookCardArrowNavigationInNotesAndQuotes(t *testing.T) {
 	press(m, "down")
 	if m.book.area != bookAreaSave {
 		t.Errorf("down from single-line notes should go to save, got area=%v", m.book.area)
+	}
+}
+
+func TestWrapPlainBreaksBetweenWords(t *testing.T) {
+	rows, rowAt, colAt := wrapPlain([]rune("the quick brown fox"), 10)
+	want := []string{"the quick ", "brown fox"}
+	if !reflect.DeepEqual(rows, want) {
+		t.Fatalf("rows=%q, want %q", rows, want)
+	}
+	// "brown" starts right after the wrap, at row 1 col 0.
+	brownAt := len("the quick ")
+	if rowAt[brownAt] != 1 || colAt[brownAt] != 0 {
+		t.Errorf("rowAt[%d]=%d colAt[%d]=%d, want row=1 col=0", brownAt, rowAt[brownAt], brownAt, colAt[brownAt])
+	}
+	// The final position (one past the last rune) lands after "fox".
+	end := len("the quick brown fox")
+	if rowAt[end] != 1 || colAt[end] != len("brown fox") {
+		t.Errorf("rowAt[end]=%d colAt[end]=%d, want row=1 col=%d", rowAt[end], colAt[end], len("brown fox"))
+	}
+}
+
+func TestWrapPlainHardBreaksAnOverlongWord(t *testing.T) {
+	rows, _, _ := wrapPlain([]rune("supercalifragilistic"), 6)
+	for _, r := range rows {
+		if len([]rune(r)) > 6 {
+			t.Fatalf("row %q exceeds width 6", r)
+		}
+	}
+	if strings.Join(rows, "") != "supercalifragilistic" {
+		t.Fatalf("rows %q lost characters", rows)
+	}
+}
+
+func TestTextAreaWrappedTracksCursor(t *testing.T) {
+	ta := &textArea{}
+	ta.set("the quick brown fox jumps")
+	// Row 1 ("brown fox ") starts right after "the quick " wraps; "fox"
+	// starts 6 cells into that row.
+	ta.cur = len([]rune("the quick brown "))
+	rows, row, col := ta.wrapped(10)
+	if len(rows) < 2 {
+		t.Fatalf("expected at least 2 wrapped rows, got %d: %q", len(rows), rows)
+	}
+	if row != 1 || col != 6 {
+		t.Errorf("row=%d col=%d, want row=1 col=6", row, col)
+	}
+}
+
+func TestQuickNoteBoxWrapsLongLinesInsteadOfRunningOff(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "n")
+	long := strings.Repeat("word ", 40)
+	for _, r := range long {
+		press(m, string(r))
+	}
+	body := m.quickNoteBox()
+	for _, l := range body {
+		if w := lipgloss.Width(l); w > m.width {
+			t.Fatalf("quick note line wider (%d) than terminal (%d): %q", w, m.width, l)
+		}
 	}
 }
 

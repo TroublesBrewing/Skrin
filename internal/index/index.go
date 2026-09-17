@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/lurioso/skrin/internal/imgmeta"
 	"github.com/lurioso/skrin/internal/search"
 	"github.com/lurioso/skrin/internal/vault"
 )
@@ -104,6 +105,21 @@ func (x *Index) Notes() []string {
 	out := make([]string, 0, len(x.notes))
 	for rel := range x.notes {
 		out = append(out, rel)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// Images lists every image file in the vault, sorted. Images aren't
+// parsed for links or headings the way notes are, but they're still
+// things a user reaches for with [[ completion or Go to note, so they
+// need their own accessor alongside Notes.
+func (x *Index) Images() []string {
+	out := make([]string, 0)
+	for _, rel := range x.paths {
+		if imgmeta.IsImage(rel) {
+			out = append(out, rel)
+		}
 	}
 	sort.Strings(out)
 	return out

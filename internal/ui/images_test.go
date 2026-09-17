@@ -157,6 +157,50 @@ func TestImageMetaResolvesLikeAWikilink(t *testing.T) {
 	}
 }
 
+func TestImagesAreOfferedByWikilinkCompletion(t *testing.T) {
+	m := newImageTestModel(t, Options{Images: true})
+	m.files.selectPath("Welcome.md")
+	press(m, "enter", "e")
+	typeText(m, "[[photo")
+	if m.complete == nil {
+		t.Fatal("[[photo should suggest the image")
+	}
+	var found bool
+	for _, it := range m.complete.items {
+		if it.label == "photo.png" {
+			found = true
+			if it.insert != "Assets/photo.png" && it.insert != "photo.png" {
+				t.Errorf("insert = %q", it.insert)
+			}
+		}
+	}
+	if !found {
+		t.Error("photo.png missing from [[ completion")
+	}
+}
+
+func TestGoToNoteListsImagesAndRevealsThemInFiles(t *testing.T) {
+	m := newImageTestModel(t, Options{Images: true})
+	press(m, "g")
+	typeText(m, "photo")
+	var found bool
+	for _, i := range m.chooser.matches {
+		if m.chooser.items[i].label == "photo.png" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("Go to note should list photo.png")
+	}
+	press(m, "enter")
+	if m.chooser != nil {
+		t.Error("choosing an image should close the chooser")
+	}
+	if m.focus != paneFiles || m.files.selected().Rel != "Assets/photo.png" {
+		t.Errorf("focus=%v selected=%q, want Files focused on Assets/photo.png", m.focus, m.files.selected().Rel)
+	}
+}
+
 func TestNoteOriginIsNoneWhenAModalIsUp(t *testing.T) {
 	m := newImageTestModel(t, Options{Images: true})
 	press(m, "1")

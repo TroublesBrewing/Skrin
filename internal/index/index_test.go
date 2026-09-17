@@ -146,6 +146,20 @@ func TestUpdateRereadsOnlyChangedNotes(t *testing.T) {
 	}
 }
 
+func TestImagesListsNonNoteFilesButNotNotes(t *testing.T) {
+	x, _ := build(t, map[string]string{
+		"Note.md":         "",
+		"Assets/pic.png":  "not a real png, just bytes",
+		"Assets/pic2.JPG": "",
+		"Assets/data.txt": "",
+	})
+	got := x.Images()
+	want := []string{"Assets/pic.png", "Assets/pic2.JPG"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Images() = %q, want %q", got, want)
+	}
+}
+
 func TestLinkTextAndApply(t *testing.T) {
 	x, _ := build(t, map[string]string{"A/Note.md": "", "B/Note.md": "", "A/Unique.md": ""})
 	if got := x.LinkText("A/Unique.md", "B/x.md", "shortest"); got != "Unique" {

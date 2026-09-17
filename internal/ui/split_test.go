@@ -93,6 +93,26 @@ func TestSplitView(t *testing.T) {
 	}
 }
 
+// TestSplitStatusLineHintsShiftArrow makes sure the split's one
+// non-obvious key shows up in the status line while it's actually
+// relevant, and that closing the split takes the hint away again.
+func TestSplitStatusLineHintsShiftArrow(t *testing.T) {
+	m := newTestModel(t)
+	m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
+	press(m, "G", "enter")
+	if strings.Contains(ansi.Strip(m.render()), "shift+←/→ switch panes") {
+		t.Error("the split hint shouldn't show without a split open")
+	}
+	splitWith(m, "zeno", "shift+right")
+	if !strings.Contains(ansi.Strip(m.render()), "shift+←/→ switch panes") {
+		t.Errorf("the split hint should show once a split is open:\n%s", ansi.Strip(m.render()))
+	}
+	press(m, "esc")
+	if strings.Contains(ansi.Strip(m.render()), "shift+←/→ switch panes") {
+		t.Error("the split hint should go away once the split closes")
+	}
+}
+
 func TestSplitFollowsRenames(t *testing.T) {
 	m := newTestModel(t)
 	m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})

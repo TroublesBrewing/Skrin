@@ -274,11 +274,21 @@ func (m *Model) statusLine() string {
 	if m.notePath != "" && len(m.lines) > 0 {
 		left += m.st.muted.Render("  " + m.scrollInfo())
 	}
-	right := m.st.muted.Render("? manual · / search · e edit · c claude · z zen · q quit")
+	right := m.st.muted.Render(m.defaultHint())
 	if m.flash != "" {
 		right = m.st.flash.Render(m.flash)
 	}
 	return spread(left, right, m.width)
+}
+
+// defaultHint is the status line's right-side reminder: the always-on
+// pointers, plus shift+←/→ while a split is open, since that's the one
+// key a split needs that isn't obvious from looking at the screen.
+func (m *Model) defaultHint() string {
+	if m.split != nil {
+		return "shift+←/→ switch panes · ? manual · / search · e edit · c claude · q quit"
+	}
+	return "? manual · / search · e edit · c claude · z zen · q quit"
 }
 
 // location is the open note's path and modified date, or the current

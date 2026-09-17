@@ -173,6 +173,70 @@ func (t *textArea) lines() (lines []string, row, col int) {
 	return lines, row, col
 }
 
+// wrapped is lines but with every raw line word-wrapped to at most w
+// cells, so a long line never runs off the edge of whatever box shows it.
+// The cursor position is carried through in wrapped-row terms.
+func (t *textArea) wrapped(w int) (rows []string, curRow, curCol int) {
+	lines, rawRow, rawCol := t.lines()
+	for i, l := range lines {
+		wr, rowAt, colAt := wrapPlain([]rune(l), w)
+		if i == rawRow {
+			curRow, curCol = len(rows)+rowAt[rawCol], colAt[rawCol]
+		}
+		rows = append(rows, wr...)
+	}
+	return rows, curRow, curCol
+}
+
+// wrapPlain word-wraps the runes of one line to at most w cells a row,
+// breaking between words when possible; a single word longer than w is
+// hard-broken instead of overflowing. rowAt/colAt map every rune position
+// in r (0 through len(r), so the position right after the last rune has
+// an entry too) to the display row and column it lands on — how a cursor
+// index survives the wrap.
+func wrapPlain(r []rune, w int) (rows []string, rowAt, colAt []int) {
+	if w < 1 {
+		w = 1
+	}
+	n := len(r)
+	rowAt, colAt = make([]int, n+1), make([]int, n+1)
+	var cur []rune
+	row := 0
+	for i := 0; i < n; {
+		j := i
+		if r[i] == ' ' {
+			j = i + 1
+		} else {
+			for j < n && r[j] != ' ' {
+				j++
+			}
+		}
+		wordStart, word := i, r[i:j]
+		if len(cur) > 0 && len(cur)+len(word) > w {
+			rows = append(rows, string(cur))
+			cur, row = nil, row+1
+			if word[0] == ' ' { // the wrap eats the one space that forced it
+				rowAt[wordStart], colAt[wordStart] = row, 0
+				wordStart++
+				word = word[1:]
+			}
+		}
+		for k, ch := range word {
+			idx := wordStart + k
+			if len(cur) == w {
+				rows = append(rows, string(cur))
+				cur, row = nil, row+1
+			}
+			rowAt[idx], colAt[idx] = row, len(cur)
+			cur = append(cur, ch)
+		}
+		i = j
+	}
+	rows = append(rows, string(cur))
+	rowAt[n], colAt[n] = row, len(cur)
+	return rows, rowAt, colAt
+}
+
 // quoteRow is one passage in the card's Quotes section.
 type quoteRow struct {
 	text, page, speaker lineInput
@@ -741,7 +805,7 @@ func (m *Model) bookCardBox() []string {
 	body = append(body, strings.Repeat("─", inner))
 
 	body = append(body, "  "+m.st.muted.Render("Notes & Reflections:"))
-	lines, curRow, curCol := c.notes.lines()
+	lines, curRow, curCol := c.notes.wrapped(inner - 2)
 	for i, l := range lines {
 		text := l
 		if c.area == bookAreaNotes && i == curRow {

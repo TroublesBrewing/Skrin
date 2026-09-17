@@ -163,6 +163,14 @@ func (m *Model) goTo(rel, sub string) {
 	}
 }
 
+// revealInFiles moves the Files cursor to rel and switches focus there.
+// It's for files that aren't notes (images) and so have nothing of their
+// own to show in the note pane the way goTo's target does.
+func (m *Model) revealInFiles(rel string) {
+	m.focus = paneFiles
+	m.files.reveal(rel)
+}
+
 // goToLine opens note rel scrolled to a source line.
 func (m *Model) goToLine(rel string, line int) {
 	m.open(rel)
@@ -385,6 +393,10 @@ func (m *Model) suggest(q string) []suggestion {
 		for _, a := range m.idx.Aliases(rel) {
 			all = append(all, suggestion{label: a, detail: "alias of " + name, insert: text + "|" + a})
 		}
+	}
+	for _, rel := range m.idx.Images() {
+		text := m.idx.LinkText(rel, from, m.edit.linkFormat)
+		all = append(all, suggestion{label: displayName(rel), detail: parentOf(rel), insert: text})
 	}
 	return filterSuggestions(all, q)
 }

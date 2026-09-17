@@ -248,7 +248,7 @@ func (m *Model) quickNoteBox() []string {
 	inner := w - 4
 
 	var body []string
-	lines, curRow, curCol := c.text.lines()
+	lines, curRow, curCol := c.text.wrapped(inner - 2)
 	rows := clamp(len(lines), 3, 8)
 	for i := 0; i < rows; i++ {
 		if i >= len(lines) {

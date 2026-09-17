@@ -2,6 +2,15 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.14.0 — 2026-09-17
+
+Habits in the daily notes ([[skrin habits]]): checkboxes under `### Habits` in each day's note, with a `T` overlay for today's list and the week/month grids. Built by Hermes as stand-in builder over the weekend (commit `d514552`), then audited by Claude to the same standard PO reviews hold builder builds to — two real problems found and fixed before release.
+
+- **Habits, in the daily note.** A `### Habits` section (the daily template supplies the starter list, same as `### Todo's`) holds plain checkboxes; `T` opens an overlay on today's list. `H` cycles today → this week → this month, each a grid of every habit against its days; `space` ticks/unticks under the cursor (today) or the grid's highlighted cell (week/month, writing straight to that day's own note, named in the flash); `U` undoes the last tick from inside the overlay.
+- **Fixed: habits could roll over, breaking the feature's own core promise.** The real Rollover Daily Todos plugin scans the *entire* previous note for unchecked checkboxes — not just its `templateHeading` section, which only says where rolled todos land, not what counts as one (confirmed against the plugin's actual behaviour, not just assumed). Left as built, an unfinished habit would duplicate into tomorrow's Todo's list, and — with `deleteOnComplete` on — be deleted from yesterday's note outright. `habit.BlockRange` finds the Habits section's line span (the same boundary rule `Parse` uses) so `openDaily` can exclude it before the rollover scan ever sees it.
+- **Fixed: the manual's help text for `l`/right on the today tab was wrong.** It said "over to the note"; the key is a deliberate no-op there. Corrected to match `h`/left's phrasing.
+- Tests: `habit.BlockRange`'s own unit tests, `TestHabitsNeverRollOverToTomorrow` (the rollover-interference regression, both directions), plus everything already in `internal/habit` and `internal/ui/habit_view.go`'s test suite. Verified live in tmux: a habit rolling correctly *not* over while a real todo does, tick/untick, `U` inside the overlay, the `H` cycle, and the week/month grids.
+
 ## v0.13.1 — 2026-09-17
 
 Amendment 1 ([[skrin library]]): the Book Card's lookup stops lying about why it came up empty, and gains two more providers.

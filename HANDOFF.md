@@ -17,12 +17,20 @@ context to the other.
 ## State
 
 - Version: v0.13.1 (tagged; includes Amendment 1 — honest lookup outcomes + Google Books/Libris free-text — see builder entry below; not yet PO-reviewed)
-- Habits built (commit `d514552`, on top of v0.13.1): the user-directed [[skrin habits]] build, done by Hermes as stand-in builder — the weekend-build precedent applies: **Claude audits it**, the same standard PO reviews held builder builds to.
+- Habits built (commit `d514552`, on top of v0.13.1) and now **audited** (see builder entry below): two real problems found and fixed — a rollover-interference bug (habits could duplicate into tomorrow's todos and be deleted under `deleteOnComplete`) and a stale help-text line. Fixes are committed on top of `d514552`, not yet PO-reviewed.
 - **The backlog moved to one-note-per-ticket ([[Backlog procedure]], 2026-09-17):** tickets in `Backlog/Inbox` → `Refined` → `Archived`; milestone planning in [[tui]] links them. **Both of us now read stories from the tickets**, not from the old single-file note (retired to a signpost). The Refined set: [[Book lookup says offline when it isn't]] (your v0.13.1 — closes on PO review), [[Render images in notes]] (v0.16.0) and [[Quick notes]] (v0.15.0 — spec amended 2026-09-17 after the user's ticket comment: the default folder is the vault's Obsidian-declared home for new notes, root when unset; **not the hardcoded `Notes`** — check `NewFileLocation`/`NewFileFolderPath` and mirror `offerCreate`).
-- Turn: **PO** — two reviews queued: (1) v0.13.1 (`v0.13.0..v0.13.1`): the honest-outcome messages, the two providers, the real Libris-parsing bug found and fixed; (2) the habits build (entry below) — PO reviews the UX/scope shape, Claude audits as builder. After both land: **v0.15.0 quick notes** ([[Quick notes]] ticket, [[skrin quick notes]] spec — user-signed 2026-09-17 core-first steering; UX+PO boxes ticked, user box open).
+- Turn: **PO** — two reviews queued: (1) v0.13.1 (`v0.13.0..v0.13.1`): the honest-outcome messages, the two providers, the real Libris-parsing bug found and fixed; (2) the habits build plus my audit fixes (`d514552..HEAD`) — PO reviews the UX/scope shape and my two findings/fixes. Whether habits tags as v0.14.0 now or waits is your call. After both land: **v0.15.0 quick notes** ([[Quick notes]] ticket, [[skrin quick notes]] spec — user-signed 2026-09-17 core-first steering; UX+PO boxes ticked, user box open).
 - Still waiting on the user: [[skrin quick notes]] sign-off (v0.15.0), then [[skrin images]] (v0.16.0).
 
 ## From the builder — Claude Code
+
+**2026-09-17: audited the habits build (commit `d514552`) against [[skrin habits]] — two real problems found and fixed, both verified live.** Per State: this was mine to audit, not review — the same standard PO reviews hold my own builds to.
+- **Real bug: habits could roll over, breaking the spec's core promise.** The design note itself called for a "Rollover non-interference check" test, but none existed. `internal/daily.UnfinishedTodos` mirrors the real Rollover Daily Todos plugin, which — confirmed via web search, not just reading our own code — scans the *whole* previous note for unchecked checkboxes; `templateHeading` only says where rolled todos land, not what counts as one. Left as shipped, an unfinished habit would duplicate into tomorrow's Todo's list and, under `deleteOnComplete`, be deleted from yesterday's note outright — the opposite of "habits deliberately do not roll over." Fixed with a new `habit.BlockRange` (finds the Habits section's line span using Parse's own boundary rule) and excluded that span from the lines `openDaily` hands to the rollover scan — `internal/daily` stays generic, the exclusion lives at the one call site that knows about both packages. New tests: `TestBlockRangeFindsTheSameSpanParseUses`/`TestBlockRangeAbsent`/`TestBlockRangeToTheEndOfTheNote`, `TestHabitsNeverRollOverToTomorrow`. Verified live in a scratch vault with `deleteOnComplete: true`: the todo rolled over, the habit didn't, and yesterday's habit checkbox survived.
+- **Documentation bug: the registry's help text lied.** `actRight`'s `inHabits` text said "today: over to the note," but the handler is a deliberate no-op on the today tab (recorded as such in the design note's own build comments). Corrected to match `actLeft`'s phrasing ("today: nothing to the right"); `TestManualListsEveryBinding` confirms the manual picks it up.
+- **Everything else checked out**, both by re-reading the code against the spec and by live-testing in tmux: tick/untick flash wording, `U` undoing a tick without closing the overlay, `H` cycling today → week → month → today, the month grid running the 1st through today with the right day numbers, the week grid landing writes on the right day-named note, the empty-state pointer to the template, and all four UX-engineer catches from the sign-off.
+- `go build`/`vet`/`test ./...` all clean (`-count=1`). Commit range to review: `d514552..HEAD` (or just the audit commit, since `d514552` is your build).
+- Not fixed/decided here: whether v0.14.0 should tag now or wait on your review of these fixes — that's yours to call.
+- Q: none from me — both fixes felt like straightforward corrections against the spec's own stated intent, not new design calls.
 
 **2026-09-17: Amendment 1 built and released as v0.13.1 — honest lookup outcomes, two new providers, one real bug found along the way ([[skrin library]]).** Built per your queue and the user-signed amendment: the Book Card's lookup no longer collapses every miss into "offline."
 - **Honest outcomes, exactly as specced.** `internal/book/lookup.go`'s `Outcome` tracks per-provider `Tried`/`Down` alongside `Results`; `Message()` produces the four cases word-for-word against the amendment and the UX pass's two folded-in gaps: silent on a clean match; "{provider} didn't answer — showing {source}'s {n} matches" when some are down but others answered; "Book lookup failed (offline) — continue manually" only when `AllDown()`; the capped-query, shortened "none of the three has it" message otherwise. `ErrNoRecord` is a sentinel distinct from a real failure — `errors.Is` throughout the provider layer — so a provider saying "I don't have this" is `Tried`, never `Down`.
@@ -66,26 +74,6 @@ context to the other.
 - **Tests:** new `folder_jump_test.go` (jump between folders, start from a file row, edge flashes, note-pane refusal, already-open no-op) and `TestSpaceMarksInPlace`, plus rewritten `files_test.go` (`TestFilesOpenFolderAndOut`, `TestFilesFolderJump`, `TestFilesFolderJumpNone`). Every pre-existing test that relied on `l` stepping in or Space advancing was walked through individually and updated, not just patched to pass — `arrange_test.go`, `links_test.go`, `ops_test.go`, `skim_test.go`, `split_test.go`, `ui_test.go` — each now documents the new semantics in its own comments.
 - **Verified:** `go build`/`vet`/`test ./...` all clean, binary reinstalled to `~/.local/bin/skrin`. Backlog's top three stories marked done with `[!check] Claude` callouts; the amendment note in the vault has matching builder confirmations for all three rulings.
 - Q: none.
-
-
-**2026-09-16: Library & Book Card feature built and ready for review.** Built per `design-notes/skrin library.md`:
-- **`internal/book` package:**
-  - `openlibrary.go`: Open Library search and ISBN lookup with HTTP timeout & offline resilience.
-  - `libris.go`: Kungliga biblioteket / Libris XL open search integration for Swedish titles & ISBNs.
-  - `lookup.go`: Aggregated lookup orchestrator (Open Library + Libris).
-  - `cover.go`: Cover image downloader into `Assets/Covers/<Sanitized-Title>-<Year>.jpg` with duplicate avoidance.
-  - `template.go`: Note generator (standard YAML frontmatter `type: book`, callout, reflections, and quotes block) and parser for round-trip card editing.
-- **`internal/config`:**
-  - `[library]` section: `folder` (default `"Books"`), `covers_folder` (default `"Assets/Covers"`), `default_status` (default `"reading"`).
-- **`internal/ui` Book Card overlay:**
-  - Registered `B` in `inMain` as `actNewBook`.
-  - `inBookCard` context: Tab/Shift+Tab navigation, Alt+f/Enter fetch, Alt+q quote addition, Ctrl+s save, Esc cancel.
-  - Opens blank from Files/Note, or pre-populates when `B` is pressed on an existing book note (`type: book`).
-  - Safe writes with snapshot (`u`) and journal (`U`).
-  - `b` kept strictly for backlinks in `inMain` (no double duty).
-- **Tests & Quality:**
-  - 100% test pass across all packages (`go test ./...`), clean `go vet ./...`.
-  - Manual and key registry updated and verified.
 
 ## From the PO — Hermes
 

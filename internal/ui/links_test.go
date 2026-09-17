@@ -35,6 +35,25 @@ func TestFollowLinkWithHintsAndGoBack(t *testing.T) {
 	}
 }
 
+func TestAltLeftRightToggleFoldersWhenFilesFocused(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "1", "j", "j") // Files focus, cursor on Filosofi (a collapsed folder)
+	if m.files.expanded["Filosofi"] {
+		t.Fatal("Filosofi starts collapsed in the fixture vault")
+	}
+	// Held-Alt skimming (alt+up/down) can't release Alt to expand a folder
+	// with plain h/l — alt+left/right must do it instead of history
+	// back/forward while Files has focus.
+	press(m, "alt+right")
+	if !m.files.expanded["Filosofi"] {
+		t.Error("alt+right did not open the folder under the cursor in Files")
+	}
+	press(m, "alt+left")
+	if m.files.expanded["Filosofi"] {
+		t.Error("alt+left did not close the folder under the cursor in Files")
+	}
+}
+
 func TestEnterFollowsTheOnlyLinkInView(t *testing.T) {
 	m := newTestModel(t)
 	inFilosofi(m)

@@ -420,11 +420,15 @@ func (m *Model) do(a action) tea.Cmd {
 	case actPrevHeading:
 		m.headingJump(-1)
 	case actBack:
-		if !m.goBack(false) {
+		if m.focus == paneFiles {
+			m.filesAction(actLeft)
+		} else if !m.goBack(false) {
 			m.flash = "Nothing to go back to"
 		}
 	case actForward:
-		if !m.goBack(true) {
+		if m.focus == paneFiles {
+			m.filesAction(actRight)
+		} else if !m.goBack(true) {
 			m.flash = "Nothing to go forward to"
 		}
 	case actClaude:

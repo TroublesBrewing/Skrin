@@ -2,6 +2,17 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.18.1 — 2026-09-17
+
+Asked for as "a zoom indicator for when increasing and decreasing text size with Ctrl+- and Ctrl++".
+
+- **New: the terminal's size shows in the status line for two seconds whenever it changes**, so a zoom visibly lands instead of the screen silently reflowing. Zoom in and the numbers fall, zoom out and they rise.
+- **Worth knowing about the keys**: `Ctrl+-` and `Ctrl++` belong to the terminal, not to Skrin — the terminal changes its own font and never passes those keys on, and no program can resize its own text. What Skrin is told is the new size in columns and rows, so that is what it reports. No key was added, and nothing new is in the keymap.
+- **It names the one consequence that looks like a fault**: under 80 columns Files only shows while it has focus, so the indicator says "Files hides unless focused" rather than leaving the tree's disappearance unexplained. A split closing still says which note it closed, and that message wins.
+- **It takes itself away.** Every other flash waits for the next keypress, because you pressed something and are owed an answer; this one answers a resize nobody pressed a key for. In zen mode that distinction matters — zen shows a status line *only* while there's a flash, so an indicator that waited would have left zen with a permanent bar.
+- Tests: the new size showing and reaching the screen; the first size and a repeated size staying quiet; the indicator clearing itself; an old timer refusing to carry off a newer message; the under-80 wording appearing and then not; and zen mode getting its clean screen back. Full suite green, and the whole thing driven live against a real terminal resize, in zen mode too.
+- Also in this release: `1` and `2` now say what they do in the manual ("Focus on the Files pane", "Focus on the note pane") instead of just naming the panes, so they read like every other row.
+
 ## v0.18.0 — 2026-09-17
 
 Milestone: keymap overrides — the "then:" item that has been sitting at the top of the plan's tail since v0.10, brought forward by a quick report (`Quick reports/Better keybinding manual.md`): the manual was one long list of bindings, hard to search, with no way to change a key short of editing Skrin's source.

@@ -299,6 +299,10 @@ func (m *Model) guideText(w int) []manualLine {
 	para("n and N create things in the current folder: the folder under the cursor, or the folder of the file under it. In the note it's the open note's folder.")
 	para("t opens today's daily note, made from Obsidian's daily-notes settings, with the unfinished todos of the last one carried over.")
 
+	head("The size of things")
+	para("Making the text bigger or smaller is the terminal's own job, not Skrin's — in most terminals Ctrl+- and Ctrl++, which never reach Skrin at all. What Skrin is told is the new size in columns and rows, and it shows that in the status line for a moment whenever it changes, so a zoom you just made visibly lands. Zoom in and the numbers fall; zoom out and they rise.")
+	para("Two widths are worth knowing. Below 80 columns Files only shows while it has the focus, so the note keeps the screen — the indicator says so, because Files going quiet otherwise looks like a fault. Below 80 there's also no room for a split, and an open one closes, saying which note it closed.")
+
 	head("Split view")
 	para("In Go to note, Shift+→ opens the note beside the one you're reading, on the right, and Shift+← on the left. Enter still opens it in place.")
 	para("In the note, Shift+← and Shift+→ move between the two panes; keys act on the one with the bright border. Esc closes the pane you're in, and z (zen) closes the other.")

@@ -42,6 +42,12 @@ const (
 	splitMinWidth = 80
 	// splitFilesW is Files' width while the view is split: its minimum.
 	splitFilesW = 24
+	// flashLinger is how long a message nobody asked for stays. Flashes
+	// that answer a keypress wait for the next key, because you pressed
+	// something and are owed an answer; one that answers a resize has to
+	// take itself away again, or zen mode keeps a status line it only
+	// shows while there is a flash.
+	flashLinger = 2 * time.Second
 )
 
 // ThemeMsg carries the reloaded palette after Omarchy switches theme.
@@ -53,6 +59,18 @@ type VaultChangedMsg struct{}
 // WatchTroubleMsg reports that live updates have holes in them: the watcher
 // hit the system's limit, or errored. It is shown, never swallowed.
 type WatchTroubleMsg struct{ Text string }
+
+// flashDoneMsg asks for a flash to go once it has been read. It names the
+// message it means, so a timer started for one flash never clears a newer
+// one that has taken its place.
+type flashDoneMsg struct{ text string }
+
+// flashFor shows s and takes it away again after flashLinger, unless
+// something else has replaced it by then.
+func (m *Model) flashFor(s string) tea.Cmd {
+	m.flash = s
+	return tea.Tick(flashLinger, func(time.Time) tea.Msg { return flashDoneMsg{s} })
+}
 
 // ggWait is how soon a second G must follow the first to make it GG: the
 // top instead of the bottom.
@@ -244,6 +262,21 @@ func (m *Model) Session() session.State {
 // Flash shows a one-shot message in the status line.
 func (m *Model) Flash(s string) { m.flash = s }
 
+// sizeNote is the resize indicator. Ctrl+- and Ctrl++ are the terminal's
+// own keys, not Skrin's: the terminal changes its font and only tells
+// Skrin the new size in columns and rows, so the size is what Skrin can
+// honestly report. Zoom in and the numbers fall, zoom out and they rise.
+// It also names the one consequence that otherwise looks like a fault —
+// Files going away — since that is what crossing 80 columns does. A split
+// closing says so for itself, from settle, and that message wins.
+func (m *Model) sizeNote() string {
+	s := fmt.Sprintf("%d × %d", m.width, m.height)
+	if m.width < filesAutoHideWidth {
+		s += " · Files hides unless focused"
+	}
+	return s
+}
+
 func (m *Model) Init() tea.Cmd {
 	return m.listen()
 }
@@ -252,7 +285,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		was := [2]int{m.width, m.height}
 		m.width, m.height = msg.Width, msg.Height
+		// The first size isn't a change, and the terminal re-reporting
+		// the size it already had isn't one either.
+		if was[0] != 0 && was != [2]int{m.width, m.height} {
+			cmd = m.flashFor(m.sizeNote())
+		}
+	case flashDoneMsg:
+		if m.flash == msg.text {
+			m.flash = ""
+		}
 	case ThemeMsg:
 		m.setPalette(msg.Palette)
 		m.renderedW = 0

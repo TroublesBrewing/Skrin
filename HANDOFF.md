@@ -17,8 +17,8 @@ context to the other.
 ## State
 
 - Version: v0.13.1 (tagged; includes Amendment 1 — honest lookup outcomes + Google Books/Libris free-text — see builder entry below; not yet PO-reviewed)
-- In flight: none.
-- Turn: **PO** — review v0.13.1 (commit range `v0.13.0..v0.13.1`, tag `v0.13.1`): Amendment 1's honest-outcome messages, the two new providers, and a real Libris-parsing bug found and fixed along the way (Libris lookups never actually worked before this).
+- Habits built (commit `d514552`, on top of v0.13.1): the user-directed [[skrin habits]] build, done by Hermes as stand-in builder — the weekend-build precedent applies: **Claude audits it**, the same standard PO reviews held builder builds to.
+- Turn: **PO** — two reviews queued: (1) v0.13.1 (`v0.13.0..v0.13.1`): the honest-outcome messages, the two providers, the real Libris-parsing bug found and fixed; (2) the habits build (entry below) — PO reviews the UX/scope shape, Claude audits as builder.
 - Still waiting on the user: [[skrin images]] sign-off + the versions call (v0.15.0 recommended).
 
 ## From the builder — Claude Code
@@ -87,6 +87,21 @@ context to the other.
   - Manual and key registry updated and verified.
 
 ## From the PO — Hermes
+
+**2026-09-17 — habits built (stand-in builder entry, commit `d514552`).** The user directed the build ("Let's just build the habit tracker. Go for it. No more questions."), so Hermes wore the builder hat under the weekend-build precedent: Claude audits this, the same standard applied to my skim-split stand-in. Built per the user-signed [[skrin habits]] with all four UX-pass catches and both PO leans (streak = "since date"; no add/remove-today from the overlay).
+
+- **`internal/habit` (new package):** `Parse`/`Toggle`/`Insert`/`Streak`/`Since`. Toggle is a one-character marker flip on the exact line — surrounding bytes survive untouched (the design's "nothing else in the note moves" made literal). Block edges: a pure-tag line doesn't end the block (Obsidian renders `#tag` as a tag, not a heading), prose does end it, Obsidian's capital `- [X]` parses, an empty section is still a block. Streaks stop at unrecorded days, never lie about gaps. 13 tests.
+- **The overlay (`habit_view.go`):** `T` in `inMain` (help text names both sides of the `t`/`T` pair, per the UX catch); `inHabits` context rows for j/k/h/l/Space/H/U/Esc; `H` cycles today → week → month → today. Writes go through the standard path — snapshot, `vault.Write`, one journal step — so `u`/`U` behave exactly as everywhere else, and `U` inside the overlay undoes without closing (UX catch 3). Flashes name the habit, the day for grid writes, and say Ticked/Unticked which way the box moved.
+- **Empty states, per the UX catches:** no habits anywhere → the pointer flash names the template, never a blank box; today's note exists without a block and the template has habits → the insert is offered as a y/n confirm, never done unasked; today's note missing → it's created from the template, block included (the `t` flow, plus the block).
+- **Month-grid layout honesty:** day-number cells (2 wide) for the month; when the days can't fit the box, the most recent stay and the footer says "last N days shown" — never a silent cut.
+- **Two real bugs found by live verification, both fixed and regression-tested:** (1) the missing-today's-note path crashed the insert flow ("Couldn't read today's note") and opened a broken overlay — unit tests missed it because the fixture always had a note; (2) the month grid originally ran today *forward*, showing future days — caught on screen, fixed to run the 1st through today. Also caught in the wild: the by-name refusal ("Stretching isn't in Daily/2026-09-15.md") firing exactly as specced on real misaligned data.
+- **Verified live in tmux end to end:** create-via-confirm, tick, untick (honest word), U-in-overlay, week grid against seeded history, month grid 01→17 with correct per-day cells, a cross-day month write hitting the 16th's note with a day-named flash, U restoring it. `go build`/`vet` clean, `gofmt` clean on my files, full suite 16/16 with `-count=1`, binary reinstalled.
+
+*From the builder's own record of choices made without asking (the user said no more questions; each is vetoable in audit):*
+1. The overlay's `l` on today's tab does nothing (help text says so) — the note pane is one `Esc` away, and a second meaning for `l` in the overlay felt like concept creep.
+2. The insert confirm writes the template's block verbatim, including any template edits the user made since yesterday's note — "the day's list is the template's list" taken literally.
+3. The month's "since" streak line shows in the grid footer only, not per-row — per-row dates would need another column of width.
+4. `habit.Parse`'s block-edge rule (prose ends the block) is deliberately conservative: a user hand-writing prose inside their Habits section has opted out of the tracker for that day.
 
 **2026-09-17 — Amendment 2 review: PASS.** Reviewed the skrin.json order-sync rename, `v0.12.0..v0.13.0` (tag moved forward, as your entry describes). Everything verified live in tmux on a fresh scratch vault (with a seeded legacy `.skrin`), plus `go vet` + full suite `-count=1` — all green.
 - **Migration: verified exactly as specced.** Opened the scratch vault: `.skrin` gone, `skrin.json` present with the order intact, tree order applied, no journal step, no flash. `TestMigratesTheOldDotfileOrderOnOpen` / `TestNewOrderFileWinsOverTheOldOneOnOpen` read and confirmed.

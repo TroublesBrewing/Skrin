@@ -2,6 +2,13 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.16.4 — 2026-09-17
+
+Quick report from daily use (`Quick reports/Alt key navigation in file tree.md`): Alt+↓/↑ skims the file tree, opening each note beside the one already open, but Alt+←/→ were pinned globally to note history back/forward — so there was no way to expand or collapse the folder under the cursor without letting go of Alt first, breaking the "hold Alt and browse" gesture.
+
+- **Fixed: Alt+←/→ now toggle folders in Files, matching what plain h/l already do there**, instead of jumping through note history. The note pane is unaffected — Alt+←/→ still means back/forward when it's focused, and `ctrl+o`/`ctrl+i` still mean back/forward everywhere. Nothing was removed, and the whole tree can now be skimmed and expanded without ever releasing Alt.
+- Tests: a new case opening and closing a folder with alt+→/← while Files has focus, alongside the existing history back/forward regression in the note pane (`internal/ui`). Full suite green.
+
 ## v0.16.3 — 2026-09-17
 
 Quick report from daily use (`Quick reports/Testing Quick Note window and finding limitation.md`): once a Quick Note capture grew past the overlay's 8-row cap, the cursor scrolled out of the visible window with no way to bring it back — typing just seemed to vanish.

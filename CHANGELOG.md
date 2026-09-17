@@ -2,6 +2,17 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.16.2 — 2026-09-17
+
+Priority-1 bug from daily use (`Quick reports/img rendering bug.md`): a book cover's sixel pixels could smear across the screen, black out the Files tree, blink on every scroll, and sometimes make Skrin stop responding to keys entirely.
+
+- **Fixed: stale sixel pixels were never erased.** Sixel is painted with raw escape sequences outside Bubble Tea's own cell diffing, so once a rectangle of pixels hit the terminal, nothing ever cleared it if the image later moved, scrolled off, or an overlay opened over it — this was part of the cause of the reported smear in the header bar and the file tree going black behind where a cover used to be. `imageDraws` now tracks the rectangle it last painted and clears it before drawing whatever belongs there this frame, even when nothing new is being drawn at all (note closed, overlay opened, layout changed).
+- **Fixed: clearing and drawing raced, causing the reported blinking.** The clear and draw commands, and multiple images' draws, were combined with `tea.Batch`, which explicitly makes no ordering guarantee — a draw could and did land on the terminal before the clear it depended on, and independent images' pixel writes could interleave in either order frame to frame. They're now combined with `tea.Sequence`, which runs them one at a time in the order given.
+- **Fixed: every single Update — every keystroke, every watcher tick, any unrelated event — forced a full clear-then-redraw of every visible image, even when nothing about it had changed.** That churn was itself real, visible flicker on a terminal that has to rasterize sixel data, and kept happening with no keys pressed at all (a watcher or drawer tick was enough) — this is what the first pass at this fix missed, and why it made no visible difference. `imageDraws` now compares what should be on screen this frame against what's already painted and does nothing — no clear, no redraw, no terminal writes — when they match.
+- **Fixed: a never-before-seen cover's decode/scale/sixel-encode ran inline in `Update`, blocking the whole program.** Scrolling quickly across several covers that hadn't been viewed yet could visibly stack up that work on every keystroke, consistent with the report that `q` and other keys sometimes stopped responding entirely. The encode now always happens inside a `tea.Cmd`'s own goroutine, one in flight per file at a time; a still-cached image keeps drawing immediately, a cold miss draws on the frame after its encode finishes.
+- Image sizing itself (a cover can still fill the pane's full height) is unchanged in this fix — worth a UX pass of its own if it still looks too large once the ghosting and blinking are gone.
+- Tests: `imageDraws` clearing a previously painted rectangle once the note pane goes away, deferring a cache miss's encode into its returned `Cmd` rather than doing it inline, and skipping the clear-and-redraw entirely once nothing about what's on screen has changed (`internal/ui`). Full suite green.
+
 ## v0.16.1 — 2026-09-17
 
 Three quick reports from daily use (`Quick reports/`), including a first pass at note transclusion.

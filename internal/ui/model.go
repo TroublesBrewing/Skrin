@@ -155,9 +155,11 @@ type Model struct {
 	// Sixel capability, learned once at startup from the terminal's own
 	// replies. sixel stays false (placeholders only) until both a DA1 that
 	// claims it and a cell size arrive; tmux never claims it.
-	sixel        bool
-	cellW, cellH int
-	imgCache     map[string]sixelImage // by vault-relative path, keyed on mtime+size
+	sixel         bool
+	cellW, cellH  int
+	imgCache      map[string]sixelImage // by vault-relative path, keyed on mtime+size
+	painted       []paintedRect         // rects imageDraws currently has painted, compared each frame to skip a no-op redraw
+	pendingEncode map[string]bool       // abs paths with an encodeSixel already in flight, so a slow file isn't re-encoded every keystroke
 
 	flash string // one-shot status message, cleared by the next key
 }
@@ -283,6 +285,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.bookLookupDone(msg)
 	case bookSaveMsg:
 		m.finishBookSave(msg)
+	case imagePixelsMsg:
+		if msg.stated {
+			m.imgCache[msg.abs] = sixelImage{mtime: msg.mtime, size: msg.size, cellsW: msg.targetW, data: msg.data}
+		}
+		delete(m.pendingEncode, msg.abs)
 	case tea.PasteMsg:
 		m.paste(msg.Content)
 	case tea.KeyPressMsg:

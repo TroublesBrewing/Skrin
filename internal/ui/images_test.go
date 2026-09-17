@@ -2,14 +2,17 @@ package ui
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 )
@@ -216,4 +219,195 @@ func TestNoteOriginIsNoneWhenAModalIsUp(t *testing.T) {
 		t.Error("noteOrigin should refuse to draw under the manual")
 	}
 	press(m, "esc")
+}
+
+// flattenCmd runs cmd and every Cmd it fans out to via tea.Batch or
+// tea.Sequence, collecting the leaf Msgs. tea.Sequence's own message type
+// is unexported, so a slice-of-Cmd is unwrapped by reflection rather than
+// a type switch.
+func flattenCmd(cmd tea.Cmd) []tea.Msg {
+	if cmd == nil {
+		return nil
+	}
+	return flattenMsg(cmd())
+}
+
+func flattenMsg(msg tea.Msg) []tea.Msg {
+	if msg == nil {
+		return nil
+	}
+	if bm, ok := msg.(tea.BatchMsg); ok {
+		var out []tea.Msg
+		for _, c := range bm {
+			out = append(out, flattenCmd(c)...)
+		}
+		return out
+	}
+	if v := reflect.ValueOf(msg); v.Kind() == reflect.Slice && v.Type().Elem() == reflect.TypeOf((*tea.Cmd)(nil)).Elem() {
+		var out []tea.Msg
+		for i := 0; i < v.Len(); i++ {
+			if c, ok := v.Index(i).Interface().(tea.Cmd); ok {
+				out = append(out, flattenCmd(c)...)
+			}
+		}
+		return out
+	}
+	return []tea.Msg{msg}
+}
+
+func rawStrings(msgs []tea.Msg) []string {
+	var out []string
+	for _, msg := range msgs {
+		if r, ok := msg.(tea.RawMsg); ok {
+			out = append(out, fmt.Sprint(r.Msg))
+		}
+	}
+	return out
+}
+
+// Drawing an image, then losing noteOrigin (an overlay opens over the
+// note), must still clear the rectangle the image was painted into —
+// imageDraws can't just return nil once there's nothing new to draw, or
+// the sixel pixels from the last frame never get erased and linger as a
+// smear over whatever's drawn there next.
+func TestImageDrawsClearsPaintedRectWhenNoteGoesAway(t *testing.T) {
+	m := newImageTestModel(t, Options{Images: true})
+	press(m, "1")
+	m.files.selectPath("Pic.md")
+	press(m, "enter")
+	m.Update(uv.PrimaryDeviceAttributesEvent{1, 2, 4})
+	m.Update(uv.CellSizeEvent{Width: 8, Height: 16})
+
+	rel := "Assets/photo.png"
+	abs := m.vault.Abs(rel)
+	// A cached entry must match the real file's mtime/size to count as
+	// fresh, so stat it for real rather than faking those fields.
+	fi, err := os.Stat(abs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.imgCache[abs] = sixelImage{mtime: fi.ModTime().UnixNano(), size: fi.Size(), cellsW: m.layout().noteTextW() * m.cellW, data: "SIXELDATA"}
+
+	msgs := flattenCmd(m.imageDraws())
+	draws := rawStrings(msgs)
+	if len(draws) == 0 {
+		t.Fatal("expected at least one raw draw once the image is cached")
+	}
+	if len(m.painted) == 0 {
+		t.Fatal("expected imageDraws to record what it painted")
+	}
+	painted := m.painted[0]
+
+	// Update() itself calls imageDraws() at the tail of every message, so
+	// grab the Cmd from the "?" press directly rather than pressing then
+	// calling imageDraws() again — by then m.painted would already be
+	// cleared by that automatic call.
+	_, drawCmd := m.Update(key("?")) // opens the manual: noteOrigin now refuses to draw
+	msgs = flattenCmd(drawCmd)
+	clears := rawStrings(msgs)
+	if len(clears) == 0 {
+		t.Fatal("expected imageDraws to clear the previously painted rect once the note is hidden")
+	}
+	want := ansi.SetCursorPosition(painted.col, painted.row)
+	if !strings.Contains(clears[0], want) {
+		t.Errorf("clear command = %q, want it positioned at the painted rect (%q)", clears[0], want)
+	}
+	if strings.Contains(clears[0], "SIXELDATA") {
+		t.Error("clear command should only write blanks, not repaint sixel data")
+	}
+	if m.painted != nil {
+		t.Error("painted should be nil once nothing is drawn")
+	}
+	press(m, "esc")
+}
+
+// A cold cache miss must not decode, scale and encode the image inline in
+// imageDraws: that work has to happen inside the Cmd it returns, off the
+// main goroutine, or a keystroke that first scrolls a never-before-seen
+// cover into view would block the whole program until the encode
+// finishes.
+func TestImageDrawsDefersEncodingOfACacheMiss(t *testing.T) {
+	m := newImageTestModel(t, Options{Images: true})
+	press(m, "1")
+	m.files.selectPath("Pic.md")
+	press(m, "enter")
+	m.Update(uv.PrimaryDeviceAttributesEvent{1, 2, 4})
+	// The CellSizeEvent's own Update call already runs imageDraws() once
+	// at its tail (every Update does), so capture that Cmd directly
+	// rather than calling imageDraws() again afterward — a second call
+	// would see the file already marked as mid-encode by the first and
+	// skip requesting it again.
+	_, cmd := m.Update(uv.CellSizeEvent{Width: 8, Height: 16})
+
+	rel := "Assets/photo.png"
+	abs := m.vault.Abs(rel)
+	if _, ok := m.imgCache[abs]; ok {
+		t.Fatal("test setup: image must not be cached yet")
+	}
+
+	if cmd == nil {
+		t.Fatal("expected a Cmd to encode the cache miss")
+	}
+	if _, ok := m.imgCache[abs]; ok {
+		t.Fatal("imageDraws must not decode or encode synchronously on a cache miss")
+	}
+
+	msgs := flattenCmd(cmd)
+	var got imagePixelsMsg
+	var found bool
+	for _, msg := range msgs {
+		if p, ok := msg.(imagePixelsMsg); ok {
+			got, found = p, true
+		}
+	}
+	if !found {
+		t.Fatal("expected an imagePixelsMsg once the deferred encode runs")
+	}
+	if got.abs != abs || got.data == "" {
+		t.Errorf("imagePixelsMsg = %+v, want a populated result for %q", got, abs)
+	}
+
+	if _, cmd := m.Update(got); cmd != nil {
+		flattenCmd(cmd) // drain: a follow-up draw once the image is cached
+	}
+	if _, ok := m.imgCache[abs]; !ok {
+		t.Error("Update should cache the image once imagePixelsMsg arrives")
+	}
+}
+
+// Once an image is drawn, a further Update carrying nothing that actually
+// changes what should be on screen — an unrelated key, a watcher tick,
+// anything — must not clear and redraw it again. Every clear-then-redraw
+// is a real, visible flicker on a terminal that has to rasterize sixel
+// data, so doing that on every single message even when nothing changed
+// is exactly the kind of "blinking on rerenders" the bug report
+// described.
+func TestImageDrawsSkipsARedrawWhenNothingChanged(t *testing.T) {
+	m := newImageTestModel(t, Options{Images: true})
+	press(m, "1")
+	m.files.selectPath("Pic.md")
+	press(m, "enter")
+	m.Update(uv.PrimaryDeviceAttributesEvent{1, 2, 4})
+	m.Update(uv.CellSizeEvent{Width: 8, Height: 16})
+
+	rel := "Assets/photo.png"
+	abs := m.vault.Abs(rel)
+	fi, err := os.Stat(abs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.imgCache[abs] = sixelImage{mtime: fi.ModTime().UnixNano(), size: fi.Size(), cellsW: m.layout().noteTextW() * m.cellW, data: "SIXELDATA"}
+
+	if len(rawStrings(flattenCmd(m.imageDraws()))) == 0 {
+		t.Fatal("expected the first draw once the image is cached")
+	}
+	if len(m.painted) == 0 {
+		t.Fatal("expected imageDraws to record what it painted")
+	}
+
+	// Nothing about the note, scroll position or cache changed, so a
+	// second call must be a pure no-op: no clear, no redraw.
+	if cmd := m.imageDraws(); cmd != nil {
+		t.Errorf("expected nil (no terminal writes) when nothing changed, got %v", flattenCmd(cmd))
+	}
 }

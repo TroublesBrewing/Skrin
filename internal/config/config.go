@@ -35,6 +35,9 @@ type Config struct {
 		CoversFolder  string `toml:"covers_folder"`  // default: "Assets/Covers"
 		DefaultStatus string `toml:"default_status"` // default: "reading"
 	} `toml:"library"`
+	Render struct {
+		Images *bool `toml:"images"` // unset means on
+	} `toml:"render"`
 }
 
 // AssistantEnabled reports whether the Claude drawer is available. It is on
@@ -73,6 +76,14 @@ func (c Config) LibraryDefaultStatus() string {
 		return c.Library.DefaultStatus
 	}
 	return "reading"
+}
+
+// RenderImages reports whether image embeds may draw real sixel pixels on
+// a terminal that has them. It is on unless turned off; either way, a
+// found embed's name, dimensions and size still show in the placeholder —
+// this only gates whether pixels are ever attempted.
+func (c Config) RenderImages() bool {
+	return c.Render.Images == nil || *c.Render.Images
 }
 
 // Load reads the config file. A missing file is not an error.

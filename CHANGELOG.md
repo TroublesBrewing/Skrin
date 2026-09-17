@@ -2,6 +2,18 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.16.0 — 2026-09-17
+
+Images in notes ([[skrin images]]): image embeds finally render, instead of sitting as plain links — real sixel pixels where the terminal supports them, a tidy placeholder frame everywhere else.
+
+- **A `![[photo.png]]` or `![alt](Assets/photo.png)` alone on its own line renders**: real sixel pixels, scaled to the pane's width and, if that would run past the pane's height, to the pane's height instead (aspect kept either way), on a terminal that has answered it can draw them; a placeholder frame (`▗▖  photo.png · 1920×1080 · 1.2 MB`) everywhere else, or when the file's missing or its format isn't one Skrin can decode. Either way it stays a link — `f`/`Enter` still open it. An embed mixed with other text on the same line keeps rendering as the existing inline `⧉ name` link, unchanged — scoping the feature to the block form the spec's own placeholder mockup shows.
+- **Sixel capability is asked for once, at startup**: a DA1 query (attribute `4` means sixel) and a cell-size query (XTWINOPS `16t`), both harmless no-ops on a terminal — like tmux — that doesn't answer them, so the placeholder path is what always runs there. The editor always shows the raw markdown, embeds included — no pixels are ever drawn over it.
+- **`[render] images = true`** in `config.toml`, on by default; turning it off forces placeholders everywhere even once the terminal has claimed sixel — a found embed's name, dimensions and size still show either way. No vault with no images ever needs to know the option exists.
+- Zen mode, splits and the drawer all render images through the same renderer, the same rules.
+- New `internal/imgmeta` reads an image's header only — dimensions and file size — never a full decode, for `image/gif`, `image/jpeg`, `image/png`, `.webp` and `.bmp` (`golang.org/x/image` for the last two, joining Go's own stdlib decoders).
+- Decoded sixel payloads are cached by the file's mtime and size, so a note left open isn't re-encoded on every redraw — only when the image file actually changes.
+- Tests: header-dimension parsing (`internal/imgmeta`), the placeholder frame's three states (found, missing, unsupported), both embed syntaxes, the inline-stays-unchanged and non-image-embed regressions, the Src mapping across a multi-row image, pane-height capping, and `imageRows`'s own row-count math (`internal/markdown`); the config-off path, the zero-cell-size guard, wikilink-style resolution for embed targets, and frame-fits-at-every-size with an image note open, all confirmed once sixel capability is known (`internal/ui`). **The sixel pixel draw itself is verifiable only in a real terminal that supports it (`foot`) — tmux never claims sixel, so this milestone's live testing here covers the placeholder path only; the pixel draw needs the user's own eyes at sign-off**, same honesty note as the skim-split chords in v0.13.0.
+
 ## v0.15.0 — 2026-09-17
 
 Quick notes ([[skrin quick notes]]): `i` opens a small overlay anywhere in Skrin for capturing a thought without leaving what you're doing, then drops it as a new note and closes without opening it.

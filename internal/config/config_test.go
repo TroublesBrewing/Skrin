@@ -87,6 +87,28 @@ func TestLibraryDefaults(t *testing.T) {
 	if c.LibraryDefaultStatus() != "reading" {
 		t.Errorf("LibraryDefaultStatus() = %q, want reading", c.LibraryDefaultStatus())
 	}
+	if !c.RenderImages() {
+		t.Error("RenderImages should default to on")
+	}
+}
+
+func TestRenderImagesReadsOverride(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", home)
+	dir := filepath.Join(home, "skrin")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte("[render]\nimages = false\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.RenderImages() {
+		t.Error("RenderImages() = true, want false per config")
+	}
 }
 
 func TestLibraryReadsOverrides(t *testing.T) {

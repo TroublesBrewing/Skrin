@@ -8,6 +8,7 @@
 package markdown
 
 import (
+	"fmt"
 	"image/color"
 	"regexp"
 	"strings"
@@ -17,6 +18,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"gopkg.in/yaml.v3"
 
+	"github.com/lurioso/skrin/internal/imgmeta"
 	"github.com/lurioso/skrin/internal/theme"
 )
 
@@ -26,7 +28,50 @@ type Line struct {
 	Src     int    // 0-based source line it came from
 	Heading int    // 1–6 on the first display line of a heading, else 0
 	Links   []Link // links whose text starts, or continues, on this line
+	Image   *Image // set on every display line of a rendered image embed
 }
+
+// Image marks a display line as (part of) an image embed rendered on a
+// line of its own (`![[photo.png]]` or `![alt](Assets/photo.png)`). Every
+// row the embed occupies carries an Image with the same Path, Row counting
+// up from 0 and Rows fixed — that is what keeps the 1:n Src mapping true
+// for a multi-row image the same way it holds for any other block.
+type Image struct {
+	Path string // vault-relative
+	Row  int    // 0-based row of this display line within the image block
+	Rows int    // total rows the image occupies (1 for a placeholder frame)
+	// Pixels is true when Text is blank filler and the caller (internal/ui)
+	// is expected to draw real pixels over this row; false means Text
+	// already carries the fully rendered placeholder frame and nothing
+	// further needs drawing.
+	Pixels        bool
+	Width, Height int // the image's real pixel dimensions, when known
+}
+
+// ImageOptions controls how image embeds render. The zero value renders
+// every embed as the placeholder frame, in every one of its three states
+// (found, missing, unsupported) — the always-working default.
+type ImageOptions struct {
+	// Meta looks up an embed's target file. Nil treats every target as
+	// not found, which still renders safely.
+	Meta func(target string) (w, h int, size int64, status ImageStatus)
+	// CellW, CellH are the terminal's own cell size in pixels. Either
+	// being 0 means the terminal hasn't answered (or sixel is off), so
+	// every embed renders as the placeholder frame regardless of Meta.
+	CellW, CellH int
+	// PaneHeight caps how many rows one image may occupy, keeping aspect;
+	// 0 means unconstrained.
+	PaneHeight int
+}
+
+// ImageStatus is what Meta found for an image embed's target.
+type ImageStatus int
+
+const (
+	ImageOK          ImageStatus = iota // exists, and Skrin can read its header
+	ImageMissing                        // no file at that path
+	ImageUnsupported                    // a file is there, but not a format Skrin can decode
+)
 
 // Link is a link as drawn on a display line.
 type Link struct {
@@ -42,11 +87,13 @@ type Options struct {
 	// Resolve reports whether a wikilink target (the part before any #)
 	// exists; unresolved links are drawn dimmed. Nil treats all as resolved.
 	Resolve func(target string) bool
+	// Images controls how image embeds render; see ImageOptions.
+	Images ImageOptions
 }
 
 // Render renders src into display lines.
 func Render(src string, o Options) []Line {
-	r := &renderer{width: max(o.Width, 10), pal: o.Palette, resolve: o.Resolve, st: newStyles(o.Palette)}
+	r := &renderer{width: max(o.Width, 10), pal: o.Palette, resolve: o.Resolve, images: o.Images, st: newStyles(o.Palette)}
 	lines := strings.Split(strings.ReplaceAll(src, "\r\n", "\n"), "\n")
 	if n := len(lines); n > 1 && lines[n-1] == "" {
 		lines = lines[:n-1]
@@ -135,6 +182,7 @@ type renderer struct {
 	width   int
 	pal     theme.Palette
 	resolve func(string) bool
+	images  ImageOptions
 	st      styles
 	callout *lipgloss.Style // colour of the callout we're inside, if any
 	links   []Link          // every link seen, referenced by span.link
@@ -148,7 +196,14 @@ var (
 	listRE     = regexp.MustCompile(`^(\s*)([-*+]|\d{1,9}[.)])[ \t]+(\[(.)\](?:[ \t]+|$))?(.*)$`)
 	calloutRE  = regexp.MustCompile(`^\[!([A-Za-z]+)\][+-]?\s*(.*)$`)
 	tableSepRE = regexp.MustCompile(`^\|?[\s:|-]+\|?$`)
-	inlineRE   = regexp.MustCompile(strings.Join([]string{
+	// An image embed alone on its own line: ![[photo.png]] (any alias or
+	// size hint after a "|" is ignored) or ![alt](Assets/photo.png).
+	// Mixed with other text on the line, an embed stays an inline link,
+	// same as any other embed — this only catches the block form, which
+	// is how a pasted screenshot actually looks in a note.
+	imageEmbedRE = regexp.MustCompile(`^!\[\[([^\[\]|]+)(?:\|[^\[\]]*)?\]\]$`)
+	imageLinkRE  = regexp.MustCompile(`^!\[([^\[\]]*)\]\(([^()\s]+)\)$`)
+	inlineRE     = regexp.MustCompile(strings.Join([]string{
 		"`[^`]+`",                    // code
 		`!?\[\[[^\[\]]+\]\]`,         // wikilink or embed
 		`\[[^\[\]]+\]\([^()\s]+\)`,   // markdown link
@@ -181,8 +236,24 @@ func (r *renderer) block(i int, l string) {
 	case listRE.MatchString(l):
 		r.listItem(i, listRE.FindStringSubmatch(l))
 	default:
+		if target, alt, ok := imageEmbed(t); ok {
+			r.image(i, target, alt)
+			return
+		}
 		r.emit(i, "", "", r.inline(l, r.st.text), 0, wrapWords)
 	}
+}
+
+// imageEmbed reports whether t (already trimmed) is exactly one image
+// embed and nothing else, and if so its target path and alt text.
+func imageEmbed(t string) (target, alt string, ok bool) {
+	if m := imageEmbedRE.FindStringSubmatch(t); m != nil && imgmeta.IsImage(m[1]) {
+		return m[1], "", true
+	}
+	if m := imageLinkRE.FindStringSubmatch(t); m != nil && imgmeta.IsImage(m[2]) {
+		return m[2], m[1], true
+	}
+	return "", "", false
 }
 
 func (r *renderer) quote(i int, l string) {
@@ -249,6 +320,103 @@ func (r *renderer) listItem(i int, m []string) {
 	}
 	prefix := indent + marker + " "
 	r.emit(i, prefix, strings.Repeat(" ", ansi.StringWidth(prefix)), r.inline(m[5], base), 0, wrapWords)
+}
+
+// image renders an image embed on a line of its own: real sixel pixels
+// when the terminal has answered that it can show them and the file's
+// dimensions are known, a placeholder frame otherwise. Either way the
+// embed stays a link (f/Enter still work on it).
+func (r *renderer) image(src int, target, alt string) {
+	id := r.addLink(target, true)
+	var w, h int
+	var size int64
+	status := ImageMissing
+	if r.images.Meta != nil {
+		w, h, size, status = r.images.Meta(target)
+	}
+	name := target
+	if slash := strings.LastIndexByte(name, '/'); slash >= 0 {
+		name = name[slash+1:]
+	}
+	canDrawPixels := status == ImageOK && r.images.CellW > 0 && r.images.CellH > 0 && w > 0 && h > 0
+	if !canDrawPixels {
+		r.emitImagePlaceholder(src, id, target, name, w, h, size, status)
+		return
+	}
+	r.emitImagePixels(src, target, w, h)
+}
+
+// emitImagePlaceholder is the always-working default: one line naming the
+// file, its real dimensions and size when known, or the reason it can't
+// show those. Reuses emit()'s own wrap/link-column logic in clip mode,
+// which is guaranteed to produce exactly one display line.
+func (r *renderer) emitImagePlaceholder(src, id int, target, name string, w, h int, size int64, status ImageStatus) {
+	frame := "▗▖  " + name
+	style := r.st.text.Foreground(r.pal.Link).Underline(true)
+	switch status {
+	case ImageOK:
+		frame += fmt.Sprintf(" · %d×%d · %s", w, h, humanSize(size))
+	case ImageMissing:
+		frame += " — not found"
+		style = r.st.muted.Underline(true)
+	case ImageUnsupported:
+		frame += " — unsupported image format"
+		style = r.st.muted.Underline(true)
+	}
+	before := len(r.out)
+	r.emit(src, "", "", []span{{frame, style, id}}, 0, clip)
+	for i := before; i < len(r.out); i++ {
+		r.out[i].Image = &Image{Path: target, Row: i - before, Rows: len(r.out) - before}
+	}
+}
+
+// emitImagePixels reserves rows for a real sixel image, scaled to the pane's
+// width and, when that would make it too tall, to the pane's height instead
+// — aspect kept either way. internal/ui does the actual decode/scale/draw;
+// here we only need to agree with it on how many rows the image takes, so
+// the 1:n Src mapping holds for every one of them.
+func (r *renderer) emitImagePixels(src int, path string, w, h int) {
+	rows := imageRows(w, h, r.width, r.images.CellW, r.images.CellH, r.images.PaneHeight)
+	for row := range rows {
+		r.out = append(r.out, Line{
+			Text:  strings.Repeat(" ", r.width),
+			Src:   src,
+			Links: []Link{{Col: 0, Target: path, Wiki: true}},
+			Image: &Image{Path: path, Row: row, Rows: rows, Pixels: true, Width: w, Height: h},
+		})
+	}
+}
+
+// imageRows is how many terminal rows an image of w×h real pixels occupies
+// once scaled to fit cellsWide character columns, each cellW×cellH pixels —
+// capped to maxRows (keeping aspect) when set.
+func imageRows(w, h, cellsWide, cellW, cellH, maxRows int) int {
+	if w <= 0 || h <= 0 || cellW <= 0 || cellH <= 0 || cellsWide <= 0 {
+		return 1
+	}
+	paneWidthPx := cellsWide * cellW
+	scaledH := float64(h) * float64(paneWidthPx) / float64(w)
+	rows := (int(scaledH) + cellH - 1) / cellH // round up
+	if rows < 1 {
+		rows = 1
+	}
+	if maxRows > 0 && rows > maxRows {
+		rows = maxRows
+	}
+	return rows
+}
+
+// humanSize formats a byte count the way a reader thinks about file sizes:
+// "1.2 MB", not "1258291 bytes".
+func humanSize(n int64) string {
+	switch {
+	case n < 1024:
+		return fmt.Sprintf("%d B", n)
+	case n < 1024*1024:
+		return fmt.Sprintf("%.0f KB", float64(n)/1024)
+	default:
+		return fmt.Sprintf("%.1f MB", float64(n)/(1024*1024))
+	}
 }
 
 func isTableRow(l string) bool { return strings.HasPrefix(strings.TrimSpace(l), "|") }

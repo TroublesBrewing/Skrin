@@ -377,7 +377,7 @@ func TestSkrinsOwnBrandingAndSplash(t *testing.T) {
 	if strings.Contains(frame, "Obsidian") || strings.Contains(frame, "unofficial") {
 		t.Errorf("Obsidian branding on screen:\n%s", frame)
 	}
-	if !strings.Contains(frame, "a terminal home for your vault") || !strings.Contains(frame, "move onto a note in Files to open it") {
+	if !strings.Contains(frame, "a terminal home for your vault") || !strings.Contains(frame, "every command, by name") {
 		t.Fatalf("header tagline or splash missing:\n%s", frame)
 	}
 	art := 0
@@ -390,7 +390,7 @@ func TestSkrinsOwnBrandingAndSplash(t *testing.T) {
 		t.Errorf("only %d rows of logo; the splash chest is missing", art)
 	}
 	press(m, "G", "enter")
-	if strings.Contains(ansi.Strip(m.render()), "move onto a note in Files to open it") {
+	if strings.Contains(ansi.Strip(m.render()), "every command, by name") {
 		t.Error("an open note should replace the splash")
 	}
 }

@@ -78,6 +78,9 @@ func (m *Model) flashFor(s string) tea.Cmd {
 // top instead of the bottom.
 const ggWait = 400 * time.Millisecond
 
+// ctrlCWait is how soon a second Ctrl+C must follow the first to quit.
+const ctrlCWait = 1500 * time.Millisecond
+
 // Options tune behaviour that depends on the world outside the vault.
 type Options struct {
 	// RolloverTodos makes `t` carry unfinished todos into a new daily note.
@@ -170,6 +173,12 @@ type Model struct {
 	back, fwd []place // history of opened notes
 
 	lastG time.Time // when G was pressed, if it was the last key (for GG)
+	// lastCtrlC is when Ctrl+C was pressed, if it was the last key: the
+	// first one only says how to quit, so reaching for copy with nothing
+	// selected never closes Skrin by surprise.
+	lastCtrlC time.Time
+
+	recentCmds []string // the palette's commands run lately, newest first
 
 	journal vault.Journal
 	marks   map[string]bool // marked items by vault path; may span folders
@@ -354,8 +363,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.paste(msg.Content)
 	case tea.KeyPressMsg:
 		m.flash = ""
-		lastG := m.lastG
-		m.lastG = time.Time{}
+		lastG, lastCtrlC := m.lastG, m.lastCtrlC
+		m.lastG, m.lastCtrlC = time.Time{}, time.Time{}
 		switch {
 		case m.conflict != nil:
 			m.conflictKey(msg)
@@ -368,7 +377,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// exactly as it always has ahead of everything below it — the two
 		// never used to coexist, so this changes nothing else.
 		case m.chooser != nil:
-			m.chooserKey(msg)
+			cmd = m.chooserKey(msg)
 		case m.editor != nil:
 			if m.complete == nil || !m.completionKey(msg) {
 				cmd = m.editorKey(msg)
@@ -401,15 +410,19 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.lastG = time.Now()
 			}
-			if act := m.actionIn(inMain, key); act != actNone {
-				if act == actQuit {
-					if key == "ctrl+c" && m.noteSel != nil {
-						cmd = m.copySelection()
-						break
-					}
-					return m, tea.Quit
-				}
+			act := m.actionIn(inMain, key)
+			switch {
+			case act == actQuit && key == "ctrl+c" && m.noteSel != nil:
+				cmd = m.copySelection()
+			case act == actQuit && key == "ctrl+c" && (lastCtrlC.IsZero() || time.Since(lastCtrlC) > ctrlCWait):
+				m.lastCtrlC = time.Now()
+				m.flash = m.ctrlCNote()
+			case act == actQuit:
+				return m, tea.Quit
+			case act != actNone:
 				cmd = m.do(act)
+			case strayKey(key):
+				m.flash = m.strayNote(key)
 			}
 		}
 	}
@@ -534,6 +547,8 @@ func (m *Model) do(a action) tea.Cmd {
 		m.openSearch()
 	case actSwitcher:
 		m.openSwitcher()
+	case actPalette:
+		m.openPalette()
 	default:
 		switch m.focus {
 		case paneFiles:

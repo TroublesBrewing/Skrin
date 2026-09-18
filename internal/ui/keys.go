@@ -87,6 +87,7 @@ const (
 	actHabitTab  // H inside it: today → this week → this month
 	actQuickNote // i: the quick-note overlay
 	actLineNumbers
+	actPalette // Ctrl+P: every command, found by name
 )
 
 // Contexts say where a binding works. Each gets its own keymap, built from
@@ -199,10 +200,11 @@ var defaultBindings = []binding{
 	{actNextHeading, []string{"}"}, "next heading", groupNote, inMain},
 	{actPrevHeading, []string{"{"}, "previous heading", groupNote, inMain},
 	{actSearch, []string{"/"}, "search (Alt-r in there: search & replace)", groupSearch, inMain},
-	{actSwitcher, []string{"g", "ctrl+p"}, "go to a note by name (Alt+←/→ there: split)", groupSearch, inMain},
+	{actSwitcher, []string{"g"}, "go to a note by name (Alt+←/→ there: split)", groupSearch, inMain},
 	{actClaude, []string{"c"}, "open or hide the Claude drawer", groupClaude, inMain},
 	{actClaudeInput, []string{"C"}, "type to Claude, with the highlighted text if any", groupClaude, inMain},
 	{actZen, []string{"z"}, "zen mode: just the note, centred", groupSkrin, inMain},
+	{actPalette, []string{"ctrl+p", ":"}, "commands: find any command by what it does, and run it", groupSkrin, inMain},
 	{actHelp, []string{"?"}, "this manual", groupSkrin, inMain},
 	{actQuit, []string{"q", "ctrl+c"}, "quit", groupSkrin, inMain},
 
@@ -214,6 +216,7 @@ var defaultBindings = []binding{
 	{actNone, []string{"[["}, "link completion: note names and aliases; add # for headings", groupEditor, inEditor},
 	{actNone, []string{"shift+left", "shift+right", "shift+up", "shift+down"}, "select text; typing replaces it", groupEditor, inEditor},
 	{actAskClaude, []string{"ctrl+k"}, "ask Claude, with the selection", groupEditor, inEditor},
+	{actPalette, []string{"ctrl+p"}, "commands: find any command by what it does, and run it", groupEditor, inEditor},
 	{actZen, []string{"alt+z"}, "zen mode, still editing", groupEditor, inEditor},
 	{actBacklinks, []string{"alt+b"}, "notes linking here", groupEditor, inEditor},
 	{actOutline, []string{"alt+o"}, "outline: jump to a heading", groupEditor, inEditor},
@@ -370,6 +373,7 @@ var actionName = map[action]string{
 	actAddQuote: "add-quote", actSaveBook: "save-book",
 	actFolderJumpUp: "folder-jump-up", actFolderJumpDown: "folder-jump-down",
 	actHabits: "habits", actHabitTab: "habit-tab", actQuickNote: "quick-note",
+	actPalette: "palette",
 }
 
 // actionByName is actionName the other way round, for reading overrides

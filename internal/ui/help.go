@@ -292,6 +292,12 @@ func (m *Model) guideText(w int) []manualLine {
 	add(0, "", pad(m.st.brand.Render("Skrin")+m.st.muted.Render(" v"+version.Version)))
 	add(0, "", pad(m.st.muted.Render("a terminal home for your vault")))
 
+	head("Getting started")
+	para("You don't need to learn Skrin's keys before using it. Ctrl+P (or :) opens the commands: type what you want to do in your own words — \"new note\", \"trash\", \"zen\", \"backlinks\" — and Enter does it. Each command shows its key on the right, and once you've run one the status line names that key for next time, so the keys you actually use learn themselves. Settings are in there too, and while you're editing so are the editor's own commands.")
+	para("The right side of the status line always shows the few keys that matter where you are — on a folder, on a note, in the note, with something marked or selected — and follows any key you change. A key that does nothing where you pressed it says so rather than staying silent.")
+	para("With no note open, the note pane shows the first keys worth knowing and a tip of the day. Ctrl+C only copies: with nothing selected it says so, and a second Ctrl+C quits, as q does at once.")
+	para("This manual has three tabs, moved between with Tab: Keys lists every key, where you can also give any of them a key of your own; Settings; and this Guide. / filters whichever one you're on.")
+
 	head("Files and the note")
 	para("Files holds the vault's folders and files. The note under the cursor opens at once, so j and k skim through your notes; on a folder, the last note stays open. l or → moves over to it for reading; Enter goes straight to editing it. Settings can turn instant-open off — Obsidian's way — so the note pane only changes on an explicit l/→ or Enter, keeping whatever was open until then.")
 	para("Following a link, a search hit, Go to note, t and going back all move the Files cursor to the note they open.")

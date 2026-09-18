@@ -10,7 +10,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/lurioso/skrin/internal/logo"
 	"github.com/lurioso/skrin/internal/vault"
 	"github.com/lurioso/skrin/internal/version"
 )
@@ -240,31 +239,6 @@ func (m *Model) noteBody(w, vis int) (string, []string) {
 	return displayName(m.notePath), body
 }
 
-// splashBody fills the note pane when no note is open: the chest, Skrin's
-// name and a few hints, centred. The chest shrinks, then goes, when the
-// pane is too small for it.
-func (m *Model) splashBody(w, vis int) []string {
-	text := []string{
-		m.st.brand.Render("Skrin"),
-		"",
-		m.st.text.Render("move onto a note in Files to open it"),
-		m.st.muted.Render("g goes to a note · t opens today's · ? manual"),
-	}
-	var lines []string
-	for scale := 2; scale >= 1; scale-- {
-		if lw, lh := logo.SplashSize(scale); lw <= w && lh+1+len(text) <= vis {
-			lines = append(append(lines, m.splash[scale-1]...), "")
-			break
-		}
-	}
-	lines = append(lines, text...)
-	out := make([]string, max((vis-len(lines))/3, 0), vis)
-	for _, l := range lines {
-		out = append(out, strings.Repeat(" ", max((w-ansi.StringWidth(l))/2, 0))+l)
-	}
-	return out
-}
-
 func (m *Model) statusLine() string {
 	switch {
 	case m.conflict != nil:
@@ -294,21 +268,11 @@ func (m *Model) statusLine() string {
 	if m.notePath != "" && len(m.lines) > 0 {
 		left += m.st.muted.Render("  " + m.scrollInfo())
 	}
-	right := m.st.muted.Render(m.defaultHint())
+	right := m.st.muted.Render(m.hintLine(m.width - min(ansi.StringWidth(left), m.width/2) - 3))
 	if m.flash != "" {
 		right = m.st.flash.Render(m.flash)
 	}
 	return spread(left, right, m.width)
-}
-
-// defaultHint is the status line's right-side reminder: the always-on
-// pointers, plus shift+←/→ while a split is open, since that's the one
-// key a split needs that isn't obvious from looking at the screen.
-func (m *Model) defaultHint() string {
-	if m.split != nil {
-		return "shift+←/→ switch panes · ? manual · / search · e edit · c claude · q quit"
-	}
-	return "? manual · / search · e edit · c claude · z zen · q quit"
 }
 
 // location is the open note's path and modified date, or the current

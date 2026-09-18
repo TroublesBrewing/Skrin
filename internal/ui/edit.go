@@ -112,6 +112,9 @@ func (m *Model) editorKey(k tea.KeyPressMsg) tea.Cmd {
 	case actAskClaude:
 		m.openDrawer()
 		return nil
+	case actPalette:
+		m.openPalette()
+		return nil
 	case actZen, actBacklinks, actOutline:
 		return m.do(a)
 	}
@@ -382,6 +385,9 @@ func (m *Model) editLine() string {
 		if m.editor.Mode() == editor.Normal {
 			mode, hint = " NORMAL ", "i insert · esc done"
 		}
+	}
+	if k := m.keyFor(inEditor, actPalette); k != "" {
+		hint = k + " commands · " + hint
 	}
 	left := m.st.pill.Render(mode) + " " + m.st.text.Render(m.edit.rel)
 	right := m.st.muted.Render(hint)

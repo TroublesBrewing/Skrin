@@ -45,7 +45,7 @@ Go is pinned in `.mise.toml`. If `go` isn't on PATH, prefix commands with `mise 
   - `prompt.go` is the system prompt.
   - Tests use a fake `claude` script, never the real one.
 - `internal/ui`: Files and the open note, or two notes in a split.
-  - The note under the Files cursor is the open note: moving the cursor opens notes (`peek`, called from `settle`), and opening a note any other way reveals it in Files.
+  - The note under the Files cursor is the open note: moving the cursor opens notes (`peek`, called from `settle`, unless instant-open is off in Settings), and opening a note any other way reveals it in Files.
   - `model.go` has the root model, `view.go` the rendering (zen mode included) and `files.go` the Files tree.
   - `ops.go` has file actions and marks. `edit.go` has editing, the save-conflict flow, `E` and `u`.
   - `links.go` has opening notes, following links, history, backlinks, the outline, `[[` completion and moving with link updates.
@@ -53,6 +53,8 @@ Go is pinned in `.mise.toml`. If `go` isn't on PATH, prefix commands with `mise 
   - `modal.go` has the name prompt, the y/n question and the filterable chooser used for moves, backlinks and the outline.
   - `drawer.go` has the Claude drawer, `propose.go` Claude's tools and the y/n proposals, and `select.go` the line selection in the reading view.
   - `arrange.go` keeps Files in your own order, with no mode: `Shift+↑`/`Shift+↓` move the item under the cursor within its level through `.skrin`, `R` puts a level back in the default order, and every move is its own journal step. Moves and renames carry the order along (`orderFollows`, called from `moveNow`).
+  - `palette.go` has the command palette (Ctrl+P): every command by name, with its key. A new main-context action goes in `mainCommands` or, if nobody would look it up by name, `notInPalette`; a test holds the two to the registry.
+  - `onboard.go` has what teaches a newcomer from the screen itself: the status line's hints for where you are (generated from the keymap, never hand-written), the welcome card and its tip of the day, and the answers to a key that does nothing and to a first Ctrl+C.
   - `split.go` has the split view. The other pane waits in `m.split`; `swapPanes` trades it with the focused one, so all the note code keeps working on `m.notePath`.
   - `keys.go` has the keymap registry. It holds every key, with the context it works in (`inMain`, `inEditor`, `inList`, `inDrawer`, …) and help text for that context.
     - `actionIn` looks a key up in its context, and `help.go`'s `?` manual is generated from the same table.

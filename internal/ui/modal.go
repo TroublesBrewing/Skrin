@@ -2,6 +2,7 @@ package ui
 
 import (
 	"strings"
+	"unicode"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -165,6 +166,13 @@ type choice struct {
 	label, detail string
 	do            func()
 	rel           string // the note the row stands for, in Go to note
+	// run is do for a row whose action hands Bubble Tea a command, as
+	// quitting or handing a note to $EDITOR does; the palette's rows.
+	run func() tea.Cmd
+	// key is shown flush right, the way the palette shows each command's
+	// key; also is matched by the filter without being shown, so a
+	// command can be found by words other than its name.
+	key, also string
 }
 
 // chooser is a filterable list in a floating box: move destinations,
@@ -180,6 +188,10 @@ type chooser struct {
 	in      lineInput
 	matches []int // indexes into items, best first
 	cur     int
+	// byWords ranks whole words ahead of letters scattered through a row,
+	// for lists searched by what a row means rather than its name: the
+	// palette, where "toc" means the outline, not "op-t-i-o-ns c-onfig".
+	byWords bool
 }
 
 func (c *chooser) filter() {
@@ -191,13 +203,81 @@ func (c *chooser) filter() {
 		}
 		return
 	}
+	if c.byWords {
+		c.matches = rankByWords(q, c.items)
+		return
+	}
 	labels := make([]string, len(c.items))
 	for i, it := range c.items {
-		labels[i] = strings.ToLower(it.label)
+		labels[i] = strings.ToLower(strings.TrimSpace(it.label + " " + it.also))
 	}
 	for _, mt := range fuzzy.Find(q, labels) {
 		c.matches = append(c.matches, mt.Index)
 	}
+}
+
+// rankByWords orders items for query q in three tiers: every word of q
+// starting a word of the row's name; the same in its other words; then
+// q's letters in order through the name, for a typo. Letters scattered
+// through the other words are not a match: there are enough of them that
+// nearly anything would be. Within the first two tiers the list keeps its
+// own order.
+func rankByWords(q string, items []choice) []int {
+	qw := words(q)
+	seen := map[int]bool{}
+	var out []int
+	take := func(i int) {
+		if !seen[i] {
+			seen[i] = true
+			out = append(out, i)
+		}
+	}
+	for i, it := range items {
+		if startsWords(qw, it.label) {
+			take(i)
+		}
+	}
+	for i, it := range items {
+		if startsWords(qw, it.label+" "+it.also) {
+			take(i)
+		}
+	}
+	names := make([]string, len(items))
+	for i, it := range items {
+		names[i] = strings.ToLower(it.label)
+	}
+	for _, mt := range fuzzy.Find(q, names) {
+		take(mt.Index)
+	}
+	return out
+}
+
+// words splits s into lowercase words at anything not a letter or digit.
+func words(s string) []string {
+	return strings.FieldsFunc(strings.ToLower(s), func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+	})
+}
+
+// startsWords reports whether every word in q starts some word of s.
+func startsWords(q []string, s string) bool {
+	if len(q) == 0 {
+		return false
+	}
+	sw := words(s)
+	for _, w := range q {
+		found := false
+		for _, x := range sw {
+			if strings.HasPrefix(x, w) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
 
 func (m *Model) openChooser(c *chooser) {
@@ -207,14 +287,14 @@ func (m *Model) openChooser(c *chooser) {
 
 // chooserKey handles a key in a list. The list's keys come from the keymap
 // registry; the rest edit the filter.
-func (m *Model) chooserKey(k tea.KeyPressMsg) {
+func (m *Model) chooserKey(k tea.KeyPressMsg) tea.Cmd {
 	c := m.chooser
 	switch a := m.actionIn(inList, k.String()); a {
 	case actCancel:
 		m.chooser = nil
 	case actSplitLeft, actSplitRight:
 		if c.split == nil || len(c.matches) == 0 {
-			return
+			return nil
 		}
 		it := c.items[c.matches[c.cur]]
 		m.chooser = nil
@@ -225,6 +305,9 @@ func (m *Model) chooserKey(k tea.KeyPressMsg) {
 		case len(c.matches) > 0:
 			it := c.items[c.matches[c.cur]]
 			m.chooser = nil
+			if it.run != nil {
+				return it.run()
+			}
 			if it.do != nil { // rows without an action just close the list
 				it.do()
 			}
@@ -241,6 +324,7 @@ func (m *Model) chooserKey(k tea.KeyPressMsg) {
 			c.filter()
 		}
 	}
+	return nil
 }
 
 func (m *Model) chooserBox() []string {
@@ -252,8 +336,20 @@ func (m *Model) chooserBox() []string {
 	off := max(0, c.cur-rows+1)
 	for i := off; i < min(len(c.matches), off+rows); i++ {
 		it := c.items[c.matches[i]]
+		text := "  " + it.label + "  " + it.detail
+		if it.key != "" {
+			// The key sits flush right, and the name gives way to it.
+			kw := ansi.StringWidth(it.key) + 2
+			text = fit(text, max(inner-kw, 0))
+			if i == c.cur {
+				body = append(body, m.st.selFocus.Render(text+fit(it.key+"  ", kw)))
+				continue
+			}
+			body = append(body, m.st.text.Render(text)+m.st.flash.Render(fit(it.key+"  ", kw)))
+			continue
+		}
 		if i == c.cur {
-			body = append(body, m.st.selFocus.Render(fit("  "+it.label+"  "+it.detail, inner)))
+			body = append(body, m.st.selFocus.Render(fit(text, inner)))
 			continue
 		}
 		body = append(body, fit(m.st.text.Render("  "+it.label)+"  "+m.st.muted.Render(it.detail), inner))

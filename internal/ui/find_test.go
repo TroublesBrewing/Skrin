@@ -92,13 +92,13 @@ func TestSearchInThisNote(t *testing.T) {
 
 func TestQuickSwitcher(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "ctrl+p")
+	press(m, "g")
 	typeText(m, "zen")
 	press(m, "enter")
 	if m.notePath != "Filosofi/Antik/Zeno.md" {
 		t.Fatalf("switcher opened %q", m.notePath)
 	}
-	press(m, "ctrl+p")
+	press(m, "g")
 	typeText(m, "Brand new idea")
 	press(m, "enter")
 	if m.confirm == nil {

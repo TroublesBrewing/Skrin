@@ -74,8 +74,29 @@ func coerce(raw string) value {
 type ctx struct {
 	v       Vault
 	from    string
+	task    *Task                      // the task being looked at, in a TASK spread
 	linksTo map[string]map[string]bool // note → the notes linking to it
 	linksOf map[string]map[string]bool // note → the notes it links to
+}
+
+func newCtx(v Vault, from string) *ctx {
+	return &ctx{v: v, from: from, linksTo: map[string]map[string]bool{}, linksOf: map[string]map[string]bool{}}
+}
+
+// values turns a field's written values into one value: nothing is null,
+// one is itself, more are a list. Links resolve from the note they're in.
+func (c *ctx) values(vals []string, owner string) value {
+	switch len(vals) {
+	case 0:
+		return value{}
+	case 1:
+		return c.resolve(coerce(vals[0]), owner)
+	}
+	l := value{k: vList, raw: strings.Join(vals, ", ")}
+	for _, s := range vals {
+		l.l = append(l.l, c.resolve(coerce(s), owner))
+	}
+	return l
 }
 
 // resolve points a link value at the note it leads to, from note owner.
@@ -118,6 +139,23 @@ func (e linkLit) eval(c *ctx, _ *Note) value {
 type fieldRef struct{ name string }
 
 func (e fieldRef) eval(c *ctx, n *Note) value {
+	if t := c.task; t != nil {
+		switch e.name {
+		case "text":
+			return text(t.Text)
+		case "status":
+			return text(t.Status)
+		case "completed":
+			return boolean(t.Status == "x" || t.Status == "X")
+		case "checked":
+			return boolean(t.Status != " ")
+		case "line":
+			return value{k: vNum, n: float64(t.Line), raw: strconv.Itoa(t.Line)}
+		}
+		if vals := t.Fields[e.name]; len(vals) > 0 {
+			return c.values(vals, n.Rel)
+		}
+	}
 	switch e.name {
 	case "file.name":
 		return text(noteName(n.Rel))
@@ -137,18 +175,10 @@ func (e fieldRef) eval(c *ctx, n *Note) value {
 	case "file.size":
 		return value{k: vNum, n: float64(n.Size), raw: strconv.FormatInt(n.Size, 10)}
 	}
-	vals := n.Props[e.name]
-	switch len(vals) {
-	case 0:
-		return value{}
-	case 1:
-		return c.resolve(coerce(vals[0]), n.Rel)
-	}
-	l := value{k: vList, raw: strings.Join(vals, ", ")}
-	for _, s := range vals {
-		l.l = append(l.l, c.resolve(coerce(s), n.Rel))
-	}
-	return l
+	// Frontmatter and inline fields of one name are one field, as in
+	// Dataview: both values, frontmatter's first.
+	vals := append(append([]string(nil), n.Props[e.name]...), n.Fields[e.name]...)
+	return c.values(vals, n.Rel)
 }
 
 // tagList is file.tags: every tag with its '#', and each parent of a
@@ -386,7 +416,7 @@ type row struct {
 }
 
 func (q *Query) eval(v Vault, from string) ([]row, error) {
-	c := &ctx{v: v, from: from, linksTo: map[string]map[string]bool{}, linksOf: map[string]map[string]bool{}}
+	c := newCtx(v, from)
 	notes := v.Notes()
 	sort.Slice(notes, func(i, j int) bool { return notes[i].Rel < notes[j].Rel })
 	var rows []row

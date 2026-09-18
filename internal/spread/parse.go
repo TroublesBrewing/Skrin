@@ -11,6 +11,7 @@ type queryKind int
 const (
 	kTable queryKind = iota
 	kList
+	kTask
 )
 
 // Query is a parsed spread.
@@ -130,12 +131,17 @@ func Parse(src string) (*Query, error) {
 				return nil, errAt(c, "LIST shows one value per note — use TABLE for more")
 			}
 		}
-	case t.is("TASK"), t.is("CALENDAR"):
-		return nil, errAt(t, "%s isn't supported yet", strings.ToUpper(t.text))
+	case t.is("TASK"):
+		q.kind = kTask
+		if !p.atClauseOrEnd() {
+			return nil, errAt(p.peek(), "TASK takes no fields — put conditions in WHERE")
+		}
+	case t.is("CALENDAR"):
+		return nil, errAt(t, "CALENDAR isn't supported yet")
 	case t.kind == tEOF:
-		return nil, errAt(t, "empty — start with TABLE or LIST")
+		return nil, errAt(t, "empty — start with TABLE, LIST or TASK")
 	default:
-		return nil, errAt(t, "expected TABLE or LIST, found %s", t)
+		return nil, errAt(t, "expected TABLE, LIST or TASK, found %s", t)
 	}
 
 	haveFrom := false

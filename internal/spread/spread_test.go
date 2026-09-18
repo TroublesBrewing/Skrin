@@ -228,12 +228,13 @@ func TestUnlimitedResultsAreCapped(t *testing.T) {
 
 func TestErrorsNameTheProblemAndTheLine(t *testing.T) {
 	for q, want := range map[string]string{
-		"":                                        "Spread: empty — start with TABLE or LIST (line 1)",
-		"SHOW everything":                         `Spread: expected TABLE or LIST, found "SHOW" (line 1)`,
+		"":                                        "Spread: empty — start with TABLE, LIST or TASK (line 1)",
+		"SHOW everything":                         `Spread: expected TABLE, LIST or TASK, found "SHOW" (line 1)`,
 		"TABLE author\nFROM #books\nWHER x":       `Spread: expected FROM, WHERE, SORT or LIMIT, found "WHER" (line 3)`,
 		"LIST FROM #books\nGROUP BY status":       "Spread: GROUP BY isn't supported yet (line 2)",
 		"LIST\nFLATTEN authors":                   "Spread: FLATTEN isn't supported yet (line 2)",
-		"TASK FROM #todo":                         "Spread: TASK isn't supported yet (line 1)",
+		"CALENDAR file.mtime":                     "Spread: CALENDAR isn't supported yet (line 1)",
+		"TASK text FROM #todo":                    "Spread: TASK takes no fields — put conditions in WHERE (line 1)",
 		"TABLE file.ctime":                        "Spread: file.ctime isn't available: Linux can't tell when a note was created (line 1)",
 		"TABLE file.day":                          "Spread: file.day isn't supported yet (line 1)",
 		"LIST WHERE rating * 2 > 4":               "Spread: arithmetic (+ - * /) isn't supported yet (line 1)",

@@ -6,6 +6,7 @@ package index
 import (
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -143,6 +144,23 @@ func (x *Index) Doc(rel string) (search.Doc, bool) {
 	return search.Doc{Rel: rel, Lines: n.lines, Tags: n.tags, Props: n.props}, true
 }
 
+// Fields are a note's inline "key:: value" fields, from its body.
+func (x *Index) Fields(rel string) map[string][]string {
+	if n := x.notes[rel]; n != nil {
+		return n.fields
+	}
+	return nil
+}
+
+// Tasks are a note's checkbox items, in order, each with its own inline
+// fields and the task it's nested under.
+func (x *Index) Tasks(rel string) []Task {
+	if n := x.notes[rel]; n != nil {
+		return n.tasks
+	}
+	return nil
+}
+
 // Stat is a note's modification time and size, as last read.
 func (x *Index) Stat(rel string) (time.Time, int64, bool) {
 	n := x.notes[rel]
@@ -205,11 +223,20 @@ func (x *Index) Headings(rel string) []Heading {
 }
 
 // Anchor finds the line of a #heading or #^block in a note. A nested
-// heading path like "Day#Morning" matches its last part.
+// heading path like "Day#Morning" matches its last part. "#:12" is line
+// 12, counted from 1 — Skrin's own anchor, which spread results use to
+// open a note at a task; no heading or block id looks like it.
 func (x *Index) Anchor(rel, sub string) (int, bool) {
 	n := x.notes[rel]
 	if n == nil || sub == "" {
 		return 0, false
+	}
+	if num, ok := strings.CutPrefix(sub, ":"); ok {
+		line, err := strconv.Atoi(num)
+		if err != nil || line < 1 || line > len(n.lines) {
+			return 0, false
+		}
+		return line - 1, true
 	}
 	if id, ok := strings.CutPrefix(sub, "^"); ok {
 		line, found := n.blocks[id]

@@ -97,3 +97,86 @@ func TestShowSpreadsSetting(t *testing.T) {
 		t.Error("the setting should be kept in config")
 	}
 }
+
+// Daily/2026-09-13.md in the fixture: "- [ ] call mum", "- [x] done thing",
+// "- [ ] " (empty), "- [-] cancelled", "* [ ] star task".
+func TestTaskSpreadListsTasks(t *testing.T) {
+	m := withSpread(t, Options{Spreads: true}, `TASK FROM "Daily" WHERE !completed`)
+	s := screen(m)
+	for _, want := range []string{"2026-09-13", "call mum", "cancelled", "star task"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("missing %q:\n%s", want, s)
+		}
+	}
+	if strings.Contains(s, "done thing") {
+		t.Errorf("a completed task is showing:\n%s", s)
+	}
+	checkFrame(t, m, "a task spread")
+}
+
+func TestTaskLinkOpensTheNoteAtTheTask(t *testing.T) {
+	m := newTestModelWith(t, Options{Spreads: true})
+	body := "# Long\n" + strings.Repeat("filler\n", 80) + "- [ ] the one far down\n"
+	for rel, text := range map[string]string{
+		"Long.md":    body,
+		"Welcome.md": "# Welcome\n```spread\nTASK FROM \"Long\"\n```\n",
+	} {
+		if err := os.WriteFile(m.vault.Abs(rel), []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	m.Update(VaultChangedMsg{})
+	onWelcome(m)
+	press(m, "f")
+	if m.hints == nil || len(m.hints.hints) != 2 { // the note, and the task's ↗
+		t.Fatalf("hints = %+v", m.hints)
+	}
+	press(m, "s") // the second hint: the task's ↗
+	if m.notePath != "Long.md" {
+		t.Fatalf("opened %q", m.notePath)
+	}
+	if m.flash != "" {
+		t.Errorf("flash = %q", m.flash)
+	}
+	if !strings.Contains(screen(m), "the one far down") || m.noteOff == 0 {
+		t.Errorf("the note didn't open at the task (offset %d):\n%s", m.noteOff, screen(m))
+	}
+}
+
+func TestTaskSpreadLeavesHabitsOut(t *testing.T) {
+	m := newTestModelWith(t, Options{Spreads: true})
+	for rel, text := range map[string]string{
+		"Daily/2026-09-14.md": "### Habits\n- [ ] Stretch\n- [ ] Read\n\n### Todo's\n- [ ] buy milk\n",
+		"Welcome.md":          "# Welcome\n```spread\nTASK FROM \"Daily/2026-09-14\"\n```\n",
+	} {
+		if err := os.WriteFile(m.vault.Abs(rel), []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	m.Update(VaultChangedMsg{})
+	onWelcome(m)
+	s := screen(m)
+	if !strings.Contains(s, "buy milk") || strings.Contains(s, "Stretch") || strings.Contains(s, "Read") {
+		t.Errorf("habits should stay out of a task spread:\n%s", s)
+	}
+}
+
+// An undated task above a dated one: SORT due must put the dated one
+// first, not let the undated one borrow its neighbour's date.
+func TestTaskWithoutAFieldDoesntBorrowItsNeighbours(t *testing.T) {
+	m := newTestModelWith(t, Options{Spreads: true})
+	for rel, text := range map[string]string{
+		"Venue.md":   "# Venue\n- [-] rent the barn\n- [ ] book the room [due:: 2026-09-20]\n",
+		"Welcome.md": "# Welcome\n```spread\nTASK FROM \"Venue\" SORT due\n```\n",
+	} {
+		if err := os.WriteFile(m.vault.Abs(rel), []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	m.Update(VaultChangedMsg{})
+	onWelcome(m)
+	s := screen(m)
+	if i, j := strings.Index(s, "book the room"), strings.Index(s, "rent the barn"); i < 0 || j < 0 || i > j {
+		t.Errorf("the dated task should sort first:\n%s", s)
+	}
+}

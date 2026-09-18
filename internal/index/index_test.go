@@ -1,9 +1,11 @@
 package index
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/lurioso/skrin/internal/vault"
@@ -213,5 +215,78 @@ func TestStatIsWhatTheIndexRead(t *testing.T) {
 	}
 	if _, _, ok := x.Stat("Nope.md"); ok {
 		t.Error("Stat of a missing note should report false")
+	}
+}
+
+func TestInlineFields(t *testing.T) {
+	x, _ := build(t, map[string]string{"Book.md": "---\nrating: 4\n---\n" +
+		"Rating:: 5\n" +
+		"**Due Date**:: 2026-09-30\n" +
+		"Read it for [mood:: calm] and (pace:: slow) reasons.\n" +
+		"- genre:: sci-fi\n" +
+		"> quote:: kept\n" +
+		"`code:: skipped` and a url https://x.com::not\n" +
+		"```\nfenced:: skipped\n```\n" +
+		"Author:: [[Frank Herbert]]\n" +
+		"[see:: [[Dune|the book]]]\n" +
+		"empty::\n"})
+	want := map[string][]string{
+		"rating": {"5"}, "due-date": {"2026-09-30"}, "mood": {"calm"}, "pace": {"slow"},
+		"genre": {"sci-fi"}, "quote": {"kept"}, "author": {"[[Frank Herbert]]"}, "see": {"[[Dune|the book]]"},
+	}
+	if got := x.Fields("Book.md"); !reflect.DeepEqual(got, want) {
+		t.Errorf("Fields =\n %v\nwant\n %v", got, want)
+	}
+	if d, _ := x.Doc("Book.md"); !reflect.DeepEqual(d.Props["rating"], []string{"4"}) {
+		t.Errorf("inline fields must not leak into properties, which search reads: %v", d.Props)
+	}
+}
+
+func TestTasks(t *testing.T) {
+	x, _ := build(t, map[string]string{"Plan.md": "# Plan\n" +
+		"- [ ] call the printer [due:: 2026-09-22] [priority:: high]\n" + // 1
+		"    - [x] find the number\n" + // 2
+		"    - a plain note\n" + // 3
+		"        - [ ] ask about paper\n" + // 4
+		"\n" +
+		"* [-] cancelled\n" + // 6
+		"1. [/] half done\n" + // 7
+		"Some prose ends the list.\n" +
+		"  - [ ] after prose\n" + // 9
+		"```\n- [ ] in code\n```\n" +
+		"- [ ]\n" + // 13
+		"- [] not a task\n"})
+	var got []string
+	for _, tk := range x.Tasks("Plan.md") {
+		got = append(got, fmt.Sprintf("%d %q %q p%d %v", tk.Line, tk.Status, tk.Text, tk.Parent, tk.Fields))
+	}
+	want := []string{
+		`1 " " "call the printer [due:: 2026-09-22] [priority:: high]" p-1 map[due:[2026-09-22] priority:[high]]`,
+		`2 "x" "find the number" p0 map[]`,
+		`4 " " "ask about paper" p0 map[]`,
+		`6 "-" "cancelled" p-1 map[]`,
+		`7 "/" "half done" p-1 map[]`,
+		`9 " " "after prose" p-1 map[]`,
+		`13 " " "" p-1 map[]`,
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Errorf("tasks =\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+	if f := x.Fields("Plan.md"); f["due"] != nil {
+		t.Errorf("a task's fields are the task's, not its note's: %v", f)
+	}
+}
+
+func TestLineAnchor(t *testing.T) {
+	x, _ := build(t, map[string]string{"N.md": "one\ntwo\nthree"})
+	for sub, want := range map[string]int{":1": 0, ":3": 2} {
+		if got, ok := x.Anchor("N.md", sub); !ok || got != want {
+			t.Errorf("Anchor(%q) = %d %v, want %d", sub, got, ok, want)
+		}
+	}
+	for _, sub := range []string{":0", ":4", ":x", ":"} {
+		if _, ok := x.Anchor("N.md", sub); ok {
+			t.Errorf("Anchor(%q) should fail", sub)
+		}
 	}
 }

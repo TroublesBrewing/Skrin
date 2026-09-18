@@ -342,6 +342,7 @@ func (m *Model) guideText(w int) []manualLine {
 	para("A spread is a small query in a ```spread block. In the note it shows what it finds — a table or a list of notes — and stays current as notes change. The query language is a subset of Dataview's, so a ```dataview block works the same, and shows the same in Obsidian with Dataview installed.")
 	key(`TABLE a, b AS "B"`, "a table: the note, then those fields")
 	key("LIST [field]", "a list of notes, with one value each")
+	key("TASK", "the checkboxes in those notes, under each note")
 	key(`FROM #tag  "Folder"`, "where to look; #a finds #a/b too")
 	key("FROM [[note]]", "notes linking to it; outgoing([[note]]) for its links")
 	key("FROM a AND -b", "combine with AND, OR, - and parentheses")
@@ -350,7 +351,9 @@ func (m *Model) guideText(w int) []manualLine {
 	key("SORT f DESC", "order by one field or more")
 	key("LIMIT 10", "at most that many")
 	para("Fields are the note's frontmatter properties, plus file.name, file.link, file.folder, file.path, file.tags, file.mtime and file.size. Numbers and ISO dates compare as numbers and dates.")
-	para("Every note in the answer is a link: f and Enter follow it. A spread only reads, never writes. Without LIMIT it stops at 200 rows and says how many more there are; a mistake, or Dataview syntax Skrin doesn't do yet, shows as a ⚠ line naming it.")
+	para("A field can also live in the note's text, Dataview's way: \"rating:: 4\" on a line of its own, or \"[due:: 2026-09-22]\" or \"(due:: 2026-09-22)\" in a sentence. A name with spaces is queried with dashes: \"Due Date::\" is due-date.")
+	para("In a TASK spread, WHERE and SORT look at each task: text, status (what's between the brackets), completed, checked, line, and the fields on the task's own line — so \"- [ ] call the printer [due:: 2026-09-22]\" answers to WHERE !completed AND due <= \"2026-09-30\". A task shows with the tasks nested under it. Checkboxes under ### Habits aren't tasks, and don't show.")
+	para("Every note in the answer is a link: f and Enter follow it, and a task's ↗ opens its note at that task, where Ctrl-l ticks it. A spread only reads, never writes. Without LIMIT it stops at 200 rows and says how many more there are; a mistake, or Dataview syntax Skrin doesn't do yet, shows as a ⚠ line naming it.")
 
 	head("Undo")
 	para("u puts the note back as it was before its last edit, whether you made it here, in $EDITOR, with a replace, or through Claude. Ctrl-r takes that back.")

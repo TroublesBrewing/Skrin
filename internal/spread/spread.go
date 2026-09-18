@@ -12,11 +12,22 @@ import (
 
 // Note is what a spread can see of one note.
 type Note struct {
-	Rel   string
-	Tags  []string            // lower-case, without '#'
-	Props map[string][]string // frontmatter; lower-case keys, values as written
-	Mod   time.Time
-	Size  int64
+	Rel    string
+	Tags   []string            // lower-case, without '#'
+	Props  map[string][]string // frontmatter; lower-case keys, values as written
+	Fields map[string][]string // inline "key:: value" fields in the body
+	Tasks  []Task
+	Mod    time.Time
+	Size   int64
+}
+
+// Task is one checkbox item in a note.
+type Task struct {
+	Line   int    // 0-based
+	Status string // the character between the brackets
+	Text   string // everything after the checkbox, as written
+	Parent int    // index of the task it's nested under, or -1
+	Fields map[string][]string
 }
 
 // Vault is the index as a spread sees it.
@@ -56,6 +67,9 @@ func Run(src string, v Vault, from string) Result {
 	q, err := Parse(src)
 	if err != nil {
 		return Result{Err: err.Error()}
+	}
+	if q.kind == kTask {
+		return q.runTasks(v, from)
 	}
 	rows, err := q.eval(v, from)
 	if err != nil {

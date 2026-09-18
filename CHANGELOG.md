@@ -2,6 +2,18 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.21.0 — 2026-09-18
+
+**New: spreads, phase 2 — tasks and inline fields.** Ticket `Backlog/Refined/Spreads phase 2.md`, spec [[skrin spreads]] ("Phase 2 as built"). Built at the user's go-ahead ("Include bracketed fields, and build it now") while the PO/UX reviewer was away.
+
+- **`TASK` spreads** list the checkboxes in the notes `FROM` picks, grouped under a link to each note, subtasks nested under their parent. `WHERE` and `SORT` see each task first — `text`, `status`, `completed`, `checked`, `line` and the fields on its own line — then its note's. A matching task brings its subtasks along; a matching subtask whose parent doesn't match shows on its own.
+- **Each task ends in a ↗ link that opens its note at that task** — a new `#:n` line anchor in `index.Anchor`, which only ever appears in rendered answers. Spreads stay read-only: `e` and `Ctrl-l` there ticks it.
+- **Checkboxes under `### Habits` aren't tasks** and don't show, Skrin's own rule (the rollover already skips them). A deliberate difference from Obsidian with Dataview.
+- **Inline fields**, Dataview's convention: `key:: value` on a line of its own, and `[key:: value]` or `(key:: value)` inside a sentence. Keys lower-case with spaces as dashes (`**Due Date**::` → `due-date`), values may hold a `[[link]]`, code is ignored. They join frontmatter of the same name in every spread, but stay out of `/` search, as they do in Obsidian's own search.
+- **Found and fixed during the live check:** a field on a task's line first counted for its whole note too, so an undated task borrowed another task's date and `SORT due` put it in the wrong place. A task's fields are now its own. Caught only because the live test note happened to put an undated task above a dated one; there's a regression test for exactly that now, confirmed to fail without the fix.
+- `index` parses fields and tasks once per note, incrementally like everything else (`Fields`, `Tasks`, new `fields.go`); `spread` gains `tasks.go`; `ui` hands both through, dropping habits. The Guide tab explains `TASK` and inline fields.
+- Tests: index (fields in every form and the ones that mustn't count, tasks with nesting through a plain bullet and a list ended by prose, the line anchor), spread (task selection, nesting, grouping, sorting, links, inline fields joining frontmatter), ui (a task spread on screen, ↗ opening an 80-line note at its task, habits left out, the borrowed-date regression). Full suite green (`-count=1`), `go vet` and `gofmt` clean. Live in tmux on the scratch vault; test notes removed after.
+
 ## v0.20.1 — 2026-09-18
 
 User feedback on spreads: "The columns are separated by a divider but the item within each column isn't … imagine a list of 200 items and 16 columns. Following 1 row could be very difficult."

@@ -26,6 +26,8 @@ type note struct {
 	aliases  []string
 	tags     []string            // lower-case, without '#', from the body and the tags property
 	props    map[string][]string // frontmatter, lower-case keys, values as written
+	fields   map[string][]string // inline "key:: value" fields in the body, keys as fieldKey makes them
+	tasks    []Task
 	blocks   map[string]int
 }
 
@@ -39,6 +41,7 @@ func parse(content string) note {
 	fence := ""
 	offset := 0
 	var tags []string
+	var tk tasker
 	for i, raw := range lines {
 		l := strings.TrimSuffix(raw, "\r")
 		t := strings.TrimSpace(l)
@@ -65,6 +68,26 @@ func parse(content string) note {
 			}
 			n.links = append(n.links, findLinks(l, i, offset)...)
 			tags = append(tags, inlineTags(l)...)
+			// A field on a task's line is the task's own, not its note's:
+			// otherwise a task without a due date would take one from
+			// another task in the same note.
+			fields := lineFields(l)
+			if t, ok := tk.line(l, i, n.tasks); ok {
+				for _, f := range fields {
+					if t.Fields == nil {
+						t.Fields = map[string][]string{}
+					}
+					t.Fields[f[0]] = append(t.Fields[f[0]], f[1])
+				}
+				n.tasks = append(n.tasks, t)
+			} else {
+				for _, f := range fields {
+					if n.fields == nil {
+						n.fields = map[string][]string{}
+					}
+					n.fields[f[0]] = append(n.fields[f[0]], f[1])
+				}
+			}
 		}
 		offset += len(raw) + 1
 	}

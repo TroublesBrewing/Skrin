@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"github.com/lurioso/skrin/internal/habit"
 	"github.com/lurioso/skrin/internal/index"
 	"github.com/lurioso/skrin/internal/markdown"
 	sp "github.com/lurioso/skrin/internal/spread"
@@ -27,7 +28,30 @@ func (v indexVault) Notes() []sp.Note {
 	for _, rel := range rels {
 		doc, _ := v.idx.Doc(rel)
 		mod, size, _ := v.idx.Stat(rel)
-		out = append(out, sp.Note{Rel: rel, Tags: doc.Tags, Props: doc.Props, Mod: mod, Size: size})
+		out = append(out, sp.Note{Rel: rel, Tags: doc.Tags, Props: doc.Props, Fields: v.idx.Fields(rel),
+			Tasks: tasksOutsideHabits(v.idx.Tasks(rel), doc.Lines), Mod: mod, Size: size})
+	}
+	return out
+}
+
+// tasksOutsideHabits leaves out the checkboxes under a note's "### Habits"
+// heading: in Skrin a habit isn't a todo — the rollover skips them too — so
+// a TASK spread doesn't list every unticked habit of every day.
+func tasksOutsideHabits(tasks []index.Task, lines []string) []sp.Task {
+	start, end, ok := habit.BlockRange(lines)
+	moved := make([]int, len(tasks)) // old index → new, or -1
+	var out []sp.Task
+	for i, t := range tasks {
+		if ok && t.Line >= start && t.Line < end {
+			moved[i] = -1
+			continue
+		}
+		parent := -1
+		if t.Parent >= 0 {
+			parent = moved[t.Parent]
+		}
+		moved[i] = len(out)
+		out = append(out, sp.Task{Line: t.Line, Status: t.Status, Text: t.Text, Parent: parent, Fields: t.Fields})
 	}
 	return out
 }

@@ -2,27 +2,24 @@
 
 Skrin is a keyboard-driven terminal UI for Obsidian vaults, written in Go with Bubble Tea v2 (`charm.land/*/v2`).
 
-## Read first: the steering document
+## Read first: the steering document and "Skrin nu"
 
-`~/Documents/vault-1/Skrin/skrin styrdokument.md` (Swedish) says what Skrin is for, what gets built next and what doesn't. Read it at the start of every Skrin session, before the backlog, `HANDOFF.md` or any quick report. It outranks the backlog, the wishlist and quick reports; only the user outranks it. In short:
+At the start of every Skrin session, read two notes in the user's vault, both in Swedish:
+
+- `~/Documents/vault-1/Skrin/skrin styrdokument.md` says what Skrin is for, the course to v1.0 and how we work. It outranks everything except the user.
+- `~/Documents/vault-1/Skrin/Skrin nu.md` shows the current state: the phase, what's being done now (at most one thing), known bugs and a short log. It replaced `HANDOFF.md`, the backlog and the quick reports on 2026-09-19, when the user reset every process ("clean slate"). The old material is archived, untouched, under `~/Documents/vault-1/Skrin/Archive/Skrin/Process till 2026-09-19/`.
+
+In short:
 
 - **The north star, in order:** understandable before powerful ("Vim is confusing; this shouldn't be"); capture and find first ("a ten-second thought must cost ten seconds"); the user owns their documents.
-- **The course runs in phases** (freeze and use → decide and consolidate → earn v1.0). Work only on what the current phase lists, plus bugs. A quick report is input, not an order: triage it against the phase and note it rather than building it on arrival.
-- **Every idea passes the document's four questions** before it becomes code. If the user says "build it anyway", say what it costs against the phase, build it, and record that in `HANDOFF.md`.
-- **Don't approve your own UX calls:** new keys and changed flows are marked provisional in `HANDOFF.md` until the UX review.
+- **There are two roles.** The user decides and you build. Hermes is an advisor the user calls in, not a reviewer every release waits for. There is no turn-taking and no review queue.
+- **Ideas go in the idea box,** the folder `~/Documents/vault-1/Skrin/Idélåda/`, one note per idea with the date it was added. An idea is input, not an order.
+- **Locked period, 2026-09-19 to 2026-10-19:** no new features, bugs only. After that, the cooling rule applies: an idea is built only on the weekly build day (Sunday unless the user says otherwise), at most two per build day, and only once it has been in the idea box for at least 7 days.
+- **You are the brake.** When the user says "build this", put it in the idea box and remind them of the rule. Build it only when they explicitly override ("bygg nu, trots låset"). Then say what it costs against the phase and log it in "Skrin nu".
+- **Every idea passes the steering document's four questions** before it becomes code.
+- **After every work session, add one line** to the log in "Skrin nu", newest first. Mark any new key or changed flow as provisional there. Whether it gets Hermes's second opinion is the user's call.
 
-The spec and milestone plan live in the user's vault at `~/Documents/vault-1/Skrin/tui.md`. The user signs off there and leaves comments at the bottom, so read it before starting a milestone.
-
-## Roles
-
-There are four of us. You (Claude Code) are the **builder**. Hermes Agent is the **product owner**; its reviews and stories come with PO callouts in the vault notes and it holds the UX/keybinding-ergonomics bar. The **UX engineer** is a dedicated role Hermes also runs: a senior interaction specialist whose only loyalty is UX — it holds Skrin to the charter in `~/Documents/vault-1/Skrin/skrin ux.md` (read it before designing keys or flows), runs UX passes on proposal notes before the user signs off and on UX-significant changes before release, and can hold or veto a keybinding on UX grounds. The user has the final word and signs off in `tui.md`. Practical points:
-
-- Before starting a milestone, read `tui.md`, `skrin backlog.md`, and any proposal note with an open sign-off box (e.g. [[skrin split view]]). Proposal notes define scope before a story is built.
-- The 13 stories tagged *(LLM-added …)* in the backlog were found by Hermes's code review of v0.5.4; they are triaged in the notes around them but not yet human verified. The stories tagged *Product owner, 2026-09-15* are from user feedback after daily use and reflect the user's current intent.
-- When a review story conflicts with a milestone in flight, fix the story into the milestone's scope rather than deferring it.
-- Hermes reviews builds against the spec, the acceptance criteria, and the keymap rules (lowercase = local, uppercase = global/bigger; first letter of the action; every key in the registry with context-aware help text; no prefix keys unless the spec demands one).
-- The hand-off between us lives in `HANDOFF.md`. Read it at the start of every session and follow its rules: append dated entries to your section, update the State line when your work is done, set `Turn:` to say whose move is next, and list what needs review (commit range or tag). It is operational state between us; product decisions stay in the vault notes.
-- Release versions are the PO's and user's call: propose, don't decide.
+`~/Documents/vault-1/Skrin/tui.md` is the original spec and stays the reference for how things work. The UX charter `~/Documents/vault-1/Skrin/skrin ux.md` is the rulebook for keys and flows (read it before designing either); its section on where the UX engineer sits in the process no longer applies.
 
 ## Commands
 
@@ -71,13 +68,14 @@ Go is pinned in `.mise.toml`. If `go` isn't on PATH, prefix commands with `mise 
 
 ## Releases
 
-Milestone N of the plan ships as v0.N.0, and fixes in between bump the patch number. To release:
+Release when there is something worth releasing, not after every fix: new features bump the minor number, fixes the patch number. v1.0 comes when the steering document's v1.0 bar is met. To release:
 
-1. Set `Version` in `internal/version/version.go`.
-2. Add a section to `CHANGELOG.md`.
-3. Commit, then `git tag vX.Y.Z`.
-4. Reinstall the binary.
-5. Mark the milestone done in `tui.md`, with its version.
+1. Run the tests and try the change live (see Rules).
+2. Set `Version` in `internal/version/version.go`.
+3. Add a section to `CHANGELOG.md`.
+4. Commit, then `git tag vX.Y.Z`.
+5. Reinstall the binary.
+6. Add a line to the log in "Skrin nu".
 
 ## Rules
 

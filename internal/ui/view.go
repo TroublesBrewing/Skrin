@@ -265,6 +265,9 @@ func (m *Model) statusLine() string {
 		mode = " VISUAL " // selected text in the note
 	}
 	left := m.st.pill.Render(mode) + " " + m.st.text.Render(m.location())
+	if sel := m.selectedNote(); sel != "" && m.noteSel != nil {
+		left += m.st.marked.Render("  " + sel)
+	}
 	if n := len(m.marks); n > 0 {
 		left += m.st.marked.Render(fmt.Sprintf("  ● %d marked", n))
 	}

@@ -67,6 +67,16 @@ func (m *Model) selectionText() string {
 	return strings.Join(src[min(a, b):max(a, b)+1], "\n")
 }
 
+// selectedNote says how much is selected, counted the way "Copied N lines"
+// counts it, for the status line; "" with nothing selected.
+func (m *Model) selectedNote() string {
+	t := m.selectionText()
+	if t == "" {
+		return ""
+	}
+	return plural(strings.Count(t, "\n")+1, "line") + " selected"
+}
+
 func (m *Model) clearSelection() {
 	m.noteSel = nil
 	if m.editor != nil {

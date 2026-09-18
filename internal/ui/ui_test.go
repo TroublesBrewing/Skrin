@@ -112,6 +112,10 @@ func key(k string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModAlt}
 	case "pgup":
 		return tea.KeyPressMsg{Code: tea.KeyPgUp}
+	case "shift+down":
+		return tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModShift}
+	case "shift+up":
+		return tea.KeyPressMsg{Code: tea.KeyUp, Mod: tea.ModShift}
 	}
 	if c, ok := strings.CutPrefix(k, "alt+"); ok {
 		return tea.KeyPressMsg{Code: []rune(c)[0], Mod: tea.ModAlt}
@@ -463,7 +467,7 @@ func TestInstantOpenSettingsToggle(t *testing.T) {
 		t.Fatal("setup: should default on")
 	}
 	for _, it := range settingsItems() {
-		if it.label == "Open notes as the cursor moves" {
+		if it.label == "Open notes on the cursor, not only on l/→ or Enter" {
 			it.set(m, false)
 		}
 	}

@@ -308,7 +308,7 @@ var defaultBindings = []binding{
 	{actNone, []string{"/"}, "find a key by what it does, or by the key itself", groupManual, inManual},
 	{actNone, []string{"esc", "?", "q"}, "clear the filter, then close", groupManual, inManual},
 	{actNone, []string{"j", "k"}, "move between settings", groupSettings, inSettings},
-	{actNone, []string{"enter", "space"}, "toggle the setting under the cursor", groupSettings, inSettings},
+	{actNone, []string{"enter", "space"}, "toggle the setting, or choose its folder", groupSettings, inSettings},
 	{actNone, []string{"tab", "shift+tab"}, "Keys → Settings → Guide, and back", groupSettings, inSettings},
 	{actNone, []string{"esc", "q"}, "close", groupSettings, inSettings},
 	{actNone, []string{"j", "k", "ctrl+d", "ctrl+u", "space"}, "scroll", groupGuide, inGuide},

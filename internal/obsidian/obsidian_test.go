@@ -87,3 +87,15 @@ func TestRunning(t *testing.T) {
 		t.Fatal("Electron running obsidian/app.asar not detected")
 	}
 }
+
+func TestLoadSettingsReadsTheTemplatesPlugin(t *testing.T) {
+	root := t.TempDir()
+	os.MkdirAll(filepath.Join(root, ".obsidian"), 0o755)
+	if s := LoadSettings(root).Templates; s.Folder != "" || s.DateFormat != "YYYY-MM-DD" || s.TimeFormat != "HH:mm" {
+		t.Errorf("defaults: %+v", s)
+	}
+	os.WriteFile(filepath.Join(root, ".obsidian", "templates.json"), []byte(`{"folder":"/Meta/Templates/","dateFormat":"D MMM"}`), 0o644)
+	if s := LoadSettings(root).Templates; s.Folder != "Meta/Templates" || s.DateFormat != "D MMM" || s.TimeFormat != "HH:mm" {
+		t.Errorf("from templates.json: %+v", s)
+	}
+}

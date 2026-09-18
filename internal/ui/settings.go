@@ -14,6 +14,10 @@ type settingsItem struct {
 	label, help string
 	get         func(m *Model) bool
 	set         func(m *Model, v bool)
+	// A row that holds a choice rather than on/off has value, what it's
+	// set to now, and pick, which lets you choose; get and set are nil.
+	value func(m *Model) string
+	pick  func(m *Model)
 }
 
 func boolPtr(v bool) *bool { return &v }
@@ -33,13 +37,25 @@ func settingsItems() []settingsItem {
 			},
 		},
 		{
-			label: "Open notes as the cursor moves",
-			help:  "Moving the Files cursor opens the note under it at once. Off is Obsidian's way: the note pane only changes when you open one explicitly (l/→ to read, Enter to edit), and otherwise keeps showing whatever was open last.",
+			label: "Open notes on the cursor, not only on l/→ or Enter",
+			help:  "On, moving the Files cursor opens the note under it at once — instant open. Off is Obsidian's way: the note pane only changes when you open one explicitly (l/→ to read, Enter to edit), and otherwise keeps showing whatever was open last.",
 			get:   func(m *Model) bool { return m.opts.InstantOpen },
 			set: func(m *Model, v bool) {
 				m.opts.InstantOpen = v
 				m.opts.Config.General.InstantOpen = boolPtr(v)
 			},
+		},
+		{
+			label: "Templates folder",
+			help:  "Where Insert template (Ctrl+P, \"template\") finds its templates: every note in this folder is one. Unset, it's the folder Obsidian's Templates plugin uses. Enter chooses a folder.",
+			value: func(m *Model) string {
+				f, whose := m.templatesFolder()
+				if f == "" {
+					return "none yet"
+				}
+				return f + " (" + whose + ")"
+			},
+			pick: func(m *Model) { m.pickTemplatesFolder() },
 		},
 		{
 			label: "Carry over yesterday's todos",
@@ -123,6 +139,10 @@ func (m *Model) settingsKey(k tea.KeyPressMsg) {
 	case "enter", " ", "space":
 		if h.setCur < len(items) {
 			it := items[h.setCur]
+			if it.pick != nil {
+				it.pick(m)
+				return
+			}
 			it.set(m, !it.get(m))
 			if err := config.Save(m.opts.Config); err != nil {
 				m.Flash("couldn't save settings: " + err.Error())
@@ -139,11 +159,15 @@ func (m *Model) settingsView(w int) []string {
 	var out []string
 	out = append(out, "")
 	for i, it := range items {
-		box := "[ ]"
-		if it.get(m) {
-			box = "[x]"
+		var row string
+		switch {
+		case it.pick != nil:
+			row = "[…]  " + it.label + ": " + it.value(m)
+		case it.get(m):
+			row = "[x]  " + it.label
+		default:
+			row = "[ ]  " + it.label
 		}
-		row := box + "  " + it.label
 		style := m.st.text
 		if i == h.setCur {
 			style = m.st.flash

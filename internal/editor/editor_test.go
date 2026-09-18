@@ -407,3 +407,27 @@ func TestInsertBlockKeepsItsOwnLines(t *testing.T) {
 		t.Errorf("row 2 should put the cursor in the first body cell: %d:%d", e.row, e.col)
 	}
 }
+
+func TestArrowsPastTheEdgesGoToTheLineEnds(t *testing.T) {
+	e := open("first line\nlast line")
+	e.row, e.col = 1, 4
+	keys(e, "down")
+	if e.row != 1 || e.col != 9 {
+		t.Errorf("down on the last row goes to its end: %d:%d", e.row, e.col)
+	}
+	keys(e, "up")
+	if e.row != 0 || e.col != 4 {
+		t.Errorf("up from there goes back to the column it came from: %d:%d", e.row, e.col)
+	}
+	keys(e, "up")
+	if e.row != 0 || e.col != 0 {
+		t.Errorf("up on the first row goes to its start: %d:%d", e.row, e.col)
+	}
+	v := New("one\ntwo", true, theme.Default())
+	keys(v, "esc") // normal mode
+	v.row, v.col = 1, 1
+	keys(v, "j")
+	if v.col != 1 {
+		t.Errorf("vim's j on the last line stays put, as in vim: col %d", v.col)
+	}
+}

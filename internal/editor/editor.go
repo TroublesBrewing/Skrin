@@ -215,6 +215,23 @@ func (e *Editor) InsertBlock(lines []string, row, col int) {
 	e.scroll()
 }
 
+// Rewrite replaces the whole text in one undo step and puts the cursor at
+// row, col: for a change that touches more than one place at once, like a
+// template that adds properties at the top and text at the cursor.
+func (e *Editor) Rewrite(text string, row, col int) {
+	if e.vim && e.mode == Normal {
+		e.mode = Insert
+	}
+	e.push("rewrite")
+	e.sel = false
+	crlf := e.crlf
+	e.load(text)
+	e.crlf = crlf
+	e.row = clamp(row, 0, len(e.lines)-1)
+	e.col, e.goal = clamp(col, 0, len(e.lines[e.row])), -1
+	e.scroll()
+}
+
 // HandleKey applies one key press.
 func (e *Editor) HandleKey(k tea.KeyPressMsg) Action {
 	s := k.String()
@@ -331,9 +348,13 @@ func (e *Editor) move(s string) bool {
 	case "right":
 		e.right()
 	case "up":
-		e.moveVert(-1)
+		if !e.toEdge(-1) {
+			e.moveVert(-1)
+		}
 	case "down":
-		e.moveVert(1)
+		if !e.toEdge(1) {
+			e.moveVert(1)
+		}
 	case "pgup":
 		e.moveVert(-e.h)
 	case "pgdown":
@@ -865,6 +886,29 @@ func (e *Editor) moveVert(n int) {
 	e.col = colAt(e.lines[row], starts, s, e.goal)
 }
 
+// toEdge is ↓ on the note's last display row or ↑ on its first, the way
+// most editors have them: there's no row to go to, so the cursor goes to
+// the end or the start of the line instead of staying put. The column it
+// came from is kept, so the other arrow goes straight back to it.
+func (e *Editor) toEdge(dir int) bool {
+	starts := e.segments(e.row)
+	s := segOf(starts, e.col)
+	last := e.row == len(e.lines)-1 && s == len(starts)-1
+	first := e.row == 0 && s == 0
+	if (dir > 0 && !last) || (dir < 0 && !first) {
+		return false
+	}
+	if e.goal < 0 {
+		e.goal = width(e.lines[e.row][starts[s]:e.col])
+	}
+	if dir > 0 {
+		e.col = len(e.lines[e.row])
+	} else {
+		e.col = 0
+	}
+	return true
+}
+
 // colAt finds the column in display segment s closest to visual x.
 func colAt(line []rune, starts []int, s, x int) int {
 	limit := len(line)
@@ -1011,6 +1055,9 @@ func (e *Editor) CompleteLink(text string) {
 	e.lastKind, e.goal = "", -1
 	e.scroll()
 }
+
+// Cursor is the cursor's line and column, in runes.
+func (e *Editor) Cursor() (row, col int) { return e.row, e.col }
 
 // CursorPos is where the cursor is drawn: display row from the top of the
 // text area, and column.

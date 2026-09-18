@@ -106,6 +106,13 @@ type DailyNotes struct {
 	Template string // vault path of the template, as Obsidian stored it
 }
 
+// Templates mirrors the core Templates plugin settings.
+type Templates struct {
+	Folder     string // vault-relative, no leading or trailing slash; "" when unset
+	DateFormat string // moment.js format for {{date}}
+	TimeFormat string // moment.js format for {{time}}
+}
+
 // Rollover mirrors the Rollover Daily Todos community plugin's settings.
 type Rollover struct {
 	Installed         bool // listed in community-plugins.json
@@ -124,6 +131,7 @@ type Settings struct {
 	NewFileLocation   string // where notes created from links go: "root", "current" or "folder"
 	NewFileFolderPath string // the folder for NewFileLocation "folder"
 	Daily             DailyNotes
+	Templates         Templates
 	Rollover          Rollover
 }
 
@@ -138,6 +146,7 @@ func LoadSettings(root string) Settings {
 		NewLinkFormat:   "shortest",
 		NewFileLocation: "root",
 		Daily:           DailyNotes{Format: "YYYY-MM-DD"},
+		Templates:       Templates{DateFormat: "YYYY-MM-DD", TimeFormat: "HH:mm"},
 		Rollover:        Rollover{TemplateHeading: "none", DoneStatusMarkers: "xX-"},
 	}
 	dir := filepath.Join(root, ".obsidian")
@@ -174,6 +183,21 @@ func LoadSettings(root string) Settings {
 			s.Daily.Format = dn.Format
 		}
 		s.Daily.Template = dn.Template
+	}
+
+	var tp struct {
+		Folder     string `json:"folder"`
+		DateFormat string `json:"dateFormat"`
+		TimeFormat string `json:"timeFormat"`
+	}
+	if readJSON(filepath.Join(dir, "templates.json"), &tp) {
+		s.Templates.Folder = strings.Trim(tp.Folder, "/")
+		if tp.DateFormat != "" {
+			s.Templates.DateFormat = tp.DateFormat
+		}
+		if tp.TimeFormat != "" {
+			s.Templates.TimeFormat = tp.TimeFormat
+		}
 	}
 
 	var plugins []string

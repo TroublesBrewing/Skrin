@@ -381,3 +381,33 @@ func TestTheGuideStartsWithGettingStarted(t *testing.T) {
 		t.Errorf("the Guide's first section should be Getting started: %v", heads)
 	}
 }
+
+func TestTheStatusLineCountsWhatIsSelected(t *testing.T) {
+	m := newTestModel(t)
+	inFilosofi(m)
+	press(m, "j", "l") // Stoic, reading
+	press(m, "v")
+	if s := ansi.Strip(m.statusLine()); !strings.Contains(s, "1 line selected") {
+		t.Errorf("reading view, one line: %q", s)
+	}
+	press(m, "j")
+	if s := ansi.Strip(m.statusLine()); !strings.Contains(s, "2 lines selected") {
+		t.Errorf("reading view, two lines: %q", s)
+	}
+	press(m, "esc")
+	if s := ansi.Strip(m.statusLine()); strings.Contains(s, "selected") {
+		t.Errorf("no selection, no count: %q", s)
+	}
+	press(m, "e", "shift+down", "shift+down")
+	if s := ansi.Strip(m.editLine()); !strings.Contains(s, "3 lines selected") {
+		t.Errorf("editor selection over three lines: %q", s)
+	}
+}
+
+func TestTheInstantOpenSettingNamesBothWays(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "?", "tab")
+	if frame := ansi.Strip(m.render()); !strings.Contains(frame, "Open notes on the cursor, not only on l/→ or Enter") {
+		t.Errorf("the Settings tab should name both ways of opening:\n%s", frame)
+	}
+}

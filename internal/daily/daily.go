@@ -74,6 +74,30 @@ func Expand(tmpl, format string, day, now time.Time) string {
 	})
 }
 
+// ExpandTemplate fills in a template the way Obsidian's core Templates
+// plugin does: {{title}} is the name of the note it goes into, {{date}}
+// and {{time}} are now in the plugin's own formats, and {{date:FORMAT}}
+// or {{time:FORMAT}} use a moment.js format of their own.
+func ExpandTemplate(tmpl, title, dateFormat, timeFormat string, now time.Time) string {
+	s := titleVarRE.ReplaceAllLiteralString(tmpl, title)
+	return calcVarRE.ReplaceAllStringFunc(s, func(match string) string {
+		m := calcVarRE.FindStringSubmatch(match)
+		t := now
+		if m[2] != "" {
+			n, _ := strconv.Atoi(m[3])
+			t = shift(t, n, m[4])
+		}
+		f := dateFormat
+		if strings.EqualFold(m[1], "time") {
+			f = timeFormat
+		}
+		if m[5] != "" {
+			f = strings.TrimSpace(m[5][1:])
+		}
+		return Format(t, f)
+	})
+}
+
 // shift adds n units the way moment's add() reads shorthand units.
 func shift(t time.Time, n int, unit string) time.Time {
 	switch unit {

@@ -102,6 +102,7 @@ var editorCommands = []editorCommand{
 	{act: actBacklinks, name: "Backlinks: notes linking here", also: "references mentions incoming"},
 	{act: actOutline, name: "Outline: jump to a heading", also: "headings toc sections"},
 	{name: "Insert table", also: "add new grid columns rows markdown tabell", run: func(m *Model) tea.Cmd { m.startTable(); return nil }},
+	{name: "Insert template", also: "add snippet boilerplate mall", run: func(m *Model) tea.Cmd { m.startTemplate(); return nil }},
 }
 
 // editorKeyRun runs one of the editor's own keys, as if it were pressed.
@@ -197,6 +198,10 @@ func (m *Model) mainPaletteItems() []choice {
 	return append(items,
 		choice{label: "Insert table", also: "add new grid columns rows markdown tabell", run: m.paletteRun("Insert table", func() tea.Cmd {
 			m.startTable()
+			return nil
+		})},
+		choice{label: "Insert template", also: "add snippet boilerplate mall", run: m.paletteRun("Insert template", func() tea.Cmd {
+			m.startTemplate()
 			return nil
 		})},
 		choice{label: "Settings", also: "preferences options config toggles", run: m.paletteRun("Settings", func() tea.Cmd {
@@ -322,6 +327,13 @@ func (m *Model) settingsPaletteItems() []choice {
 	var items []choice
 	for _, it := range settingsItems() {
 		name := "Setting: " + it.label
+		if it.pick != nil {
+			items = append(items, choice{label: name, detail: it.value(m), also: "settings preferences option config folder", run: m.paletteRun(name, func() tea.Cmd {
+				it.pick(m)
+				return nil
+			})})
+			continue
+		}
 		state := "off"
 		if it.get(m) {
 			state = "on"

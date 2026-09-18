@@ -184,6 +184,7 @@ type chooser struct {
 	verb    string                      // what enter does, for the footer
 	none    func(query string)          // what enter does when nothing matches, if anything
 	split   func(rel string, left bool) // Alt+←/→: open the row's note in a split
+	cancel  func()                      // Esc: where to go back to, if not just closing
 	items   []choice
 	in      lineInput
 	matches []int // indexes into items, best first
@@ -292,6 +293,9 @@ func (m *Model) chooserKey(k tea.KeyPressMsg) tea.Cmd {
 	switch a := m.actionIn(inList, k.String()); a {
 	case actCancel:
 		m.chooser = nil
+		if c.cancel != nil {
+			c.cancel()
+		}
 	case actSplitLeft, actSplitRight:
 		if c.split == nil || len(c.matches) == 0 {
 			return nil

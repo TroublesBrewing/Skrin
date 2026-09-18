@@ -401,6 +401,9 @@ func (m *Model) editLine() string {
 		hint = k + what + hint
 	}
 	left := m.st.pill.Render(mode) + " " + m.st.text.Render(m.edit.rel)
+	if sel := m.selectedNote(); sel != "" {
+		left += m.st.marked.Render("  " + sel)
+	}
 	right := m.st.muted.Render(hint)
 	if m.flash != "" {
 		right = m.st.flash.Render(m.flash)

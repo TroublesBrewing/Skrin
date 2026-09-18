@@ -101,3 +101,12 @@ func TestAddTodosAndRemoveLines(t *testing.T) {
 		t.Errorf("RemoveLines = %q", got)
 	}
 }
+
+func TestExpandTemplate(t *testing.T) {
+	now := time.Date(2026, 9, 18, 14, 5, 0, 0, time.UTC)
+	got := ExpandTemplate("# {{title}}\n{{date}} {{time}} · {{date:dddd}} {{time:HH}}h · {{Title}}", "Stoic", "DD.MM.YYYY", "HH:mm", now)
+	want := "# Stoic\n18.09.2026 14:05 · Friday 14h · Stoic"
+	if got != want {
+		t.Errorf("got %q\nwant %q", got, want)
+	}
+}

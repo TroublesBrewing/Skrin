@@ -196,7 +196,7 @@ func (m *Model) manualStatus() string {
 	case h.filtering:
 		return spread(m.st.pill.Render(" FILTER ")+" "+h.in.view(m.st.text, m.st.cursor), m.st.muted.Render("enter keep · esc clear"), m.width)
 	case h.tab == manualTabSettings:
-		return spread(m.st.pill.Render(" SETTINGS ")+" "+m.st.text.Render("saved to config.toml as you go"), m.st.muted.Render("j/k move · enter toggle · tab keys · esc close"), m.width)
+		return spread(m.st.pill.Render(" SETTINGS ")+" "+m.st.text.Render("saved to config.toml as you go"), m.st.muted.Render("j/k move · enter toggle or choose · tab keys · esc close"), m.width)
 	default:
 		left := m.st.pill.Render(" GUIDE ")
 		if q := h.in.value(); q != "" {
@@ -350,6 +350,10 @@ func (m *Model) guideText(w int) []manualLine {
 	para("With the cursor in a table, the commands (Ctrl+P, then \"table\") hold the rest: add, delete and move rows and columns, align a column left, centred or right, sort the rows by a column — numbers as numbers — and line the table up. Each is one step for Ctrl+Z. The heading row stays put: its cells can be changed, but it isn't moved, deleted or sorted.")
 	para("Insert table, in the same commands, makes a new one from a small form — columns, rows and headings if you like — anywhere, the reading view included, where it opens the note in the editor first.")
 
+	head("Templates")
+	para("Insert template, in the commands (Ctrl+P, then \"template\"), puts a template into the note at the cursor — from the editor, or from the reading view, which opens the note in the editor first. Every note in the templates folder is a template. The folder is Obsidian's own, from its Templates plugin, unless you choose another in Settings.")
+	para("It fills a template in the way Obsidian does: {{title}} becomes the note's name, {{date}} and {{time}} today's date and the time now, in the Templates plugin's formats, and {{date:dddd D MMMM}} any moment.js format. A template's properties join the note's own at the top instead of landing where the cursor is: the note gains the ones it hasn't got, and keeps its own values for the rest. One Ctrl+Z takes the whole template back out.")
+
 	head("Spreads")
 	para("A spread is a small query in a ```spread block. In the note it shows what it finds — a table or a list of notes — and stays current as notes change. The query language is a subset of Dataview's, so a ```dataview block works the same, and shows the same in Obsidian with Dataview installed.")
 	key(`TABLE a, b AS "B"`, "a table: the note, then those fields")
@@ -381,6 +385,8 @@ func (m *Model) guideText(w int) []manualLine {
 	code(`vault = "~/notes"        # the vault to open; else Obsidian's own list`)
 	code(`[general]`)
 	code(`restore_last_note = false  # reopen the last note on start`)
+	code(`[templates]`)
+	code(`folder = "Templates"    # Insert template's folder; else Obsidian's`)
 	code(`[daily]`)
 	code(`rollover_todos = true   # t carries unfinished todos over`)
 	code(`[editor]`)

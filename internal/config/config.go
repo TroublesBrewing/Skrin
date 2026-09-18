@@ -44,6 +44,9 @@ type Config struct {
 		Model    string `toml:"model,omitempty"`    // "" for Claude Code's default
 		Command  string `toml:"command,omitempty"`  // the claude binary; default claude on $PATH
 	} `toml:"assistant,omitempty"`
+	Templates struct {
+		Folder string `toml:"folder,omitempty"` // unset: Obsidian's own Templates folder
+	} `toml:"templates,omitempty"`
 	Library struct {
 		Folder        string `toml:"folder,omitempty"`         // default: "Books"
 		CoversFolder  string `toml:"covers_folder,omitempty"`  // default: "Assets/Covers"

@@ -8,6 +8,8 @@ import (
 	"unicode"
 
 	"gopkg.in/yaml.v3"
+
+	fm "github.com/lurioso/skrin/internal/frontmatter"
 )
 
 var (
@@ -37,7 +39,7 @@ type note struct {
 func parse(content string) note {
 	n := note{blocks: map[string]int{}}
 	lines := strings.Split(content, "\n")
-	frontEnd := frontmatterEnd(lines)
+	frontEnd := fm.End(lines)
 	fence := ""
 	offset := 0
 	var tags []string
@@ -93,18 +95,6 @@ func parse(content string) note {
 	}
 	n.tags = unique(tags)
 	return n
-}
-
-func frontmatterEnd(lines []string) int {
-	if len(lines) < 2 || strings.TrimRight(lines[0], " \r") != "---" {
-		return 0
-	}
-	for i := 1; i < len(lines); i++ {
-		if t := strings.TrimRight(lines[i], " \r"); t == "---" || t == "..." {
-			return i
-		}
-	}
-	return 0
 }
 
 // maskCode blanks out code spans, keeping byte offsets.

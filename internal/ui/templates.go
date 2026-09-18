@@ -7,6 +7,7 @@ import (
 
 	"github.com/lurioso/skrin/internal/config"
 	"github.com/lurioso/skrin/internal/daily"
+	"github.com/lurioso/skrin/internal/frontmatter"
 	"github.com/lurioso/skrin/internal/obsidian"
 	"github.com/lurioso/skrin/internal/vault"
 )
@@ -145,15 +146,11 @@ func applyTemplate(note string, row, col int, tmpl string) (string, int, int) {
 // splitFrontmatter separates a leading --- block's inside lines from the
 // rest; nil when there is none.
 func splitFrontmatter(lines []string) (fm, rest []string) {
-	if len(lines) == 0 || strings.TrimRight(lines[0], " ") != "---" {
+	end := frontmatter.End(lines)
+	if end == 0 {
 		return nil, lines
 	}
-	for i := 1; i < len(lines); i++ {
-		if t := strings.TrimRight(lines[i], " "); t == "---" || t == "..." {
-			return append([]string{}, lines[1:i]...), lines[i+1:]
-		}
-	}
-	return nil, lines
+	return append([]string{}, lines[1:end]...), lines[end+1:]
 }
 
 // fmChunk is one top-level property: its key line and the indented or

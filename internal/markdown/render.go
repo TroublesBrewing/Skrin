@@ -19,6 +19,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"gopkg.in/yaml.v3"
 
+	"github.com/lurioso/skrin/internal/frontmatter"
 	"github.com/lurioso/skrin/internal/imgmeta"
 	"github.com/lurioso/skrin/internal/theme"
 )
@@ -151,7 +152,7 @@ func Render(src string, o Options) []Line {
 		lines[i] = strings.ReplaceAll(lines[i], "\t", "    ")
 	}
 	start := 0
-	if end := frontmatterEnd(lines); end > 0 {
+	if end := frontmatter.End(lines); end > 0 {
 		r.properties(lines[1:end], end)
 		start = end + 1
 	}
@@ -1020,18 +1021,6 @@ func renderTokens(toks []token, spans []span) string {
 		j = k
 	}
 	return b.String()
-}
-
-func frontmatterEnd(lines []string) int {
-	if len(lines) < 2 || strings.TrimRight(lines[0], " ") != "---" {
-		return 0
-	}
-	for i := 1; i < len(lines); i++ {
-		if t := strings.TrimRight(lines[i], " "); t == "---" || t == "..." {
-			return i
-		}
-	}
-	return 0
 }
 
 func fenceMarker(l string) string {

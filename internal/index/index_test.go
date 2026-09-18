@@ -187,3 +187,31 @@ func TestLinkTextAndApply(t *testing.T) {
 		t.Errorf("Apply =\n%q\nwant\n%q", got, want)
 	}
 }
+
+func TestOutgoingListsLinkedNotesOnce(t *testing.T) {
+	x, _ := build(t, map[string]string{
+		"Log.md":        "[[Dune]] and [[Dune|again]], [[Kallocain]], [[Missing]], ![[cover.png]]",
+		"Books/Dune.md": "", "Kallocain.md": "", "cover.png": "",
+	})
+	if got := x.Outgoing("Log.md"); !reflect.DeepEqual(got, []string{"Books/Dune.md", "Kallocain.md"}) {
+		t.Errorf("Outgoing = %q", got)
+	}
+	if got := x.Outgoing("Nope.md"); got != nil {
+		t.Errorf("Outgoing of a missing note = %q", got)
+	}
+}
+
+func TestStatIsWhatTheIndexRead(t *testing.T) {
+	x, v := build(t, map[string]string{"Note.md": "hello"})
+	mod, size, ok := x.Stat("Note.md")
+	info, err := os.Stat(v.Abs("Note.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok || size != 5 || !mod.Equal(info.ModTime()) {
+		t.Errorf("Stat = %v %d %v, want %v 5", mod, size, ok, info.ModTime())
+	}
+	if _, _, ok := x.Stat("Nope.md"); ok {
+		t.Error("Stat of a missing note should report false")
+	}
+}

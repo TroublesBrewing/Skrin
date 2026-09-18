@@ -7,6 +7,7 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/lurioso/skrin/internal/imgmeta"
 	"github.com/lurioso/skrin/internal/search"
@@ -140,6 +141,34 @@ func (x *Index) Doc(rel string) (search.Doc, bool) {
 		return search.Doc{}, false
 	}
 	return search.Doc{Rel: rel, Lines: n.lines, Tags: n.tags, Props: n.props}, true
+}
+
+// Stat is a note's modification time and size, as last read.
+func (x *Index) Stat(rel string) (time.Time, int64, bool) {
+	n := x.notes[rel]
+	if n == nil {
+		return time.Time{}, 0, false
+	}
+	return time.Unix(0, n.mod), n.size, true
+}
+
+// Outgoing lists the notes rel links to, sorted, each once. Links that
+// lead nowhere, or to something that isn't a note, are left out.
+func (x *Index) Outgoing(rel string) []string {
+	n := x.notes[rel]
+	if n == nil {
+		return nil
+	}
+	seen := map[string]bool{}
+	var out []string
+	for _, l := range n.links {
+		if t, ok := x.ResolveLink(l, rel); ok && x.notes[t] != nil && !seen[t] {
+			seen[t] = true
+			out = append(out, t)
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 // Content is a note's text as last read.

@@ -2,6 +2,21 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.20.0 — 2026-09-18
+
+**New: spreads, phase 1.** From the ticket `Backlog/Refined/Spreads.md` (spec: [[skrin spreads]], formerly "Dataview query blocks"). Built at the user's go-ahead while the PO/UX reviewer was away; that review happens on this build.
+
+- **A ```spread block shows what its query finds** — a table or a list of notes — in the reading view, zen and the split, instead of its text. ```dataview blocks run the same way, so a vault using Obsidian's Dataview plugin shows the same tables in both apps. ```query (Obsidian's embedded search) and ```dataviewjs stay code, and so does a block that's never closed.
+- **The query language is a subset of Dataview's DQL:** `TABLE` (with `WITHOUT ID` and `AS "name"`) and `LIST [field]`; `FROM` tags (nested ones included), folders, `[[note]]` (notes linking to it) and `outgoing([[note]])`, combined with `AND`, `OR`, `-`/`!` and parentheses; `WHERE` with `= != < <= > >=`, `AND`/`&`, `OR`/`|`, `!`/`NOT`, `null` and `contains()`/`icontains()`; `SORT` on several fields `ASC`/`DESC`; `LIMIT`. Keywords in any case, clauses in any order.
+- **Fields:** frontmatter properties, plus `file.name`, `file.link`, `file.folder`, `file.path`, `file.tags`, `file.mtime`, `file.size`. Properties are text in the index, so each one is read as a number, an ISO date, a single wikilink or text; different kinds are never equal and never in order, and nothing about that is an error.
+- **Zero new keys.** Every note in an answer is a real link, so `f` puts a hint on it and `Enter` follows it.
+- **It stays current:** any change in the vault re-runs the open note's spreads — verified by editing a rating on disk while Skrin was open and watching the table re-sort itself.
+- **Nothing silent:** `No notes match` for an empty answer; a 200-row cap with `+N more · add LIMIT or narrow FROM` when there's no `LIMIT`; mistakes name the problem and the line inside the block (`⚠ Spread: expected FROM, WHERE, SORT or LIMIT, found "WHER" (line 2)`); Dataview syntax that isn't here yet is named rather than called an error (`GROUP BY`, `FLATTEN`, `TASK`, functions other than `contains`, arithmetic, `this`). `file.ctime` says why it isn't there: Linux can't tell when a note was created, and a field quietly answering with the modification time would lie.
+- **An off switch:** `[render] spreads = true` in config.toml, "Show spreads" on the Settings tab; off shows the block as code. The Guide tab explains the query language, and its config listing now includes the `[render]` section.
+- **How it's built:** a new `internal/spread` (lexer, parser, evaluator) that sees the vault through a small interface, and returns its answer as markdown — a pipe table or a list of wikilinks — which `internal/markdown` renders like any other note text, rows mapped to the fence's line the way transclusion does it. So wrapping table cells (v0.19.1), link hints, line numbers and zen all work on spreads for free. `internal/index` gains `Stat` (a note's mtime and size) and `Outgoing` (the notes it links to).
+- **Not in phase 1**, per the spec: `TASK` and inline `key:: value` fields (phase 2), and live preview inside the editor (phase 3) — the editor still shows the block as text.
+- Tests: `internal/spread` (the query language end to end over a fake vault, including every error message), `internal/markdown/spread_test.go` (the block is replaced, rows map to the fence, links are followable, which fences stay code, errors and notes, spreads inside an embedded note), `internal/ui/spreads_test.go` (the answer on screen, following a result with `f`, refresh on a vault change, the off switch and the setting), plus `internal/index` and `internal/config`. Verified live in tmux on the scratch vault: tables, the ```dataview list, the typo and empty messages, following a comma-named note, the on-disk edit re-sorting the table, 60 columns with line numbers, and zen.
+
 ## v0.19.1 — 2026-09-18
 
 Three quick reports, fixed directly (no formal tickets — see `Quick reports/`):

@@ -84,6 +84,19 @@ func settingsItems() []settingsItem {
 				}
 			},
 		},
+		{
+			label: "Show spreads",
+			help:  "A ```spread (or ```dataview) block shows the table or list its query finds, kept current as notes change. Off shows the query as code.",
+			get:   func(m *Model) bool { return m.opts.Spreads },
+			set: func(m *Model, v bool) {
+				m.opts.Spreads = v
+				m.opts.Config.Render.Spreads = boolPtr(v)
+				m.renderedW = 0
+				if m.split != nil {
+					m.split.renderedW = 0
+				}
+			},
+		},
 	}
 }
 

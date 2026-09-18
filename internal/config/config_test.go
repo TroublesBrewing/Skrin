@@ -140,6 +140,33 @@ func TestRenderLineNumbers(t *testing.T) {
 	}
 }
 
+func TestRenderSpreads(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.RenderSpreads() {
+		t.Error("RenderSpreads should default to on")
+	}
+
+	home := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", home)
+	dir := filepath.Join(home, "skrin")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte("[render]\nspreads = false\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if c, err = Load(); err != nil {
+		t.Fatal(err)
+	}
+	if c.RenderSpreads() {
+		t.Error("RenderSpreads() = true, want false per config")
+	}
+}
+
 func TestLibraryReadsOverrides(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", home)

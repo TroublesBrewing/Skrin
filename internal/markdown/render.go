@@ -101,6 +101,23 @@ type EmbedOptions struct {
 	Content func(target string) (src string, resolved bool)
 }
 
+// SpreadOptions controls ```spread and ```dataview blocks. The zero value
+// (Run == nil) leaves them as code blocks.
+type SpreadOptions struct {
+	// Run answers the query inside a block. The renderer draws the answer
+	// in the block's place, and every row it draws maps back to the
+	// block's opening line.
+	Run func(query string) SpreadResult
+}
+
+// SpreadResult is a spread's answer. Err, when set, is drawn instead of
+// the rest.
+type SpreadResult struct {
+	Markdown string // a pipe table or a bullet list, rendered like any note text
+	Note     string // one dim line after it
+	Err      string
+}
+
 // Link is a link as drawn on a display line.
 type Link struct {
 	Col    int    // display column where its text starts on the line
@@ -119,11 +136,13 @@ type Options struct {
 	Images ImageOptions
 	// Embeds controls how note embeds render; see EmbedOptions.
 	Embeds EmbedOptions
+	// Spreads controls spread blocks; see SpreadOptions.
+	Spreads SpreadOptions
 }
 
 // Render renders src into display lines.
 func Render(src string, o Options) []Line {
-	r := &renderer{width: max(o.Width, 10), pal: o.Palette, resolve: o.Resolve, images: o.Images, embeds: o.Embeds, st: newStyles(o.Palette)}
+	r := &renderer{width: max(o.Width, 10), pal: o.Palette, resolve: o.Resolve, images: o.Images, embeds: o.Embeds, spreads: o.Spreads, st: newStyles(o.Palette)}
 	lines := strings.Split(strings.ReplaceAll(src, "\r\n", "\n"), "\n")
 	if n := len(lines); n > 1 && lines[n-1] == "" {
 		lines = lines[:n-1]
@@ -149,6 +168,11 @@ func Render(src string, o Options) []Line {
 				// lines are clipped rather than wrapped, as in Obsidian.
 				r.emit(i, r.st.rule.Render("│ "), "", []span{plain(l, r.st.code)}, 0, clip)
 			}
+		case r.spreads.Run != nil && isSpreadFence(l) && fenceEnd(lines, i) > i:
+			j := fenceEnd(lines, i)
+			r.callout = nil
+			r.spread(i, lines[i+1:j])
+			i = j
 		case fenceMarker(l) != "":
 			fence = fenceMarker(l)
 			r.callout = nil
@@ -184,8 +208,8 @@ type span struct {
 func plain(text string, style lipgloss.Style) span { return span{text, style, -1} }
 
 type styles struct {
-	text, muted, rule, quote, code, bullet, done, doneText, propKey lipgloss.Style
-	heading                                                         [6]lipgloss.Style
+	text, muted, rule, quote, code, bullet, done, doneText, propKey, warn lipgloss.Style
+	heading                                                               [6]lipgloss.Style
 }
 
 func newStyles(p theme.Palette) styles {
@@ -200,6 +224,7 @@ func newStyles(p theme.Palette) styles {
 		done:     s().Foreground(p.Green),
 		doneText: s().Foreground(p.DarkForeground).Strikethrough(true),
 		propKey:  s().Foreground(p.DarkForeground),
+		warn:     s().Foreground(p.Orange),
 	}
 	for i, c := range p.Headings {
 		st.heading[i] = s().Foreground(c).Bold(true)
@@ -214,6 +239,7 @@ type renderer struct {
 	resolve func(string) bool
 	images  ImageOptions
 	embeds  EmbedOptions
+	spreads SpreadOptions
 	st      styles
 	callout *lipgloss.Style // colour of the callout we're inside, if any
 	links   []Link          // every link seen, referenced by span.link
@@ -323,7 +349,7 @@ func (r *renderer) noteEmbed(src int, target string) bool {
 	// inside the section still show correctly in the common case; only a
 	// relative path written differently than the outer note's own would
 	// resolve wrongly — a known first-pass limitation.
-	for _, l := range Render(content, Options{Width: r.width, Palette: r.pal, Resolve: r.resolve, Images: r.images}) {
+	for _, l := range Render(content, Options{Width: r.width, Palette: r.pal, Resolve: r.resolve, Images: r.images, Spreads: r.spreads}) {
 		l.Src = src // every transcluded row maps back to the ![[...]] line
 		r.out = append(r.out, l)
 	}
@@ -991,6 +1017,47 @@ func fenceMarker(l string) string {
 		}
 	}
 	return ""
+}
+
+// isSpreadFence reports whether l opens a ```spread or ```dataview block.
+func isSpreadFence(l string) bool {
+	m := fenceMarker(l)
+	if m == "" {
+		return false
+	}
+	info := strings.Fields(strings.TrimLeft(strings.TrimSpace(l), m[:1]))
+	return len(info) > 0 && (strings.EqualFold(info[0], "spread") || strings.EqualFold(info[0], "dataview"))
+}
+
+// fenceEnd is the line that closes the code block opened at i, or -1 when
+// nothing does — an unclosed block runs to the end as code, as in Obsidian.
+func fenceEnd(lines []string, i int) int {
+	m := fenceMarker(lines[i])
+	for j := i + 1; j < len(lines); j++ {
+		if isFenceClose(lines[j], m) {
+			return j
+		}
+	}
+	return -1
+}
+
+// spread draws a spread block's answer in its place. Every row maps back
+// to the block's opening line, the way a transcluded note's rows do.
+func (r *renderer) spread(src int, body []string) {
+	res := r.spreads.Run(strings.Join(body, "\n"))
+	if res.Err != "" {
+		r.emit(src, "", "", []span{plain("⚠ "+res.Err, r.st.warn)}, 0, wrapWords)
+		return
+	}
+	if res.Markdown != "" {
+		for _, l := range Render(res.Markdown, Options{Width: r.width, Palette: r.pal, Resolve: r.resolve}) {
+			l.Src = src
+			r.out = append(r.out, l)
+		}
+	}
+	if res.Note != "" {
+		r.emit(src, "", "", []span{plain(res.Note, r.st.muted)}, 0, wrapWords)
+	}
 }
 
 func isFenceClose(l, fence string) bool {

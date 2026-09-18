@@ -119,6 +119,7 @@ func run(vaultArg string) error {
 		},
 		Images:      cfg.RenderImages(),
 		LineNumbers: cfg.RenderLineNumbers(),
+		Spreads:     cfg.RenderSpreads(),
 	})
 	if err != nil {
 		return err

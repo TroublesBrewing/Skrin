@@ -110,6 +110,9 @@ type Options struct {
 	// LineNumbers turns on line numbers along the left edge of notes and
 	// the built-in editor.
 	LineNumbers bool
+	// Spreads shows what ```spread and ```dataview blocks find; off shows
+	// the query as code.
+	Spreads bool
 	// Config is the config.toml Skrin loaded, kept so the Settings tab
 	// of `?` can show and persist toggles back to it. Its own bare
 	// fields (Vim, RolloverTodos, ...) above are what the rest of Skrin
@@ -834,7 +837,7 @@ func (m *Model) settle() {
 		m.editor.SetSize(textW, vis)
 	}
 	if m.notePath != "" && m.noteErr == nil && textW != m.renderedW {
-		m.lines = markdown.Render(m.noteSrc, markdown.Options{Width: textW, Palette: m.pal, Resolve: m.resolve, Images: m.imageOptions(m.notePath, vis), Embeds: m.embedOptions(m.notePath)})
+		m.lines = markdown.Render(m.noteSrc, markdown.Options{Width: textW, Palette: m.pal, Resolve: m.resolve, Images: m.imageOptions(m.notePath, vis), Embeds: m.embedOptions(m.notePath), Spreads: m.spreadOptions(m.notePath)})
 		m.renderedW = textW
 	}
 	if s := m.split; s != nil {
@@ -845,7 +848,7 @@ func (m *Model) settle() {
 		}
 		w = max(w, 10)
 		if s.err == nil && w != s.renderedW {
-			s.lines = markdown.Render(s.src, markdown.Options{Width: w, Palette: m.pal, Resolve: m.resolveFrom(s.path), Images: m.imageOptions(s.path, vis), Embeds: m.embedOptions(s.path)})
+			s.lines = markdown.Render(s.src, markdown.Options{Width: w, Palette: m.pal, Resolve: m.resolveFrom(s.path), Images: m.imageOptions(s.path, vis), Embeds: m.embedOptions(s.path), Spreads: m.spreadOptions(s.path)})
 			s.renderedW = w
 		}
 		s.off = clamp(s.off, 0, max(len(s.lines)-vis, 0))

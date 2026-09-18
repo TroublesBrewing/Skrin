@@ -51,6 +51,7 @@ type Config struct {
 	Render struct {
 		Images      *bool `toml:"images,omitempty"`       // unset means on
 		LineNumbers *bool `toml:"line_numbers,omitempty"` // unset means off: notes and editor start without line numbers
+		Spreads     *bool `toml:"spreads,omitempty"`      // unset means on
 	} `toml:"render,omitempty"`
 	// Keys is the user's own keymap, written by the Keys tab of `?`:
 	// context ("main", "editor", …) → action name → the keys that work
@@ -117,6 +118,12 @@ func (c Config) RenderImages() bool {
 // of notes and the editor. It is off unless turned on.
 func (c Config) RenderLineNumbers() bool {
 	return c.Render.LineNumbers != nil && *c.Render.LineNumbers
+}
+
+// RenderSpreads reports whether ```spread and ```dataview blocks show their
+// answer rather than their query. It is on unless turned off.
+func (c Config) RenderSpreads() bool {
+	return c.Render.Spreads == nil || *c.Render.Spreads
 }
 
 // Load reads the config file. A missing file is not an error.

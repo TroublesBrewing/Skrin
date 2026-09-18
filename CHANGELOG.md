@@ -2,6 +2,17 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.24.0 — 2026-09-18
+
+Two more quick reports, built directly, no formal tickets.
+
+- **New: Enter on a note in Files opens it straight into editing.** Previously Enter and l/→ both opened a note for reading; now Enter goes straight to writing, and l/→ keeps opening for reading, unchanged. Enter on a folder still just toggles it, and on a non-note file still opens its own app — only the "Enter on a note" case changed. Standing on the note already open, on the note showing in an open split, or on a fresh note in Files all reach editing the same way; the split case swaps it into focus first, the same courtesy every other edit entry point already gives a reference note.
+- **New: Shift+Enter inserts a new line in the editor, exactly like Enter.** It surprised the user that it didn't — most editors treat them the same. Now it's one alias on the same code path, so it undoes exactly the way Enter's own newline does.
+- **The blast radius was bigger than either report suggested,** and worth recording as a lesson: Enter opening a note has been the assumption behind nearly every existing interaction with Files since v0.1, including the "instant-open" call already on record in the UX charter. Around 40 existing tests across most of `internal/ui`'s test files assumed Enter meant "open to read" — fixing them was almost entirely mechanical (swap `enter` for `l` where reading was the real intent), but one, `ops_test.go`'s undo-after-external-write test, turned out to have gone silently vacuous under the changed behaviour: it kept "passing" only because the assertion no longer exercised what it claimed to. Fixed at the root, not patched over.
+- The Guide and the `?` manual's own key descriptions for Enter and l/→ are updated to match.
+- Tests: five new ones for the exact new behaviour (a plain note, a folder, an already-open note, a note in the split, and l/→ staying read-only), two for Shift+Enter (that it inserts a line, and that it undoes the same way Enter's own newline does), plus the ~40 existing tests brought back in line with the new meaning. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux: Enter on a note in Files opens the editor directly; l still opens it for reading; Shift+Enter inserts a line and undoes cleanly.
+- **Not built, for later discussion (the user's own note):** whether Enter on an *already-open, focused* note (today: follow its one visible link) should also move to "start editing it" — a different code path (`noteAction`, not `filesAction`), and one that would need a new home for the one-link auto-follow it would replace. Recorded in `Quick reports/Enter on a viewed note could mean edit.md`.
+
 ## v0.23.0 — 2026-09-18
 
 **New: Alt reaches a view-mode action without leaving what you're doing.** Three quick reports, all the same pattern: "Opening zen mode from edit mode", "Suggestion for key usage", "Follow links to split view". Built directly, no formal tickets.

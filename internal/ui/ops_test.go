@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	tea "charm.land/bubbletea/v2"
 )
 
 // inFilosofi opens Filosofi in Files and puts the cursor on its first entry,
@@ -243,7 +245,7 @@ func TestMarkMoveAndUndoAsOne(t *testing.T) {
 func TestMovingTheOpenNoteKeepsItOpen(t *testing.T) {
 	m := newTestModel(t)
 	inFilosofi(m)
-	press(m, "j", "enter", "m") // in the note, m moves the open note
+	press(m, "j", "l", "m") // in the note, m moves the open note
 	typeText(m, "daily")
 	press(m, "enter")
 	if !m.vault.Exists("Daily/Stoic.md") || m.notePath != "Daily/Stoic.md" {
@@ -332,7 +334,7 @@ func TestUKeepsWhatChangedOnDisk(t *testing.T) {
 	if got := read(m, "Welcome.md"); got != welcome {
 		t.Fatalf("U: %q", got)
 	}
-	press(m, "G", "enter", "u")
+	press(m, "G", "l", "u")
 	if got := read(m, "Welcome.md"); got != "changed elsewhere\n" {
 		t.Errorf("u should bring back what U wrote over: %q", got)
 	}
@@ -432,5 +434,64 @@ func TestDailyRolloverOff(t *testing.T) {
 	press(m, "t")
 	if got, _ := m.vault.Read("Daily/2026-09-15.md"); strings.Contains(got, "call mum") {
 		t.Error("rollover_todos = false still rolled over")
+	}
+}
+
+func TestEnterOnAFileTreeNoteOpensEditingDirectly(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "G") // Welcome.md, cursor in Files
+	press(m, "enter")
+	if m.editor == nil || m.edit.rel != "Welcome.md" || m.focus != paneNote {
+		t.Fatalf("editor open %v, rel %q, focus %v", m.editor != nil, m.edit.rel, m.focus)
+	}
+}
+
+func TestRightArrowOnAFileTreeNoteStillOpensReading(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "G", "l")
+	if m.editor != nil || m.notePath != "Welcome.md" || m.focus != paneNote {
+		t.Fatalf("editor open %v, note %q, focus %v: l should open for reading, not editing", m.editor != nil, m.notePath, m.focus)
+	}
+}
+
+func TestEnterOnAFolderStillTogglesIt(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "j") // Daily/, collapsed
+	if m.files.expanded["Daily"] {
+		t.Fatal("setup: Daily should start collapsed")
+	}
+	press(m, "enter")
+	if !m.files.expanded["Daily"] || m.editor != nil {
+		t.Errorf("expanded %v, editor open %v: enter on a folder should just toggle it", m.files.expanded["Daily"], m.editor != nil)
+	}
+}
+
+func TestEnterOnTheAlreadyOpenNoteStartsEditingIt(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "G", "l", "1") // Welcome.md open for reading; focus back on Files, standing on it
+	if m.editor != nil || m.focus != paneFiles {
+		t.Fatalf("setup: editor open %v, focus %v", m.editor != nil, m.focus)
+	}
+	press(m, "enter")
+	if m.editor == nil || m.edit.rel != "Welcome.md" {
+		t.Fatalf("editor open %v, rel %q: enter on the already-open note should start editing it", m.editor != nil, m.edit.rel)
+	}
+}
+
+func TestEnterOnTheSplitsNoteSwapsThenEdits(t *testing.T) {
+	m := newTestModel(t)
+	m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
+	press(m, "G", "l")                 // Welcome.md open for reading
+	splitWith(m, "stoic", "alt+right") // Stoic focused and main, Welcome the split's reference
+	if m.split == nil || m.split.path != "Welcome.md" || m.notePath != "Filosofi/Stoic.md" {
+		t.Fatalf("setup: split = %+v, notePath %q", m.split, m.notePath)
+	}
+	press(m, "1", "G") // Files: to the bottom, Welcome.md's row — the split's own note
+	if got := m.files.selected().Rel; got != "Welcome.md" {
+		t.Fatalf("setup: cursor on %q, want Welcome.md", got)
+	}
+	press(m, "enter")
+	if m.notePath != "Welcome.md" || m.editor == nil || m.split.path != "Filosofi/Stoic.md" {
+		t.Fatalf("notePath %q, editor open %v, split %+v: enter should swap the split into focus, then edit it", m.notePath, m.editor != nil, m.split)
 	}
 }

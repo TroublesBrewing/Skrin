@@ -9,8 +9,9 @@ import (
 )
 
 // onWelcome opens Welcome.md, the last row in Files, which links to
-// [[Stoic]] and [[Missing]].
-func onWelcome(m *Model) { press(m, "G", "enter") }
+// [[Stoic]] and [[Missing]], for reading — l, not Enter, since Enter now
+// opens straight into editing (v0.24.0).
+func onWelcome(m *Model) { press(m, "G", "l") }
 
 func TestFollowLinkWithHintsAndGoBack(t *testing.T) {
 	m := newTestModel(t)
@@ -60,7 +61,7 @@ func TestAltLeftRightToggleFoldersWhenFilesFocused(t *testing.T) {
 func TestEnterFollowsTheOnlyLinkInView(t *testing.T) {
 	m := newTestModel(t)
 	inFilosofi(m)
-	press(m, "l", "j", "enter", "enter") // open Antik/, onto Zeno, open it, follow its one link
+	press(m, "l", "j", "l", "enter") // open Antik/, onto Zeno, open it (reading), follow its one link
 	if m.notePath != "Filosofi/Stoic.md" {
 		t.Errorf("enter followed to %q", m.notePath)
 	}
@@ -104,7 +105,7 @@ func TestBacklinks(t *testing.T) {
 func TestOutlineAndHeadingJumps(t *testing.T) {
 	m := newTestModel(t)
 	inFilosofi(m)
-	press(m, "j", "enter", "}")
+	press(m, "j", "l", "}")
 	if m.lines[m.noteOff].Heading != 1 {
 		t.Fatalf("} landed on %+v", m.lines[m.noteOff])
 	}

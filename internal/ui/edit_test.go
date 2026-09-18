@@ -53,7 +53,7 @@ func TestEditSaveUndoRedo(t *testing.T) {
 func TestLeavingEditorSavesAndKeepsPlace(t *testing.T) {
 	m := newTestModel(t)
 	inFilosofi(m)
-	press(m, "j", "enter", "ctrl+d")
+	press(m, "j", "l", "ctrl+d")
 	top := m.lines[m.noteOff].Src
 	press(m, "e")
 	if got := m.editor.TopRow(); got != top {
@@ -151,7 +151,7 @@ func TestVimModeInEditor(t *testing.T) {
 
 func TestExternalEditorChangesAreUndoable(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "G", "enter")
+	press(m, "G", "l")
 	if err := os.WriteFile(m.vault.Abs("Welcome.md"), []byte("changed in nvim\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}

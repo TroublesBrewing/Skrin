@@ -83,7 +83,7 @@ func TestResizeSaysWhenFilesWillHide(t *testing.T) {
 // for, which is exactly what zen is for not having.
 func TestZenGetsItsCleanScreenBackAfterAResize(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "G", "enter", "z")
+	press(m, "G", "l", "z")
 	if !m.zen {
 		t.Fatal("should be in zen mode")
 	}

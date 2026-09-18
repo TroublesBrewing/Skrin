@@ -232,7 +232,7 @@ func (e *Editor) HandleKey(k tea.KeyPressMsg) Action {
 		e.mode = Normal
 		e.lastKind = ""
 		e.clampNormal()
-	case "enter":
+	case "enter", "shift+enter":
 		e.push("newline")
 		e.dropSel()
 		e.newline()

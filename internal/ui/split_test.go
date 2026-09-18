@@ -38,7 +38,7 @@ func splitWith(m *Model, q, key string) {
 func TestSplitView(t *testing.T) {
 	m := newTestModel(t)
 	m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
-	press(m, "G", "enter")
+	press(m, "G", "l")
 	splitWith(m, "zeno", "alt+right")
 	if m.split == nil || m.notePath != "Filosofi/Antik/Zeno.md" || m.split.path != "Welcome.md" || !m.splitLeft {
 		t.Fatalf("split %+v, focused %q, other on the left %v", m.split, m.notePath, m.splitLeft)
@@ -99,7 +99,7 @@ func TestSplitView(t *testing.T) {
 func TestSplitStatusLineHintsShiftArrow(t *testing.T) {
 	m := newTestModel(t)
 	m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
-	press(m, "G", "enter")
+	press(m, "G", "l")
 	if strings.Contains(ansi.Strip(m.render()), "shift+←/→ switch panes") {
 		t.Error("the split hint shouldn't show without a split open")
 	}
@@ -116,7 +116,7 @@ func TestSplitStatusLineHintsShiftArrow(t *testing.T) {
 func TestSplitFollowsRenames(t *testing.T) {
 	m := newTestModel(t)
 	m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
-	press(m, "G", "enter")
+	press(m, "G", "l")
 	splitWith(m, "zeno", "alt+right")
 	press(m, "shift+left", "r", "ctrl+u") // rename Welcome, the focused pane
 	typeText(m, "Hello")

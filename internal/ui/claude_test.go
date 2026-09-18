@@ -49,7 +49,7 @@ func askTool(m *Model, tool string, args map[string]any) chan assistant.Response
 
 func TestDrawerTalksToClaude(t *testing.T) {
 	m, f := newClaudeModel(t, Options{})
-	press(m, "G", "enter", "C")
+	press(m, "G", "l", "C")
 	if m.focus != paneClaude || !m.drawer.open {
 		t.Fatal("C should open the drawer, ready to type")
 	}
@@ -99,7 +99,7 @@ func TestDrawerTalksToClaude(t *testing.T) {
 
 func TestDrawerTakesHighlightedText(t *testing.T) {
 	m, _ := newClaudeModel(t, Options{})
-	press(m, "G", "enter", "v", "C")
+	press(m, "G", "l", "v", "C")
 	if got := m.drawer.input.Text(); got != "# Welcome\n" {
 		t.Errorf("from the reading view: %q", got)
 	}
@@ -139,7 +139,7 @@ func TestProposalsWaitForTheUser(t *testing.T) {
 	if resp := <-r; resp.Error || !strings.Contains(resp.Text, "approved") {
 		t.Errorf("reply %+v", resp)
 	}
-	press(m, "G", "enter", "u")
+	press(m, "G", "l", "u")
 	if got := read(m, "Welcome.md"); got != welcome {
 		t.Errorf("u should undo Claude's edit: %q", got)
 	}

@@ -149,7 +149,7 @@ func TestGoToNoteEnterOnEmptyJustCloses(t *testing.T) {
 	if m.chooser != nil || m.notePath != "" {
 		t.Fatal("enter on the empty row should just close the list")
 	}
-	press(m, "G", "enter", "g") // Welcome is open
+	press(m, "G", "l", "g") // Welcome is open
 	c = m.chooser
 	if c.items[c.matches[0]].label != "Welcome" {
 		t.Fatalf("first row = %+v, want the open note", c.items[c.matches[0]])

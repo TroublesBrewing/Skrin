@@ -145,7 +145,7 @@ func TestZenShowsJustTheNote(t *testing.T) {
 	if m.zen || !strings.Contains(m.flash, "Select a note to read in zen mode") {
 		t.Fatalf("zen %v with no note open, flash %q", m.zen, m.flash)
 	}
-	press(m, "G", "enter", "z")
+	press(m, "G", "l", "z")
 	if !m.zen || m.layout().noteTextW() != zenWidth {
 		t.Fatalf("zen %v, text width %d", m.zen, m.layout().noteTextW())
 	}
@@ -217,7 +217,7 @@ func TestKeysTabRebindsAKeyAndSavesIt(t *testing.T) {
 	}
 	// And it works for real, not just in the keymap.
 	press(m, "esc")
-	press(m, "G", "enter") // open a note, so zen has something to show
+	press(m, "G", "l") // open a note, so zen has something to show
 	press(m, "ctrl+g")
 	if !m.zen {
 		t.Error("the rebound key should actually do the thing")

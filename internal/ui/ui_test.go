@@ -217,7 +217,7 @@ func TestNavigateFilesAndNote(t *testing.T) {
 	if m.notePath != "Filosofi/Stoic.md" || m.focus != paneFiles {
 		t.Fatalf("open %q, focus %v: the note under the cursor should open, focus staying in Files", m.notePath, m.focus)
 	}
-	press(m, "enter", "G")
+	press(m, "l", "G")
 	if m.notePath != "Filosofi/Stoic.md" || m.focus != paneNote || m.noteOff == 0 {
 		t.Fatalf("open %q, focus %v, offset %d: want Stoic open, scrolled to the bottom", m.notePath, m.focus, m.noteOff)
 	}
@@ -285,7 +285,7 @@ func TestOpenNoteGoneOutsideSkrin(t *testing.T) {
 func TestSessionIsRestored(t *testing.T) {
 	m := newTestModel(t)
 	inFilosofi(m)
-	press(m, "j", "enter", "ctrl+d")
+	press(m, "j", "l", "ctrl+d")
 	s := m.Session()
 	if s.Open != "Filosofi/Stoic.md" || s.Cursor != "Filosofi/Stoic.md" || s.Offset == 0 || strings.Join(s.Expanded, ",") != "Filosofi" {
 		t.Fatalf("session = %+v", s)

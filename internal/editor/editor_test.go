@@ -22,6 +22,9 @@ func key(k string) tea.KeyPressMsg {
 	if k == "shift+tab" {
 		return tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}
 	}
+	if k == "shift+enter" {
+		return tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModShift}
+	}
 	if c, ok := strings.CutPrefix(k, "ctrl+"); ok {
 		return tea.KeyPressMsg{Code: []rune(c)[0], Mod: tea.ModCtrl}
 	}
@@ -337,5 +340,36 @@ func TestLineNumbersGutter(t *testing.T) {
 	}
 	if !strings.Contains(wrappedView, "   │ ") {
 		t.Errorf("expected continuation padding in wrapped view, got:\n%s", wrappedView)
+	}
+}
+
+func TestShiftEnterInsertsANewLineLikeEnter(t *testing.T) {
+	e := open("")
+	typ(e, "one")
+	keys(e, "shift+enter")
+	typ(e, "two")
+	if got := e.Text(); got != "one\ntwo" {
+		t.Errorf("got %q", got)
+	}
+	if e.row != 1 || e.col != 3 {
+		t.Errorf("cursor at %d,%d, want 1,3", e.row, e.col)
+	}
+}
+
+func TestShiftEnterUndoesLikeEnter(t *testing.T) {
+	e := open("")
+	typ(e, "one")
+	keys(e, "shift+enter")
+	typ(e, "two")
+	// A newline and the typing after it are separate undo steps, the same
+	// as plain Enter: Shift+Enter reuses that exact code path, not a
+	// special case of its own.
+	keys(e, "ctrl+z")
+	if got := e.Text(); got != "one\n" {
+		t.Fatalf("first undo should drop just the typing: got %q", got)
+	}
+	keys(e, "ctrl+z")
+	if got := e.Text(); got != "one" {
+		t.Errorf("second undo should drop the newline: got %q", got)
 	}
 }

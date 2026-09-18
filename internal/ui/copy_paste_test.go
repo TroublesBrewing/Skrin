@@ -12,7 +12,7 @@ import (
 
 func TestCtrlCCopiesTheReadingViewSelection(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "G", "enter", "v") // Welcome.md, one line selected
+	press(m, "G", "l", "v") // Welcome.md, one line selected
 	if m.noteSel == nil {
 		t.Fatal("v should start a selection")
 	}
@@ -41,7 +41,7 @@ func TestCtrlCWithNoSelectionStillQuits(t *testing.T) {
 
 func TestCtrlCCopiesTheEditorSelection(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "G", "enter", "e", "shift+right", "shift+right", "shift+right")
+	press(m, "G", "enter", "shift+right", "shift+right", "shift+right") // enter opens straight into editing now
 	if m.editor == nil || m.editor.Selection() != "# W" {
 		t.Fatalf("setup: selection = %q", m.editor.Selection())
 	}
@@ -59,7 +59,7 @@ func TestCtrlCCopiesTheEditorSelection(t *testing.T) {
 
 func TestCtrlCWithNoEditorSelectionStillCloses(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "G", "enter", "e")
+	press(m, "G", "enter") // opens straight into editing now
 	if m.editor == nil {
 		t.Fatal("setup: editor should be open")
 	}

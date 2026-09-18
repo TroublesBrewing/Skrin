@@ -544,13 +544,13 @@ func (m *Model) filesAction(a action) {
 	f := &m.files
 	switch a {
 	case actOpen:
-		m.openRow()
+		m.openRow(true)
 	case actRight:
 		m.visual = nil // the rows may change under the range
 		isDir, alreadyOpen := f.openFolder()
 		switch {
 		case !isDir:
-			m.openRow()
+			m.openRow(false)
 		case alreadyOpen:
 			m.flash = "Already open — Enter toggles it closed"
 		}
@@ -618,7 +618,11 @@ func (m *Model) folderJump(down bool) {
 // A note that's already showing in the split pane gets the focus there
 // instead of being reopened into the main pane — the same courtesy peek
 // gives j/k, so the reference note is never quietly discarded.
-func (m *Model) openRow() {
+//
+// edit opens a note straight into editing — Enter's own meaning, so
+// standing on a note and pressing Enter goes straight to writing. l/→
+// passes false: stepping into a note that way stays reading, unchanged.
+func (m *Model) openRow(edit bool) {
 	e := m.files.selected()
 	switch {
 	case e.IsDir:
@@ -632,6 +636,9 @@ func (m *Model) openRow() {
 			m.showNote(e.Rel)
 		}
 		m.focus = paneNote
+		if edit {
+			m.openEditor(e.Rel)
+		}
 	default:
 		m.openExternal(m.vault.Abs(e.Rel))
 	}

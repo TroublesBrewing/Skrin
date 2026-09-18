@@ -9,7 +9,7 @@ import (
 
 func TestLineNumbersToggleInMain(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "G", "enter") // open Welcome.md
+	press(m, "G", "l") // open Welcome.md
 	if m.opts.LineNumbers {
 		t.Fatal("line numbers should be off by default")
 	}
@@ -68,9 +68,9 @@ func TestLineNumbersInSplitView(t *testing.T) {
 
 func TestLineNumbersInZenMode(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "G", "enter") // open Welcome.md
-	press(m, "L")          // line numbers on
-	press(m, "z")          // zen mode
+	press(m, "G", "l") // open Welcome.md
+	press(m, "L")      // line numbers on
+	press(m, "z")      // zen mode
 	if !m.zen {
 		t.Fatal("z should enter zen mode")
 	}

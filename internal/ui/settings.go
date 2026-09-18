@@ -100,10 +100,7 @@ func settingsItems() []settingsItem {
 			set: func(m *Model, v bool) {
 				m.opts.LineNumbers = v
 				m.opts.Config.Render.LineNumbers = boolPtr(v)
-				m.renderedW = 0
-				if m.split != nil {
-					m.split.renderedW = 0
-				}
+				m.rerender()
 				if m.editor != nil {
 					m.editor.SetLineNumbers(v)
 				}
@@ -116,10 +113,7 @@ func settingsItems() []settingsItem {
 			set: func(m *Model, v bool) {
 				m.opts.Spreads = v
 				m.opts.Config.Render.Spreads = boolPtr(v)
-				m.renderedW = 0
-				if m.split != nil {
-					m.split.renderedW = 0
-				}
+				m.rerender()
 			},
 		},
 	}

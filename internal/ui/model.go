@@ -324,10 +324,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case ThemeMsg:
 		m.setPalette(msg.Palette)
-		m.renderedW = 0
-		if m.split != nil {
-			m.split.renderedW = 0
-		}
+		m.rerender()
 		m.flash = "theme: " + msg.Palette.Name
 	case VaultChangedMsg:
 		open := m.notePath
@@ -354,10 +351,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.stated {
 			key := thumbKey(msg.abs, msg.cols, msg.rows)
 			m.thumbCache[key] = thumbEntry{mtime: msg.mtime, size: msg.size, lines: msg.lines}
-			m.renderedW = 0
-			if m.split != nil {
-				m.split.renderedW = 0
-			}
+			m.rerender()
 		}
 		delete(m.pendingThumb, thumbKey(msg.abs, msg.cols, msg.rows))
 	case tea.PasteMsg:
@@ -758,14 +752,20 @@ func (m *Model) toggleLineNumbers() {
 	} else {
 		m.flash = "Line numbers off"
 	}
-	m.renderedW = 0
-	if m.split != nil {
-		m.split.renderedW = 0
-	}
+	m.rerender()
 	if m.editor != nil {
 		m.editor.SetLineNumbers(m.opts.LineNumbers)
 	}
 	m.settle()
+}
+
+// rerender has both panes render their notes again, after something that
+// changes how every note looks: the theme, a setting, a decoded image.
+func (m *Model) rerender() {
+	m.renderedW = 0
+	if m.split != nil {
+		m.split.renderedW = 0
+	}
 }
 
 // step moves a cursor over n rows; page is the visible height.

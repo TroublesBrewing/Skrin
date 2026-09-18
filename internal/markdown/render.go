@@ -592,8 +592,9 @@ func splitCells(l string) []string {
 }
 
 // table renders a run of pipe-table rows as aligned columns. When the table
-// is wider than the pane, the widest columns shrink and their cells are
-// clipped with "…".
+// is wider than the pane, the widest columns shrink and their cells wrap.
+// Every other body row is striped, so a row can be followed across a wide
+// table by eye, and a wrapped row reads as one band.
 func (r *renderer) table(rows []string, start int) {
 	cells := make([][][]span, len(rows)) // nil for separator rows
 	var widths []int
@@ -634,8 +635,20 @@ func (r *renderer) table(rows []string, start int) {
 		}
 		widths[widest]--
 	}
-	bar := r.st.rule.Render("│")
+	body := 0 // body rows so far, for the stripes
 	for k := range rows {
+		striped := false
+		if cells[k] != nil && !(k+1 < len(rows) && isTableSep(rows[k+1])) {
+			striped = body%2 == 1
+			body++
+		}
+		fill := func(s string) string { return s }
+		bar := r.st.rule.Render("│")
+		if striped {
+			bg := lipgloss.NewStyle().Background(r.pal.LighterBackground)
+			fill = func(s string) string { return bg.Render(s) }
+			bar = r.st.rule.Background(r.pal.LighterBackground).Render("│")
+		}
 		if cells[k] == nil {
 			var b strings.Builder
 			parts := make([]string, len(widths))
@@ -658,6 +671,10 @@ func (r *renderer) table(rows []string, start int) {
 			var spans []span
 			if c < len(cells[k]) {
 				spans = cells[k][c]
+				if striped {
+					spans = withBackground(spans, r.pal.LighterBackground)
+					cells[k][c] = spans
+				}
 			}
 			cellRows[c] = wrap(spans, w, wrapWords)
 			height = max(height, len(cellRows[c]))
@@ -678,12 +695,23 @@ func (r *renderer) table(rows []string, start int) {
 					text = renderTokens(toks, spans)
 					links = append(links, r.linksIn(toks, spans, col+1)...)
 				}
-				b.WriteString(" " + padRight(text, w) + " " + bar)
+				pad := strings.Repeat(" ", max(w-ansi.StringWidth(text), 0))
+				b.WriteString(fill(" ") + text + fill(pad+" ") + bar)
 				col += w + 3
 			}
 			r.out = append(r.out, Line{Text: ansi.Truncate(b.String(), r.width, ""), Src: start + k, Links: links})
 		}
 	}
+}
+
+// withBackground is spans painted on bg, each keeping its own foreground.
+func withBackground(spans []span, bg color.Color) []span {
+	out := make([]span, len(spans))
+	for i, s := range spans {
+		s.style = s.style.Background(bg)
+		out[i] = s
+	}
+	return out
 }
 
 func spansWidth(spans []span) int {

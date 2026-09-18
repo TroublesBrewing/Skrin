@@ -2,6 +2,15 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.20.1 — 2026-09-18
+
+User feedback on spreads: "The columns are separated by a divider but the item within each column isn't … imagine a list of 200 items and 16 columns. Following 1 row could be very difficult."
+
+- **Table rows are striped now:** every other body row sits on the theme's lighter background, edge to edge between the table's outer bars, so a row can be followed across a wide table by eye. A row that wraps onto several lines keeps one band across all of them, which also shows where it ends. The header and the first row stay plain, so the first stripe reads as clearly apart from the bold header.
+- It's the one table renderer, so this applies to spreads and to every markdown table in a note alike — the same problem, the same fix.
+- Chosen over a divider line between rows, which would double every table's height and still leave 16 columns of plain text to track.
+- Test: the right rows carry the stripe (and the wrong ones don't — so the test can't pass on a palette with no colour), a wrapped striped row keeps it on every line, and every row stays the same width. Verified live in tmux: the stripe turns on at the first bar and off right after the last, with no bleed into the pane.
+
 ## v0.20.0 — 2026-09-18
 
 **New: spreads, phase 1.** From the ticket `Backlog/Refined/Spreads.md` (spec: [[skrin spreads]], formerly "Dataview query blocks"). Built at the user's go-ahead while the PO/UX reviewer was away; that review happens on this build.

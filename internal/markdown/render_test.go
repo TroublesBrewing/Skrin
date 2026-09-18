@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/lurioso/skrin/internal/theme"
@@ -228,5 +229,32 @@ func TestWrappingKeepsSourceLine(t *testing.T) {
 	}
 	if last := lines[len(lines)-1]; last.Src != 2 || ansi.Strip(last.Text) != "end" {
 		t.Errorf("last line = %+v", last)
+	}
+}
+
+func TestTableRowsAreStriped(t *testing.T) {
+	src := "| Book | Author |\n|---|---|\n| Dune | Herbert |\n| Kallocain | Karin Boye, who also wrote poetry and more |\n| Thinking | Kahneman |\n| Walden | Thoreau |\n"
+	lines := render(t, src, 40)
+	bg := lipgloss.NewStyle().Background(theme.Default().LighterBackground).Render("x")
+	stripe := bg[:strings.Index(bg, "x")] // the escape that turns the stripe on
+	byRow := map[int][]string{}
+	for _, l := range lines {
+		byRow[l.Src] = append(byRow[l.Src], l.Text)
+	}
+	for src, want := range map[int]bool{0: false, 2: false, 3: true, 4: false, 5: true} {
+		for _, text := range byRow[src] {
+			if got := strings.Contains(text, stripe); got != want {
+				t.Errorf("source line %d striped = %v, want %v: %q", src, got, want, ansi.Strip(text))
+			}
+		}
+	}
+	if len(byRow[3]) < 2 {
+		t.Errorf("the long row should wrap: %d display lines", len(byRow[3]))
+	}
+	w := ansi.StringWidth(lines[0].Text)
+	for _, l := range lines {
+		if ansi.StringWidth(l.Text) != w {
+			t.Errorf("rows don't line up: %q is %d wide, want %d", ansi.Strip(l.Text), ansi.StringWidth(l.Text), w)
+		}
 	}
 }

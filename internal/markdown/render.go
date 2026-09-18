@@ -1047,6 +1047,31 @@ func fenceMarker(l string) string {
 	return ""
 }
 
+// SpreadBlocks finds the spread blocks in a note's lines: each is its
+// opening and closing fence line. It skips other code blocks the way
+// Render does, so a spread quoted inside a longer fence isn't one, and an
+// unclosed spread isn't one either.
+func SpreadBlocks(lines []string) [][2]int {
+	var out [][2]int
+	fence := ""
+	for i := 0; i < len(lines); i++ {
+		l := lines[i]
+		switch {
+		case fence != "":
+			if isFenceClose(l, fence) {
+				fence = ""
+			}
+		case isSpreadFence(l) && fenceEnd(lines, i) > i:
+			j := fenceEnd(lines, i)
+			out = append(out, [2]int{i, j})
+			i = j
+		case fenceMarker(l) != "":
+			fence = fenceMarker(l)
+		}
+	}
+	return out
+}
+
 // isSpreadFence reports whether l opens a ```spread or ```dataview block.
 func isSpreadFence(l string) bool {
 	m := fenceMarker(l)

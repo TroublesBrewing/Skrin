@@ -180,3 +180,65 @@ func TestTaskWithoutAFieldDoesntBorrowItsNeighbours(t *testing.T) {
 		t.Errorf("the dated task should sort first:\n%s", s)
 	}
 }
+
+// editSpread opens Welcome.md, holding a spread, in the built-in editor,
+// with the cursor on its first line — above the spread.
+func editSpread(t *testing.T, opts Options) *Model {
+	t.Helper()
+	m := withSpread(t, opts, `LIST FROM "Daily"`)
+	press(m, "e")
+	if m.editor == nil || m.editor.Line() != 0 {
+		t.Fatalf("editor not open at the top")
+	}
+	return m
+}
+
+func TestTheEditorShowsASpreadFolded(t *testing.T) {
+	m := editSpread(t, Options{Spreads: true})
+	s := screen(m)
+	for _, want := range []string{foldHint, "2026-09-11", "2026-09-13", "after"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("missing %q:\n%s", want, s)
+		}
+	}
+	if strings.Contains(s, "```spread") || strings.Contains(s, `LIST FROM "Daily"`) {
+		t.Errorf("the query should be folded away:\n%s", s)
+	}
+	checkFrame(t, m, "the editor with a folded spread")
+}
+
+func TestMovingIntoASpreadOpensItAndOutFoldsIt(t *testing.T) {
+	m := editSpread(t, Options{Spreads: true})
+	press(m, "down")
+	if s := screen(m); !strings.Contains(s, "```spread") || !strings.Contains(s, `LIST FROM "Daily"`) || strings.Contains(s, foldHint) {
+		t.Fatalf("on the fence, the query should show:\n%s", s)
+	}
+	checkFrame(t, m, "an opened spread")
+	press(m, "down", "end")
+	typeText(m, " LIMIT 1")
+	press(m, "down", "down") // onto "after"
+	s := screen(m)
+	if !strings.Contains(s, foldHint) || !strings.Contains(s, "2026-09-11") || strings.Contains(s, "2026-09-13") {
+		t.Errorf("out again, the edited query should run:\n%s", s)
+	}
+	press(m, "up") // up into it lands on the closing fence
+	if !strings.Contains(screen(m), "LIMIT 1") {
+		t.Errorf("up from below should open it:\n%s", screen(m))
+	}
+}
+
+func TestSpreadsOffShowTheQueryInTheEditor(t *testing.T) {
+	m := editSpread(t, Options{})
+	if s := screen(m); strings.Contains(s, foldHint) || !strings.Contains(s, `LIST FROM "Daily"`) {
+		t.Errorf("with spreads off, the editor shows plain text:\n%s", s)
+	}
+}
+
+func TestAFoldedSpreadNumbersOnce(t *testing.T) {
+	m := editSpread(t, Options{Spreads: true, LineNumbers: true})
+	s := screen(m)
+	if !strings.Contains(s, " 2 │ "+foldHint) || !strings.Contains(s, " 5 │ after") {
+		t.Errorf("the fold should sit on line 2, and after on 5:\n%s", s)
+	}
+	checkFrame(t, m, "a folded spread with line numbers")
+}

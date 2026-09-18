@@ -150,6 +150,11 @@ type Model struct {
 	noteErr   error
 	lines     []markdown.Line
 	renderedW int // width lines were rendered at; 0 forces a re-render
+	// vaultGen counts vault reloads, and foldCache keeps the editor's
+	// rendered spreads by generation, width and block text, so a spread
+	// only runs again when one of those changes.
+	vaultGen  int
+	foldCache map[string][]string
 	noteOff   int
 	jumpSrc   int // after the next render, scroll to this source line; -1 for none
 
@@ -421,6 +426,7 @@ func (m *Model) setPalette(p theme.Palette) {
 	if m.editor != nil {
 		m.editor.SetPalette(p)
 	}
+	m.foldCache = nil
 }
 
 func (m *Model) do(a action) tea.Cmd {
@@ -769,6 +775,8 @@ func (m *Model) reload() error {
 	if err := m.idx.Update(m.vault); err != nil {
 		return err
 	}
+	m.vaultGen++
+	m.foldCache = nil
 	for p := range m.marks {
 		if _, ok := m.files.entry(p); !ok {
 			delete(m.marks, p)
@@ -835,6 +843,7 @@ func (m *Model) settle() {
 	textW := m.noteTextW()
 	if m.editor != nil {
 		m.editor.SetSize(textW, vis)
+		m.editor.SetFolds(m.editorFolds(textW))
 	}
 	if m.notePath != "" && m.noteErr == nil && textW != m.renderedW {
 		m.lines = markdown.Render(m.noteSrc, markdown.Options{Width: textW, Palette: m.pal, Resolve: m.resolve, Images: m.imageOptions(m.notePath, vis), Embeds: m.embedOptions(m.notePath), Spreads: m.spreadOptions(m.notePath)})

@@ -143,3 +143,11 @@ func plainAll(lines []Line) string {
 	}
 	return strings.Join(b, "\n")
 }
+
+func TestSpreadBlocks(t *testing.T) {
+	lines := strings.Split("intro\n```spread\nLIST\n```\n````markdown\n```spread\nquoted\n```\n````\n~~~dataview\nTASK\n~~~\n```spread\nnever closed", "\n")
+	got := SpreadBlocks(lines)
+	if len(got) != 2 || got[0] != [2]int{1, 3} || got[1] != [2]int{9, 11} {
+		t.Errorf("blocks = %v", got)
+	}
+}

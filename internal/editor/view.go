@@ -84,7 +84,27 @@ func (e *Editor) View() []string {
 	out := make([]string, 0, e.h)
 	d := 0
 	digits := max(len(strconv.Itoa(len(e.lines))), 2)
+	gutter := func(row int, first bool) string {
+		if !e.lineNumbers {
+			return ""
+		}
+		if !first {
+			return e.st.gutter.Render(fmt.Sprintf("%*s", digits, "")) + e.st.gutterSep.Render(" │ ")
+		}
+		return e.st.gutter.Render(fmt.Sprintf("%*d", digits, row+1)) + e.st.gutterSep.Render(" │ ")
+	}
 	for row := 0; row < len(e.lines) && len(out) < e.h; row++ {
+		if f, ok := e.folded(row); ok {
+			if row == f.Start {
+				for k, r := range f.Rows {
+					if d >= e.top && len(out) < e.h {
+						out = append(out, gutter(row, k == 0)+r)
+					}
+					d++
+				}
+			}
+			continue
+		}
 		starts := e.segments(row)
 		if d+len(starts) <= e.top {
 			d += len(starts)

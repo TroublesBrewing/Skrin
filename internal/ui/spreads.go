@@ -1,6 +1,12 @@
 package ui
 
 import (
+	"strconv"
+	"strings"
+
+	"github.com/charmbracelet/x/ansi"
+
+	"github.com/lurioso/skrin/internal/editor"
 	"github.com/lurioso/skrin/internal/habit"
 	"github.com/lurioso/skrin/internal/index"
 	"github.com/lurioso/skrin/internal/markdown"
@@ -67,3 +73,44 @@ func (v indexVault) Backlinks(rel string) []string {
 }
 
 func (v indexVault) Outgoing(rel string) []string { return v.idx.Outgoing(rel) }
+
+// foldHint heads a folded spread in the editor: the one sign that there's
+// editable text behind the answer.
+const foldHint = "spread · move here to edit"
+
+// editorFolds are the spreads in the editor's text, each folded into its
+// answer at width w. The block the cursor is in shows as text anyway, so
+// it isn't run: typing a query never runs it half-typed.
+func (m *Model) editorFolds(w int) []editor.Fold {
+	if !m.opts.Spreads {
+		return nil
+	}
+	lines := strings.Split(strings.ReplaceAll(m.editor.Text(), "\r\n", "\n"), "\n")
+	cur := m.editor.Line()
+	var out []editor.Fold
+	for _, b := range markdown.SpreadBlocks(lines) {
+		f := editor.Fold{Start: b[0], End: b[1], Rows: []string{""}}
+		if cur < b[0] || cur > b[1] {
+			f.Rows = m.foldRows(strings.Join(lines[b[0]:b[1]+1], "\n"), w)
+		}
+		out = append(out, f)
+	}
+	return out
+}
+
+func (m *Model) foldRows(block string, w int) []string {
+	key := strconv.Itoa(m.vaultGen) + "\x00" + strconv.Itoa(w) + "\x00" + block
+	if rows, ok := m.foldCache[key]; ok {
+		return rows
+	}
+	if m.foldCache == nil || len(m.foldCache) > 64 {
+		m.foldCache = map[string][]string{}
+	}
+	rows := []string{m.st.muted.Render(ansi.Truncate(foldHint, w, "…"))}
+	opts := markdown.Options{Width: w, Palette: m.pal, Resolve: m.resolveFrom(m.edit.rel), Spreads: m.spreadOptions(m.edit.rel)}
+	for _, l := range markdown.Render(block, opts) {
+		rows = append(rows, l.Text)
+	}
+	m.foldCache[key] = rows
+	return rows
+}

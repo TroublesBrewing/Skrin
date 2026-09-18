@@ -64,6 +64,7 @@ type Editor struct {
 	saved       string
 	crlf        bool
 	lineNumbers bool
+	folds       []Fold
 	st          styles
 }
 
@@ -159,7 +160,7 @@ func (e *Editor) GoTo(row int) {
 func (e *Editor) TopRow() int {
 	d := 0
 	for row := range e.lines {
-		d += len(e.segments(row))
+		d += e.rowsOf(row)
 		if d > e.top {
 			return row
 		}
@@ -889,7 +890,7 @@ func segOf(starts []int, col int) int {
 func (e *Editor) displayIndex(row, col int) int {
 	n := 0
 	for r := 0; r < row; r++ {
-		n += len(e.segments(r))
+		n += e.rowsOf(r)
 	}
 	return n + segOf(e.segments(row), col)
 }

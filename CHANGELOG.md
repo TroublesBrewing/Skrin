@@ -2,6 +2,17 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.22.0 — 2026-09-18
+
+**New: spreads, phase 3 — live preview in the editor.** Spec [[skrin spreads]]; the user's own request from the original spec ("the dataview is a table while the cursor is not within the code block, changing to the raw query when moving into the code block"). Built at the user's go-ahead ("build it now. I have to see it in action to know if I like it").
+
+- **In the built-in editor, a spread shows its answer** under a dim `spread · move here to edit` line — the user chose the hint over a bare table, so there's always a sign of the editable text behind it. Move onto any of its lines and it opens into the query: from above you land on the opening fence, from below on the closing one. Move off and it folds back, run again if the query changed.
+- **Headings and text around it are unaffected** (the user's question): the fold is only the fences and what's between them, so a heading right above stays an ordinary line with the answer under it, and a new line typed under that heading just pushes the fold down.
+- **How it's built:** the editor gains `Fold`s. The only code that changed is what *counts* display rows (`displayIndex`, `TopRow`) and what *draws* them (`View`); movement still steps over real lines, so stepping onto a folded line lands inside it and opens it — no movement code needed changing, and the cursor can never sit on a folded row. `internal/ui` recomputes the folds after every update from the text (a new `markdown.SpreadBlocks`, which skips a spread quoted inside a longer code fence, and unclosed ones), rendering each through the same renderer the reading view uses, cached by vault generation, width and block text. The block holding the cursor is never run, so typing a query never runs it half-typed.
+- **Answers come from the notes as saved:** a spread over the note being edited sees it as of its last save. The Guide says so.
+- The "Show spreads" setting covers the editor too; line numbers give a fold its fence's number and leave the rest of its rows blank.
+- Tests: `internal/editor` (what a fold shows, stepping in from both sides, scroll positions counting folded rows, the gutter, stale folds dropped), `internal/markdown` (`SpreadBlocks`), `internal/ui` (a folded spread in the editor, opening it, editing the query and seeing it re-run, spreads off, line numbers, exact frames). Every existing editor test passes unchanged. Live in tmux with a heading directly above the fence: folded under the heading, open on ↓, folded again below, and a new line under the heading moving the fold down.
+
 ## v0.21.1 — 2026-09-18
 
 Asked for by the user: "could we add natural language recognition to due dates? … In the action of leaving the edit mode 'tomorrow' in a due key becomes the upcoming date?"

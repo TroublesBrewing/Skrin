@@ -105,9 +105,15 @@ func (m *Model) openEditor(rel string) {
 }
 
 func (m *Model) editorKey(k tea.KeyPressMsg) tea.Cmd {
-	if m.actionIn(inEditor, k.String()) == actAskClaude {
+	// Alt+<key> reaches a view-mode action without leaving the editor: the
+	// same overlay or mode, on the note being edited. Plain letters keep
+	// typing text, so these only ever fire with Alt held.
+	switch a := m.actionIn(inEditor, k.String()); a {
+	case actAskClaude:
 		m.openDrawer()
 		return nil
+	case actZen, actBacklinks, actOutline:
+		return m.do(a)
 	}
 	switch m.editor.HandleKey(k) {
 	case editor.Save:

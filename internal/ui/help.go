@@ -304,7 +304,7 @@ func (m *Model) guideText(w int) []manualLine {
 	para("Two widths are worth knowing. Below 80 columns Files only shows while it has the focus, so the note keeps the screen — the indicator says so, because Files going quiet otherwise looks like a fault. Below 80 there's also no room for a split, and an open one closes, saying which note it closed.")
 
 	head("Split view")
-	para("In Go to note, Shift+→ opens the note beside the one you're reading, on the right, and Shift+← on the left. Enter still opens it in place.")
+	para("In Go to note, Alt+→ opens the note beside the one you're reading, on the right, and Alt+← on the left. Enter still opens it in place. Following a link with f or Enter does the same: Alt+ on the hint's letter opens it beside instead of in place — Alt means \"into a split\" everywhere a note can open.")
 	para("In the note, Shift+← and Shift+→ move between the two panes; keys act on the one with the bright border. Esc closes the pane you're in, and z (zen) closes the other.")
 	para("Two is the most, so a new split replaces the older one. Below 80 columns there's no room for one, and splits aren't remembered when you quit.")
 
@@ -333,9 +333,10 @@ func (m *Model) guideText(w int) []manualLine {
 
 	head("Links")
 	para("[[Note]], [[Note|alias]], [[Note#Heading]], [[Note#^block]], ![[embeds]] and markdown [text](path) links all work, and resolve the way Obsidian resolves them.")
-	para("f puts a letter on each link in view; type it to follow. Enter follows the link when there's only one in view.")
+	para("f puts a letter on each link in view; type it to follow. Alt+ on the letter opens it in a split beside the note instead. Enter follows the link when there's only one in view.")
 	para("A link to a note that doesn't exist yet is dimmed; following it offers to create the note.")
 	para("Backspace or Ctrl-o goes back, Ctrl-i goes forward, and b lists the notes linking here.")
+	para("In the editor, Alt-z, Alt-b and Alt-o reach zen, backlinks and the outline without leaving it — the outline moves the editor's own cursor, and picking a backlink saves first, since that leaves the note. Alt is how a view-mode action reaches you while you're still typing.")
 	para("Renaming or moving offers to update the links to what moved, as Obsidian does.")
 
 	head("Spreads")

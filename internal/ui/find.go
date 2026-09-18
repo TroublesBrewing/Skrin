@@ -436,7 +436,7 @@ func (m *Model) toggle(label string, on bool) string {
 // one. The first row is the note already open (or an empty row when none
 // is), so Enter straight away just closes the list.
 func (m *Model) openSwitcher() {
-	c := &chooser{title: "Go to note", prompt: "name", empty: "No note by that name · enter creates it", verb: "open · shift+←/→ split"}
+	c := &chooser{title: "Go to note", prompt: "name", empty: "No note by that name · enter creates it", verb: "open · alt+←/→ split"}
 	open := ""
 	if m.notePath != "" {
 		open = m.notePath

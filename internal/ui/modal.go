@@ -175,7 +175,7 @@ type chooser struct {
 	empty   string                      // when nothing matches
 	verb    string                      // what enter does, for the footer
 	none    func(query string)          // what enter does when nothing matches, if anything
-	split   func(rel string, left bool) // Shift+←/→: open the row's note in a split
+	split   func(rel string, left bool) // Alt+←/→: open the row's note in a split
 	items   []choice
 	in      lineInput
 	matches []int // indexes into items, best first

@@ -158,8 +158,9 @@ type Model struct {
 	noteOff   int
 	jumpSrc   int // after the next render, scroll to this source line; -1 for none
 
-	split     *noteView // the other note of a split view
-	splitLeft bool      // the other note sits left of the focused one
+	split        *noteView // the other note of a split view
+	splitLeft    bool      // the other note sits left of the focused one
+	splitJumpSrc int       // after the next render, scroll the split to this source line; -1 for none
 
 	back, fwd []place // history of opened notes
 
@@ -227,7 +228,7 @@ func New(v *vault.Vault, pal theme.Palette, opts Options) (*Model, error) {
 	}
 	m := &Model{
 		vault: v, idx: index.New(), snaps: snapshot.Open(v.Root), files: newFiles(),
-		opts: opts, marks: map[string]bool{}, jumpSrc: -1, events: make(chan tea.Msg, 256),
+		opts: opts, marks: map[string]bool{}, jumpSrc: -1, splitJumpSrc: -1, events: make(chan tea.Msg, 256),
 		thumbCache: map[string]thumbEntry{}, keys: newKeymap(opts.Config.Keys),
 	}
 	m.journal.Keep = m.snaps.Save // U keeps what's on disk before it restores
@@ -357,6 +358,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.proposalKey(msg)
 		case m.focus == paneClaude:
 			m.drawerKey(msg)
+		// The chooser (backlinks, outline) can now open from inside the
+		// editor (Alt+B/Alt+O), so it takes keys ahead of the editor,
+		// exactly as it always has ahead of everything below it — the two
+		// never used to coexist, so this changes nothing else.
+		case m.chooser != nil:
+			m.chooserKey(msg)
 		case m.editor != nil:
 			if m.complete == nil || !m.completionKey(msg) {
 				cmd = m.editorKey(msg)
@@ -370,8 +377,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.hintKey(msg)
 		case m.prompt != nil:
 			m.promptKey(msg)
-		case m.chooser != nil:
-			m.chooserKey(msg)
 		case m.book != nil:
 			cmd = m.bookCardKey(msg)
 		case m.habits != nil:
@@ -859,6 +864,15 @@ func (m *Model) settle() {
 		if s.err == nil && w != s.renderedW {
 			s.lines = markdown.Render(s.src, markdown.Options{Width: w, Palette: m.pal, Resolve: m.resolveFrom(s.path), Images: m.imageOptions(s.path, vis), Embeds: m.embedOptions(s.path), Spreads: m.spreadOptions(s.path)})
 			s.renderedW = w
+		}
+		if m.splitJumpSrc >= 0 {
+			for i, ln := range s.lines {
+				if ln.Src >= m.splitJumpSrc {
+					s.off = i
+					break
+				}
+			}
+			m.splitJumpSrc = -1
 		}
 		s.off = clamp(s.off, 0, max(len(s.lines)-vis, 0))
 	}

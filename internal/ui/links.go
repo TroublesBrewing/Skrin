@@ -1,7 +1,9 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"net/url"
 	"path"
 	"sort"
@@ -33,6 +35,7 @@ type hint struct {
 type hintState struct {
 	hints []hint
 	typed string
+	split bool // an Alt+letter was pressed: follow into a split, not in place
 }
 
 const hintKeys = "asdfghjklqwertyuiopzxcvbnm"
@@ -56,7 +59,7 @@ func (m *Model) startHints(direct bool) {
 		m.flash = "No links in view"
 		return
 	case len(hs) == 1 && direct:
-		m.follow(hs[0].link)
+		m.follow(hs[0].link, false)
 		return
 	}
 	for i, l := range hintLabels(len(hs)) {
@@ -91,6 +94,12 @@ func hintLabels(n int) []string {
 func (m *Model) hintKey(k tea.KeyPressMsg) {
 	h := m.hints
 	s := k.String()
+	// Alt+<letter> opens the link beside the note instead of in place; held
+	// for any letter of a two-letter label, since a rare >26-link note
+	// shouldn't need Alt on both keys to mean it once.
+	if rest, ok := strings.CutPrefix(s, "alt+"); ok {
+		h.split, s = true, rest
+	}
 	if len([]rune(s)) != 1 {
 		m.hints = nil
 		return
@@ -101,7 +110,7 @@ func (m *Model) hintKey(k tea.KeyPressMsg) {
 		switch {
 		case ht.label == h.typed:
 			m.hints = nil
-			m.follow(ht.link)
+			m.follow(ht.link, h.split)
 			return
 		case strings.HasPrefix(ht.label, h.typed):
 			partial = true
@@ -118,10 +127,11 @@ func (m *Model) withLabel(line string, col int, label string) string {
 	return ansi.Cut(line, 0, col) + "\x1b[m" + m.st.hint.Render(label) + ansi.TruncateLeft(line, col+ansi.StringWidth(label), "")
 }
 
-// follow opens what a link points to: a note (at its #heading), another
-// file, or a web address. A link to a note that doesn't exist offers to
-// create it.
-func (m *Model) follow(l markdown.Link) {
+// follow opens a link's target — a note (at its #heading), another file, or
+// a web address, offering to create a note that doesn't exist yet — in
+// place, or in the split beside the open note when split is true (an
+// Alt+letter hint, or Alt+arrow in Go to note).
+func (m *Model) follow(l markdown.Link, split bool) {
 	target := l.Target
 	if !l.Wiki {
 		if strings.Contains(target, "://") || strings.HasPrefix(target, "mailto:") {
@@ -145,6 +155,8 @@ func (m *Model) follow(l markdown.Link) {
 		m.offerCreate(note)
 	case !vault.IsNote(rel):
 		m.openExternal(m.vault.Abs(rel))
+	case split:
+		m.followInSplit(rel, sub)
 	default:
 		m.goTo(rel, sub)
 	}
@@ -158,6 +170,42 @@ func (m *Model) goTo(rel, sub string) {
 	}
 	if line, ok := m.idx.Anchor(rel, sub); ok {
 		m.jumpSrc = line
+	} else {
+		m.flash = fmt.Sprintf("No %q in %s", sub, displayName(rel))
+	}
+}
+
+// followInSplit opens rel beside the open note, in the split, the way
+// skimming does: what's already open and focused stays that way, and the
+// followed note appears for reference. A #sub target scrolls the split to
+// it once it's rendered (settle's splitJumpSrc), same as goTo does for the
+// main note with jumpSrc.
+func (m *Model) followInSplit(rel, sub string) {
+	switch {
+	case m.notePath == "":
+		m.flash = "Select a note to split beside"
+		return
+	case m.width < splitMinWidth:
+		m.flash = "No room to split"
+		return
+	}
+	src, err := m.vault.Read(rel)
+	if errors.Is(err, fs.ErrNotExist) {
+		m.flash = displayName(rel) + " is gone"
+		return
+	}
+	if m.split == nil {
+		m.split = &noteView{}
+		m.splitLeft = false
+	}
+	*m.split = noteView{path: rel, src: src, err: err}
+	if sub == "" {
+		m.flash = "Opened beside · Shift+→ focuses"
+		return
+	}
+	if line, ok := m.idx.Anchor(rel, sub); ok {
+		m.splitJumpSrc = line
+		m.flash = "Opened beside · Shift+→ focuses"
 	} else {
 		m.flash = fmt.Sprintf("No %q in %s", sub, displayName(rel))
 	}
@@ -287,9 +335,20 @@ func (m *Model) showBacklinks() {
 	}
 	c := &chooser{title: fmt.Sprintf("Links to %s (%d)", displayName(rel), len(bl)), prompt: "filter", empty: "No match", verb: "open"}
 	for _, b := range bl {
+		b := b
 		c.items = append(c.items, choice{
 			label: displayName(b.Source), detail: b.Link.Context,
-			do: func() { m.goToLine(b.Source, b.Link.Line) },
+			do: func() {
+				// Picking a backlink leaves the note being edited (Alt-B
+				// can open this from the editor too), so it's the same
+				// save-then-go Esc already does, not a special case.
+				if m.editor != nil {
+					if m.saveEdit(true); m.editor != nil {
+						return // a conflict came up; the dialog has focus now
+					}
+				}
+				m.goToLine(b.Source, b.Link.Line)
+			},
 		})
 	}
 	m.openChooser(c)
@@ -308,9 +367,20 @@ func (m *Model) showOutline() {
 	}
 	c := &chooser{title: "Outline of " + displayName(rel), prompt: "filter", empty: "No match", verb: "jump"}
 	for _, h := range hs {
+		h := h
 		c.items = append(c.items, choice{
 			label: strings.Repeat("  ", h.Level-1) + h.Text,
-			do:    func() { m.focus = paneNote; m.jumpSrc = h.Line },
+			// The outline only ever shows the open note's own headings, so
+			// from the editor (Alt-O) this moves its cursor, not a reading
+			// scroll it isn't even showing right now.
+			do: func() {
+				if m.editor != nil {
+					m.editor.GoTo(h.Line)
+					return
+				}
+				m.focus = paneNote
+				m.jumpSrc = h.Line
+			},
 		})
 	}
 	m.openChooser(c)

@@ -39,7 +39,7 @@ func TestSplitView(t *testing.T) {
 	m := newTestModel(t)
 	m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
 	press(m, "G", "enter")
-	splitWith(m, "zeno", "shift+right")
+	splitWith(m, "zeno", "alt+right")
 	if m.split == nil || m.notePath != "Filosofi/Antik/Zeno.md" || m.split.path != "Welcome.md" || !m.splitLeft {
 		t.Fatalf("split %+v, focused %q, other on the left %v", m.split, m.notePath, m.splitLeft)
 	}
@@ -72,7 +72,7 @@ func TestSplitView(t *testing.T) {
 	checkFrame(t, m, "split closed at 79")
 
 	m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
-	splitWith(m, "stoic", "shift+left")
+	splitWith(m, "stoic", "alt+left")
 	if m.notePath != "Filosofi/Stoic.md" || m.splitLeft || m.split.path != "Welcome.md" {
 		t.Fatalf("shift+left should open Stoic on the left: focused %q", m.notePath)
 	}
@@ -80,14 +80,14 @@ func TestSplitView(t *testing.T) {
 	if m.split != nil || m.notePath != "Welcome.md" {
 		t.Errorf("esc should close the pane you're in: focused %q", m.notePath)
 	}
-	splitWith(m, "zeno", "shift+right")
+	splitWith(m, "zeno", "alt+right")
 	press(m, "z")
 	if !m.zen || m.split != nil || !strings.Contains(m.flash, "closed Welcome") {
 		t.Errorf("zen should close the other pane: zen %v, split %v, flash %q", m.zen, m.split != nil, m.flash)
 	}
 	press(m, "esc")
 	m.Update(tea.WindowSizeMsg{Width: 60, Height: 20})
-	splitWith(m, "stoic", "shift+right")
+	splitWith(m, "stoic", "alt+right")
 	if m.split != nil || !strings.Contains(m.flash, "No room") {
 		t.Errorf("a split below 80 columns should be refused: %q", m.flash)
 	}
@@ -103,7 +103,7 @@ func TestSplitStatusLineHintsShiftArrow(t *testing.T) {
 	if strings.Contains(ansi.Strip(m.render()), "shift+←/→ switch panes") {
 		t.Error("the split hint shouldn't show without a split open")
 	}
-	splitWith(m, "zeno", "shift+right")
+	splitWith(m, "zeno", "alt+right")
 	if !strings.Contains(ansi.Strip(m.render()), "shift+←/→ switch panes") {
 		t.Errorf("the split hint should show once a split is open:\n%s", ansi.Strip(m.render()))
 	}
@@ -117,7 +117,7 @@ func TestSplitFollowsRenames(t *testing.T) {
 	m := newTestModel(t)
 	m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
 	press(m, "G", "enter")
-	splitWith(m, "zeno", "shift+right")
+	splitWith(m, "zeno", "alt+right")
 	press(m, "shift+left", "r", "ctrl+u") // rename Welcome, the focused pane
 	typeText(m, "Hello")
 	press(m, "enter")

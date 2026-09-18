@@ -1,8 +1,11 @@
 package ui
 
 import (
+	"os"
 	"strings"
 	"testing"
+
+	tea "charm.land/bubbletea/v2"
 )
 
 // onWelcome opens Welcome.md, the last row in Files, which links to
@@ -226,5 +229,50 @@ func TestHeadingCompletion(t *testing.T) {
 	press(m, "esc")
 	if m.complete != nil || m.editor == nil {
 		t.Error("esc should close the popup, not the editor")
+	}
+}
+
+func TestAltHintOpensTheLinkInASplit(t *testing.T) {
+	m := newTestModel(t)
+	m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
+	onWelcome(m)
+	press(m, "f", "alt+a") // to Stoic
+	if m.split == nil || m.split.path != "Filosofi/Stoic.md" {
+		t.Fatalf("split = %+v", m.split)
+	}
+	if m.notePath != "Welcome.md" || m.focus != paneNote {
+		t.Errorf("the note being read should stay open and focused: %q, focus %v", m.notePath, m.focus)
+	}
+	if !strings.Contains(m.flash, "Opened beside") {
+		t.Errorf("flash = %q", m.flash)
+	}
+}
+
+func TestAltHintNeedsRoomToSplit(t *testing.T) {
+	m := newTestModel(t)
+	m.Update(tea.WindowSizeMsg{Width: 79, Height: 24})
+	onWelcome(m)
+	press(m, "f", "alt+a")
+	if m.split != nil || !strings.Contains(m.flash, "No room to split") {
+		t.Errorf("split = %+v, flash = %q", m.split, m.flash)
+	}
+}
+
+func TestAltHintToAHeadingScrollsTheSplit(t *testing.T) {
+	m := newTestModel(t)
+	m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
+	// Filosofi/Stoic.md has "# Stoic\n## Morning\n" then 80 filler lines: a
+	// heading far enough down that landing on it, not the top, is obvious.
+	if err := os.WriteFile(m.vault.Abs("Welcome.md"), []byte("# Welcome\nSee [[Filosofi/Stoic#Morning]].\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m.Update(VaultChangedMsg{})
+	onWelcome(m)
+	press(m, "f", "alt+a")
+	if m.split == nil || m.split.path != "Filosofi/Stoic.md" {
+		t.Fatalf("split = %+v", m.split)
+	}
+	if m.split.off == 0 {
+		t.Errorf("the split should scroll to #Morning, not sit at the top")
 	}
 }

@@ -2,6 +2,17 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.23.0 — 2026-09-18
+
+**New: Alt reaches a view-mode action without leaving what you're doing.** Three quick reports, all the same pattern: "Opening zen mode from edit mode", "Suggestion for key usage", "Follow links to split view". Built directly, no formal tickets.
+
+- **In the editor, Alt-z, Alt-b and Alt-o reach zen, backlinks and the outline** without leaving the editor. Zen keeps editing centred, cursor untouched. The outline moves the *editor's own* cursor to the picked heading, since the reading view isn't even showing. Backlinks leaves the note — the editor didn't have a way to do that safely before, so picking one now saves first (declining stays put if a conflict comes up), the same save-then-go Esc already does.
+- **Following a link with `f`: Alt+ on the hint's letter opens it in a split** beside the note, instead of in place — held on any letter of a two-letter label. The note you were reading stays open and focused, the same way skimming does; only the follow-in-place case swaps the main note away.
+- **Go to note's split key is now Alt+←/→, not Shift+←/→**, so Alt means "into a split" everywhere a note can open — following a link, or going to one by name. (Shift+←/→ keeps its other, unrelated job: switching focus between the two panes of a split already open.)
+- A #heading target on an Alt-opened link scrolls the split to it, the same way it scrolls the main pane — a new `splitJumpSrc`, the split's own version of the mechanism the main note already had.
+- **How it's built:** the chooser overlay (backlinks, outline) can now open from inside the editor, so it takes keys ahead of it in the dispatch order — the two never used to coexist, so this changes nothing for any path that isn't the new one.
+- Tests: the whole small set from the editor (zen round-trips without losing the cursor, outline moves the editor's cursor, backlinks saves an unsaved change before leaving), Alt-hint into a split (with and without room, and scrolling to a heading), and every existing split/switcher test updated to the new key with no other change needed. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux: zen and outline round-trip from the editor without losing your place, an unsaved edit is on disk before backlinks navigates away, and an Alt-followed hint opens beside the note you were reading, not instead of it.
+
 ## v0.22.0 — 2026-09-18
 
 **New: spreads, phase 3 — live preview in the editor.** Spec [[skrin spreads]]; the user's own request from the original spec ("the dataview is a table while the cursor is not within the code block, changing to the raw query when moving into the code block"). Built at the user's go-ahead ("build it now. I have to see it in action to know if I like it").

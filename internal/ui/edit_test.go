@@ -187,3 +187,70 @@ func TestSnapshotsFollowRename(t *testing.T) {
 		t.Errorf("u after a rename: %q", got)
 	}
 }
+
+func TestAltZOpensZenWithoutLeavingTheEditor(t *testing.T) {
+	m := newTestModel(t)
+	openWelcome(t, m)
+	press(m, "down") // row 1, so a restored position is provable
+	press(m, "alt+z")
+	if !m.zen || m.editor == nil {
+		t.Fatalf("zen %v, editor open %v", m.zen, m.editor != nil)
+	}
+	if m.editor.Line() != 1 {
+		t.Errorf("the cursor should stay put: line %d", m.editor.Line())
+	}
+	checkFrame(t, m, "zen mode from the editor")
+	press(m, "alt+z")
+	if m.zen || m.editor == nil {
+		t.Errorf("a second alt+z should leave zen, staying in the editor: zen %v, editor open %v", m.zen, m.editor != nil)
+	}
+}
+
+func TestAltOJumpsTheEditorsCursorToAHeading(t *testing.T) {
+	m := newTestModel(t)
+	inFilosofi(m) // cursor on Filosofi/Stoic.md: "# Stoic\n## Morning\n" + 80 lines
+	hs := m.idx.Headings("Filosofi/Stoic.md")
+	if len(hs) != 2 {
+		t.Fatalf("setup: headings = %+v", hs)
+	}
+	press(m, "j", "e")
+	if m.editor == nil {
+		t.Fatal("setup: editor not open")
+	}
+	press(m, "alt+o")
+	if m.chooser == nil || len(m.chooser.items) != 2 {
+		t.Fatalf("outline = %+v", m.chooser)
+	}
+	typeText(m, "morn")
+	press(m, "enter")
+	if m.chooser != nil || m.editor == nil {
+		t.Fatalf("chooser %+v, editor open %v", m.chooser, m.editor != nil)
+	}
+	if m.editor.Line() != hs[1].Line {
+		t.Errorf("the editor's cursor should be on ## Morning, line %d: got %d", hs[1].Line, m.editor.Line())
+	}
+}
+
+func TestAltBSavesAndLeavesForABacklink(t *testing.T) {
+	m := newTestModel(t)
+	inFilosofi(m) // cursor on Filosofi/Stoic.md
+	press(m, "j", "e")
+	if m.editor == nil {
+		t.Fatal("setup: editor not open")
+	}
+	typeText(m, "x") // an unsaved change alt+b must save before leaving
+	press(m, "alt+b")
+	if m.chooser == nil || len(m.chooser.items) != 2 {
+		t.Fatalf("backlinks = %+v", m.chooser)
+	}
+	press(m, "enter") // the first match, whichever it is
+	if m.chooser != nil || m.editor != nil {
+		t.Fatalf("chooser %+v, editor open %v: should have saved and left", m.chooser, m.editor != nil)
+	}
+	if got := read(m, "Filosofi/Stoic.md"); !strings.Contains(got, "xtags") {
+		t.Errorf("the edit wasn't saved before leaving: %q", got)
+	}
+	if m.notePath == "Filosofi/Stoic.md" {
+		t.Error("should have moved to the backlink's note, not stayed on Stoic")
+	}
+}

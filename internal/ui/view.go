@@ -274,7 +274,7 @@ func (m *Model) statusLine() string {
 	case m.editor != nil:
 		return m.editLine()
 	case m.hints != nil:
-		return spread(m.st.pill.Render(" FOLLOW ")+" "+m.st.text.Render("Type the letters on a link"), m.st.muted.Render("esc cancel"), m.width)
+		return spread(m.st.pill.Render(" FOLLOW ")+" "+m.st.text.Render("Type the letters on a link · Alt+ opens it beside"), m.st.muted.Render("esc cancel"), m.width)
 	case m.prompt != nil:
 		return m.promptLine()
 	case m.confirm != nil:

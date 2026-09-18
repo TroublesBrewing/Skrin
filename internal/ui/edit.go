@@ -384,6 +384,9 @@ func (m *Model) diffLine(l string) string {
 
 func (m *Model) editLine() string {
 	mode, hint := " EDIT ", "ctrl+s save · ctrl+l to-do · esc done"
+	if m.editor.InTable() {
+		hint = "tab next cell · enter next row · esc done"
+	}
 	if m.opts.Vim {
 		mode, hint = " INSERT ", "esc normal mode"
 		if m.editor.Mode() == editor.Normal {
@@ -391,7 +394,11 @@ func (m *Model) editLine() string {
 		}
 	}
 	if k := m.keyFor(inEditor, actPalette); k != "" {
-		hint = k + " commands · " + hint
+		what := " commands · "
+		if m.editor.InTable() && (!m.opts.Vim || m.editor.Mode() != editor.Normal) {
+			what = " table commands · "
+		}
+		hint = k + what + hint
 	}
 	left := m.st.pill.Render(mode) + " " + m.st.text.Render(m.edit.rel)
 	right := m.st.muted.Render(hint)

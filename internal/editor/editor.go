@@ -251,6 +251,12 @@ func (e *Editor) HandleKey(k tea.KeyPressMsg) Action {
 			return None
 		}
 	}
+	if s == "tab" || s == "shift+tab" || s == "enter" {
+		if e.tableKey(s) == nil {
+			e.scroll()
+			return None
+		}
+	}
 	vertical := false
 	switch s {
 	case "esc":

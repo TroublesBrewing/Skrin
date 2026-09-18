@@ -123,3 +123,43 @@ func TestEscClosesTheTableFormAndInsertsNothing(t *testing.T) {
 		t.Error("esc should close the form, keep editing, and change nothing")
 	}
 }
+
+func TestTableCommandsShowOnlyInATable(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "G", "enter") // Welcome, editing, on "# Welcome"
+	press(m, "ctrl+p")
+	for _, l := range paletteLabels(m) {
+		if strings.HasPrefix(l, "Table:") {
+			t.Fatalf("outside a table the palette shouldn't list %q", l)
+		}
+	}
+	press(m, "esc")
+	runCommand(m, "insert table")
+	press(m, "enter") // a 3 × 2 table, cursor in the first heading
+	press(m, "ctrl+p")
+	paletteItem(t, m, "Table: add a column to the right")
+	if s := ansi.Strip(m.editLine()); !strings.Contains(s, "tab next cell") || !strings.Contains(s, "ctrl+p table commands") {
+		t.Errorf("in a table the status line names its keys: %q", s)
+	}
+}
+
+func TestTableCommandFromThePalette(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "G", "enter")
+	runCommand(m, "insert table")
+	press(m, "enter")
+	typeText(m, "Title")
+	press(m, "tab")
+	typeText(m, "Year")
+	runCommand(m, "table delete column")
+	if m.flash != "Column deleted · ctrl+z brings it back" {
+		t.Errorf("flash %q", m.flash)
+	}
+	if !strings.Contains(m.editor.Text(), "| Title |     |\n| ----- | --- |") {
+		t.Errorf("the Year column should be gone:\n%s", m.editor.Text())
+	}
+	runCommand(m, "table delete this row")
+	if m.flash != "The heading row stays: move to a row below it" {
+		t.Errorf("a refusal should say why: %q", m.flash)
+	}
+}

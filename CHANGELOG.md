@@ -2,6 +2,17 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.28.0 — 2026-09-18
+
+**New: tables that edit themselves, the way Obsidian's Advanced Tables plugin does.** The user, after v0.27.0's Insert table: "You know the plugin Advanced Tables from Obsidian. Something like that." This reopens the wishlist's "table editor" cut, at the user's word.
+
+- **Tab, Shift+Tab and Enter in a table.** In the editor, Tab and Shift+Tab move from cell to cell, and Enter to the first cell of the row below: a row is filled with Tab, the next begun with Enter. Past the last cell or row a new row appears. Enter on an empty last row takes it away and leaves the table, onto a line of its own with a blank line kept between — a line straight under a table would otherwise be read as one more row of it. Every move lines the table up again, alignment kept, wide characters and escaped `\|` included. Outside a table Tab still indents and Enter still continues lists; Shift+Enter is always a plain new line.
+- **Start a table by typing it**: "| Book | Year | Rating" and Tab adds the separator row, lines it up, and moves on.
+- **Table commands in the palette**, shown only while the cursor is in a table (Ctrl+P, "table"): add a row below or above, delete or move a row, add a column right or left, delete or move a column, align a column left, centred or right, sort the rows by a column A → Z or Z → A (numbers as numbers, empty cells last), and line the table up. Each is one undo step. The heading row isn't moved, deleted or sorted, and says so if asked; neither is a table's last column deleted.
+- In a table, the editor's status line reads "ctrl+p table commands · tab next cell · enter next row". A line starting with `|` inside a code block is code, not a table.
+- The logic lives in `internal/editor/table.go` (a parsed table, rendered back with its cell positions for the cursor); the UI adds the commands and the hints. The Guide's "Tables" section describes all of it.
+- Tests: in `internal/editor`, starting a table from a heading line, walking the cells both ways, Enter leaving from an empty last row (in the middle and at the end of a note), Tab and Enter untouched outside tables and in code blocks, formatting with alignment, wide characters and escapes, every operation against its exact output with a one-step undo, numeric sorting, and the refusals; in `internal/ui`, table commands only inside a table, one run from the palette with its flash, a refusal's reason, and the status line. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux: a three-row table typed from a bare heading line with only Tab and Enter, sorted from the palette, left with Enter, and read back as a real table with the next paragraph apart from it. Two changes came out of that run: Enter first kept the column (so after tabbing across a row, the next row began under its last cell), and leaving the table put the cursor directly under it. Both are fixed and tested. The scratch note was restored afterwards.
+
 ## v0.27.0 — 2026-09-18
 
 **New: Insert table.** From the quick report *Det behövs ett enkelt sätt att lägga till tabeller* ("there needs to be an easy way to add tables without spread — an interface"). Built directly at the user's go-ahead.

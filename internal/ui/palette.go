@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/lurioso/skrin/internal/config"
+	"github.com/lurioso/skrin/internal/editor"
 )
 
 // paletteEntry is one command in the palette: an action from the
@@ -211,8 +212,49 @@ func (m *Model) mainPaletteItems() []choice {
 	)
 }
 
+// tableCommands are the palette's commands for the table under the
+// cursor, Advanced Tables' set. They only show while the cursor is in one.
+var tableCommands = []struct {
+	op   editor.TableOp
+	name string
+	also string
+	done string
+}{
+	{editor.TableFormat, "Table: line it up", "format align tidy", "Table lined up"},
+	{editor.TableRowBelow, "Table: add a row below", "insert new", "Row added"},
+	{editor.TableRowAbove, "Table: add a row above", "insert new", "Row added"},
+	{editor.TableRowDelete, "Table: delete this row", "remove", "Row deleted · ctrl+z brings it back"},
+	{editor.TableRowUp, "Table: move this row up", "reorder", "Row moved up"},
+	{editor.TableRowDown, "Table: move this row down", "reorder", "Row moved down"},
+	{editor.TableColRight, "Table: add a column to the right", "insert new", "Column added"},
+	{editor.TableColLeft, "Table: add a column to the left", "insert new", "Column added"},
+	{editor.TableColDelete, "Table: delete this column", "remove", "Column deleted · ctrl+z brings it back"},
+	{editor.TableColMoveLeft, "Table: move this column left", "reorder", "Column moved left"},
+	{editor.TableColMoveRight, "Table: move this column right", "reorder", "Column moved right"},
+	{editor.TableAlignLeft, "Table: align this column left", "alignment", "Column aligned left"},
+	{editor.TableAlignCenter, "Table: centre this column", "alignment center middle", "Column centred"},
+	{editor.TableAlignRight, "Table: align this column right", "alignment numbers", "Column aligned right"},
+	{editor.TableSortAsc, "Table: sort by this column, A → Z", "order ascending", "Sorted A → Z"},
+	{editor.TableSortDesc, "Table: sort by this column, Z → A", "order descending", "Sorted Z → A"},
+}
+
 func (m *Model) editorPaletteItems() []choice {
 	var items []choice
+	if m.editor.InTable() {
+		for _, tc := range tableCommands {
+			items = append(items, choice{label: tc.name, also: "table tabell " + tc.also, run: m.paletteRun(tc.name, func() tea.Cmd {
+				if m.editor == nil {
+					return nil
+				}
+				if err := m.editor.Table(tc.op); err != nil {
+					m.flash = err.Error()
+				} else {
+					m.flash = tc.done
+				}
+				return nil
+			})})
+		}
+	}
 	for _, c := range editorCommands {
 		if c.act == actNone {
 			run := c.run

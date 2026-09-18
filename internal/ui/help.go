@@ -346,8 +346,9 @@ func (m *Model) guideText(w int) []manualLine {
 	para("Renaming or moving offers to update the links to what moved, as Obsidian does.")
 
 	head("Tables")
-	para("Insert table, in the commands (Ctrl+P, then \"table\"), makes a markdown table without typing its pipes: choose the columns and rows, and headings if you like — \"Name, Rating, Date\" — and a preview shows what goes in. Enter puts it at the cursor as a block of its own, with a blank line kept around it so it reads as a table, and leaves the cursor in the first cell to fill. From the reading view it opens the note in the editor first. Ctrl+Z takes the whole table back out.")
-	para("Once it's in, a table is plain text like the rest of the note: type into the cells between the pipes. They needn't line up — the reading view draws the table either way.")
+	para("Tables work the way Obsidian's Advanced Tables plugin does. In the editor, type a heading row — \"| Name | Age\" is enough — and press Tab: the separator row goes in, the columns line up, and the cursor moves to the next cell. In a table, Tab and Shift+Tab move from cell to cell, and Enter to the first cell of the row below, so a row is filled with Tab and the next begun with Enter; past the last cell or row a new row appears, and Enter on an empty last row takes it away again and leaves the table. Every move lines the table up, so the pipes never need to be typed into place. Shift+Enter is still a plain new line.")
+	para("With the cursor in a table, the commands (Ctrl+P, then \"table\") hold the rest: add, delete and move rows and columns, align a column left, centred or right, sort the rows by a column — numbers as numbers — and line the table up. Each is one step for Ctrl+Z. The heading row stays put: its cells can be changed, but it isn't moved, deleted or sorted.")
+	para("Insert table, in the same commands, makes a new one from a small form — columns, rows and headings if you like — anywhere, the reading view included, where it opens the note in the editor first.")
 
 	head("Spreads")
 	para("A spread is a small query in a ```spread block. In the note it shows what it finds — a table or a list of notes — and stays current as notes change. The query language is a subset of Dataview's, so a ```dataview block works the same, and shows the same in Obsidian with Dataview installed.")

@@ -98,6 +98,11 @@ type Options struct {
 	// welcome screen every run, so a vault with private notes never
 	// opens one by surprise. Editable from the Settings tab of `?`.
 	RestoreLastNote bool
+	// InstantOpen makes moving the Files cursor open the note under it.
+	// Off is Obsidian's way: the note pane only changes on an explicit
+	// open (l/→ to read, Enter to edit), and otherwise keeps showing
+	// whatever was open last. Editable from the Settings tab of `?`.
+	InstantOpen bool
 	// Assistant sets up the Claude drawer.
 	Assistant AssistantOptions
 	// Library sets up the Book Card (B): folders, default status and the
@@ -836,7 +841,7 @@ func (m *Model) settle() {
 	if m.width == 0 {
 		return
 	}
-	if m.focus == paneFiles && m.editor == nil {
+	if m.opts.InstantOpen && m.focus == paneFiles && m.editor == nil {
 		if m.files.cur != m.lastPeekCur || m.files.selected().Rel != m.lastPeekRel {
 			m.lastPeekCur = m.files.cur
 			m.lastPeekRel = m.files.selected().Rel

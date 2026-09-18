@@ -293,7 +293,7 @@ func (m *Model) guideText(w int) []manualLine {
 	add(0, "", pad(m.st.muted.Render("a terminal home for your vault")))
 
 	head("Files and the note")
-	para("Files holds the vault's folders and files. The note under the cursor opens at once, so j and k skim through your notes; on a folder, the last note stays open. l or → moves over to it for reading; Enter goes straight to editing it.")
+	para("Files holds the vault's folders and files. The note under the cursor opens at once, so j and k skim through your notes; on a folder, the last note stays open. l or → moves over to it for reading; Enter goes straight to editing it. Settings can turn instant-open off — Obsidian's way — so the note pane only changes on an explicit l/→ or Enter, keeping whatever was open until then.")
 	para("Following a link, a search hit, Go to note, t and going back all move the Files cursor to the note they open.")
 	para("In Files, keys act on the row under the cursor; in the note, on the open note. When anything is marked, m and d act on the marks.")
 	para("n and N create things in the current folder: the folder under the cursor, or the folder of the file under it. In the note it's the open note's folder.")

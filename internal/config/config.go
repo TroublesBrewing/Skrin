@@ -29,6 +29,7 @@ type Config struct {
 	rawExternal string `toml:"-"`
 	General     struct {
 		RestoreLastNote *bool `toml:"restore_last_note,omitempty"` // unset means off: fresh runs start at the welcome screen
+		InstantOpen     *bool `toml:"instant_open,omitempty"`      // unset means on: moving the Files cursor opens the note under it
 	} `toml:"general,omitempty"`
 	Daily struct {
 		RolloverTodos *bool `toml:"rollover_todos,omitempty"` // unset means on
@@ -78,6 +79,15 @@ func (c Config) RolloverTodos() bool {
 // surprise.
 func (c Config) RestoreLastNote() bool {
 	return c.General.RestoreLastNote != nil && *c.General.RestoreLastNote
+}
+
+// InstantOpen reports whether moving the Files cursor opens the note under
+// it, Skrin's own way since v0.1. It is on unless turned off; off is
+// Obsidian's way — the note pane only changes when a note is opened
+// explicitly (l/→ to read, Enter to edit), and stays on whatever was open
+// last otherwise.
+func (c Config) InstantOpen() bool {
+	return c.General.InstantOpen == nil || *c.General.InstantOpen
 }
 
 // LibraryFolder is where new book notes are created: Books, unless set.

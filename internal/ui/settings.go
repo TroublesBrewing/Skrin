@@ -33,6 +33,15 @@ func settingsItems() []settingsItem {
 			},
 		},
 		{
+			label: "Open notes as the cursor moves",
+			help:  "Moving the Files cursor opens the note under it at once. Off is Obsidian's way: the note pane only changes when you open one explicitly (l/→ to read, Enter to edit), and otherwise keeps showing whatever was open last.",
+			get:   func(m *Model) bool { return m.opts.InstantOpen },
+			set: func(m *Model, v bool) {
+				m.opts.InstantOpen = v
+				m.opts.Config.General.InstantOpen = boolPtr(v)
+			},
+		},
+		{
 			label: "Carry over yesterday's todos",
 			help:  "t carries unfinished todos from the last daily note into a new one.",
 			get:   func(m *Model) bool { return m.opts.RolloverTodos },

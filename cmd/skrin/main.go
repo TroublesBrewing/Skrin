@@ -92,6 +92,7 @@ func run(vaultArg string) error {
 		Session:         session.Load(v.Root),
 		RolloverTodos:   cfg.RolloverTodos(),
 		RestoreLastNote: cfg.RestoreLastNote(),
+		InstantOpen:     cfg.InstantOpen(),
 		Vim:             cfg.Editor.Vim,
 		ExternalEditor:  cfg.Editor.External,
 		Config:          cfg,

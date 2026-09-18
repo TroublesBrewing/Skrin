@@ -2,6 +2,15 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.25.0 — 2026-09-18
+
+Instant-open, made optional. The user's own request, via /remote-control: "Kan vi göra 'instant open' och 'open on enter/arrow' till ett val för användaren i settings? Obsidian öppnar inte anteckningar direkt vid cursor och många är kanske vana vid det" — Obsidian doesn't open notes right at the cursor, and plenty of people are used to that.
+
+- **New: "Open notes as the cursor moves" in Settings**, on by default (today's behaviour, unchanged). Off is Obsidian's way: the note pane only changes on an explicit open — l/→ to read, Enter to edit — and otherwise keeps showing whatever was open last, including across folder toggles and cursor movement past notes. Turning it back on catches up to the cursor immediately.
+- **This partially reverses a call already on record in the UX charter** ("Instant-open beat open-on-Enter in the field — the felt test outranks the argued one"). It doesn't overturn it — instant-open stays the default — but it concedes the argued case has enough of a following to earn a toggle rather than staying an either/or. Flagged for Hermes.
+- **How it's built:** `peek()`, the single function that opens the note under the Files cursor, now gates on the new setting; everything downstream (explicit l/→, Enter, folder toggles) was already on its own path and needed no change.
+- Tests: on/off behaviour under cursor movement, the previous note staying put with the setting off, catching up to the cursor when turned back on, and the Settings toggle itself. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux: toggling in Settings takes effect at once; off stops the note pane following the cursor while l/→ and Enter still open explicitly and folders still toggle; back on, the note pane jumps to the cursor's current note right away.
+
 ## v0.24.0 — 2026-09-18
 
 Two more quick reports, built directly, no formal tickets.

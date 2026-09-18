@@ -59,6 +59,11 @@ func newTestModelWith(t *testing.T, opts Options) *Model {
 	if opts.Open == nil {
 		opts.Open = func(string) error { return nil } // never start real apps
 	}
+	// InstantOpen defaults on here, unlike a zero Options{} in production —
+	// nearly every test relies on the cursor opening notes as it moves.
+	// A test after the off behaviour sets m.opts.InstantOpen = false itself,
+	// once it has a model, rather than threading a way to ask for it here.
+	opts.InstantOpen = true
 	m, err := New(v, theme.Default(), opts)
 	if err != nil {
 		t.Fatal(err)
@@ -397,5 +402,76 @@ func TestUnresolvedLinksUseIndex(t *testing.T) {
 	}
 	if m.resolve("Missing") {
 		t.Error("missing note resolved")
+	}
+}
+
+func TestInstantOpenOffKeepsTheNotePaneStillOnCursorMovement(t *testing.T) {
+	m := newTestModel(t)
+	m.opts.InstantOpen = false
+	// Rows: the vault, Daily/, Filosofi/, Templates/, Welcome.
+	press(m, "j", "j")
+	if m.notePath != "" {
+		t.Fatalf("moving the cursor should not open anything: notePath = %q", m.notePath)
+	}
+	press(m, "l") // open Filosofi/, cursor stays
+	press(m, "j") // onto Antik/, a folder
+	if m.notePath != "" {
+		t.Fatalf("still nothing opened: notePath = %q", m.notePath)
+	}
+	press(m, "j") // onto Stoic.md — with instant-open off, this alone shouldn't open it
+	if m.notePath != "" {
+		t.Fatalf("landing on a note shouldn't open it with instant-open off: notePath = %q", m.notePath)
+	}
+	press(m, "l") // explicit open, for reading
+	if m.notePath != "Filosofi/Stoic.md" || m.editor != nil {
+		t.Fatalf("l should still open a note for reading: notePath %q, editor open %v", m.notePath, m.editor != nil)
+	}
+}
+
+func TestInstantOpenOffKeepsThePreviousNoteAsTheCursorMoves(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "G", "l", "1") // Welcome.md open for reading; focus back on Files, cursor still on it
+	m.opts.InstantOpen = false
+	press(m, "k", "k") // up from Welcome (the last row) onto Templates/, then Filosofi/
+	if m.notePath != "Welcome.md" {
+		t.Errorf("the previously open note should stay open until a new one is: got %q", m.notePath)
+	}
+	press(m, "enter") // Filosofi/ is a folder: toggles, still doesn't touch the open note
+	if m.notePath != "Welcome.md" || !m.files.expanded["Filosofi"] {
+		t.Errorf("notePath %q, expanded %v", m.notePath, m.files.expanded["Filosofi"])
+	}
+}
+
+func TestTurningInstantOpenBackOnCatchesUpToTheCursor(t *testing.T) {
+	m := newTestModel(t)
+	m.opts.InstantOpen = false
+	inFilosofi(m)
+	press(m, "j") // onto Stoic.md, a note — instant-open off, so nothing opens yet
+	if m.notePath != "" {
+		t.Fatalf("setup: notePath = %q, want none yet", m.notePath)
+	}
+	m.opts.InstantOpen = true
+	m.settle()
+	if m.notePath != "Filosofi/Stoic.md" {
+		t.Errorf("turning instant-open back on should sync to wherever the cursor already is: got %q", m.notePath)
+	}
+}
+
+func TestInstantOpenSettingsToggle(t *testing.T) {
+	m := newTestModel(t)
+	if !m.opts.InstantOpen {
+		t.Fatal("setup: should default on")
+	}
+	for _, it := range settingsItems() {
+		if it.label == "Open notes as the cursor moves" {
+			it.set(m, false)
+		}
+	}
+	if m.opts.InstantOpen || m.opts.Config.InstantOpen() {
+		t.Error("the toggle should turn it off in Options and in config")
+	}
+	press(m, "j", "j") // Filosofi/, then a note under it
+	if m.notePath != "" {
+		t.Errorf("off via Settings should behave like off via config: notePath = %q", m.notePath)
 	}
 }

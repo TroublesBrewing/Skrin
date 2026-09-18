@@ -321,3 +321,33 @@ func TestSaveRoundTripsTheKeymap(t *testing.T) {
 		t.Errorf("edit = %v (present %v), want an empty list that survives", got, ok)
 	}
 }
+
+func TestInstantOpenDefaultsOn(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.InstantOpen() {
+		t.Error("InstantOpen should default to on: unset config keeps today's behaviour")
+	}
+}
+
+func TestInstantOpenReadsOverride(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", home)
+	dir := filepath.Join(home, "skrin")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte("[general]\ninstant_open = false\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.InstantOpen() {
+		t.Error("instant_open = false should turn it off")
+	}
+}

@@ -337,11 +337,10 @@ func (e *Editor) tableKey(s string) error {
 			t.rows = t.rows[:r]
 			e.writeTable(start, end, t, r-1, c)
 			after := start + len(t.rows) + 1
-			blank := func(i int) bool { return i < len(e.lines) && strings.TrimSpace(string(e.lines[i])) == "" }
-			if !blank(after) {
+			if !e.blank(after) {
 				e.replaceLines(after, after, []string{""})
 			}
-			if !blank(after + 1) {
+			if !e.blank(after + 1) {
 				e.replaceLines(after+1, after+1, []string{""})
 			}
 			e.row, e.col = after+1, 0

@@ -194,20 +194,19 @@ func (e *Editor) InsertBlock(lines []string, row, col int) {
 	}
 	e.push("block")
 	e.sel = false
-	blank := func(r int) bool { return strings.TrimSpace(string(e.lines[r])) == "" }
 	at := e.row
-	if blank(at) {
+	if e.blank(at) {
 		e.lines = append(e.lines[:at], e.lines[at+1:]...)
 	} else {
 		at++
 	}
 	var block []string
-	if at > 0 && !blank(at-1) {
+	if at > 0 && !e.blank(at-1) {
 		block = append(block, "")
 	}
 	start := at + len(block) + clamp(row, 0, len(lines)-1)
 	block = append(block, lines...)
-	if at < len(e.lines) && !blank(at) {
+	if at < len(e.lines) && !e.blank(at) {
 		block = append(block, "")
 	}
 	e.insertLines(at, block)
@@ -651,6 +650,12 @@ func (e *Editor) insertText(s string) {
 	rest := append(added, e.lines[e.row+1:]...)
 	e.lines = append(e.lines[:e.row], rest...)
 	e.row += len(parts) - 1
+}
+
+// blank reports whether line r holds only whitespace. A line past the end
+// of the note isn't blank: there's nothing there to stand in for one.
+func (e *Editor) blank(r int) bool {
+	return r < len(e.lines) && strings.TrimSpace(string(e.lines[r])) == ""
 }
 
 // insertLines puts whole lines before line at.

@@ -49,7 +49,8 @@ type Config struct {
 		DefaultStatus string `toml:"default_status,omitempty"` // default: "reading"
 	} `toml:"library,omitempty"`
 	Render struct {
-		Images *bool `toml:"images,omitempty"` // unset means on
+		Images      *bool `toml:"images,omitempty"`       // unset means on
+		LineNumbers *bool `toml:"line_numbers,omitempty"` // unset means off: notes and editor start without line numbers
 	} `toml:"render,omitempty"`
 	// Keys is the user's own keymap, written by the Keys tab of `?`:
 	// context ("main", "editor", …) → action name → the keys that work
@@ -110,6 +111,12 @@ func (c Config) LibraryDefaultStatus() string {
 // gates whether a preview is ever attempted.
 func (c Config) RenderImages() bool {
 	return c.Render.Images == nil || *c.Render.Images
+}
+
+// RenderLineNumbers reports whether line numbers show along the left edge
+// of notes and the editor. It is off unless turned on.
+func (c Config) RenderLineNumbers() bool {
+	return c.Render.LineNumbers != nil && *c.Render.LineNumbers
 }
 
 // Load reads the config file. A missing file is not an error.

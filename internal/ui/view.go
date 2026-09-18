@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -98,6 +99,9 @@ func (m *Model) zenView() string {
 	vis := l.bodyH - 2
 	title, body := m.noteBody(l.noteW-2, vis)
 	margin := strings.Repeat(" ", max((m.width-l.noteTextW())/2-1, 0))
+	if m.opts.LineNumbers {
+		margin = strings.Repeat(" ", max((m.width-m.noteTextW()-m.gutterWidth())/2, 0))
+	}
 	rows := []string{fit(strings.Repeat(" ", max((m.width-ansi.StringWidth(title))/2, 0))+m.st.muted.Render(title), m.width)}
 	for i := 0; i < vis; i++ {
 		s := ""
@@ -203,15 +207,31 @@ func (m *Model) noteBody(w, vis int) (string, []string) {
 		return displayName(m.notePath), []string{"", "  " + m.st.errText.Render("Can't read this note: "+m.noteErr.Error())}
 	}
 	var body []string
+	totalLines := m.totalSrcLines()
+	digits := max(len(strconv.Itoa(totalLines)), 2)
 	for i := m.noteOff; i < min(len(m.lines), m.noteOff+vis); i++ {
-		line := " " + m.lines[i].Text
+		line := m.lines[i].Text
 		if m.noteSel.covers(i) {
-			line = " " + m.st.selFocus.Render(ansi.Strip(m.lines[i].Text))
+			line = m.st.selFocus.Render(ansi.Strip(m.lines[i].Text))
 		}
+		var prefix string
+		var prefixLen int
+		if m.opts.LineNumbers {
+			if i == 0 || m.lines[i].Src != m.lines[i-1].Src {
+				prefix = m.st.muted.Render(fmt.Sprintf("%*d", digits, m.lines[i].Src+1)) + m.st.muted.Render(" │ ")
+			} else {
+				prefix = m.st.muted.Render(fmt.Sprintf("%*s", digits, "")) + m.st.muted.Render(" │ ")
+			}
+			prefixLen = digits + 3
+		} else {
+			prefix = " "
+			prefixLen = 1
+		}
+		line = prefix + line
 		if m.hints != nil {
 			for _, ht := range m.hints.hints {
 				if ht.row == i {
-					line = m.withLabel(line, 1+ht.link.Col, ht.label)
+					line = m.withLabel(line, prefixLen+ht.link.Col, ht.label)
 				}
 			}
 		}

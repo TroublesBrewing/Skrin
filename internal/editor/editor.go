@@ -45,24 +45,25 @@ type state struct {
 
 // Editor edits one note.
 type Editor struct {
-	lines    [][]rune
-	row, col int  // cursor; col is a rune index and may equal the line length
-	goal     int  // visual column kept by vertical moves; -1 when unset
-	top      int  // first visible display line
-	w, h     int  // text area size in cells
-	vim      bool //
-	mode     Mode
-	pending  string   // vim: operator waiting for a second key ("d", "y", "g")
-	yank     []string // vim: lines yanked by dd or yy
-	undo     []state
-	redo     []state
-	lastKind string // kind of the last edit, for grouping keystrokes into one undo step
-	sel      bool   // a selection runs from (srow, scol) to the cursor
-	srow     int
-	scol     int
-	saved    string
-	crlf     bool
-	st       styles
+	lines       [][]rune
+	row, col    int  // cursor; col is a rune index and may equal the line length
+	goal        int  // visual column kept by vertical moves; -1 when unset
+	top         int  // first visible display line
+	w, h        int  // text area size in cells
+	vim         bool //
+	mode        Mode
+	pending     string   // vim: operator waiting for a second key ("d", "y", "g")
+	yank        []string // vim: lines yanked by dd or yy
+	undo        []state
+	redo        []state
+	lastKind    string // kind of the last edit, for grouping keystrokes into one undo step
+	sel         bool   // a selection runs from (srow, scol) to the cursor
+	srow        int
+	scol        int
+	saved       string
+	crlf        bool
+	lineNumbers bool
+	st          styles
 }
 
 // New opens text for editing. With vim it starts in Normal mode.
@@ -121,6 +122,24 @@ func (e *Editor) Mode() Mode { return e.mode }
 
 // SetPalette recolours the editor.
 func (e *Editor) SetPalette(p theme.Palette) { e.st = newStyles(p) }
+
+// SetLineNumbers turns line numbers on or off.
+func (e *Editor) SetLineNumbers(on bool) {
+	e.lineNumbers = on
+	e.scroll()
+}
+
+// LineNumbers reports whether line numbers are enabled.
+func (e *Editor) LineNumbers() bool { return e.lineNumbers }
+
+// GutterWidth is the width of the line numbers column (e.g. " 1 │ ").
+func (e *Editor) GutterWidth() int {
+	if !e.lineNumbers {
+		return 0
+	}
+	digits := max(len(strconv.Itoa(len(e.lines))), 2)
+	return digits + 3
+}
 
 // SetSize sets the text area in cells.
 func (e *Editor) SetSize(w, h int) {

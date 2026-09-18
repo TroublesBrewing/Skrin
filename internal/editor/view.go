@@ -1,7 +1,9 @@
 package editor
 
 import (
+	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -26,6 +28,8 @@ const (
 type styles struct {
 	slot                 []lipgloss.Style
 	cursor, normalCursor lipgloss.Style
+	gutter, activeGutter lipgloss.Style
+	gutterSep            lipgloss.Style
 }
 
 func newStyles(p theme.Palette) styles {
@@ -44,6 +48,9 @@ func newStyles(p theme.Palette) styles {
 	}
 	st.cursor = s().Background(p.Accent).Foreground(p.Background)
 	st.normalCursor = s().Background(p.Foreground).Foreground(p.Background)
+	st.gutter = s().Foreground(p.DarkForeground)
+	st.activeGutter = s().Foreground(p.Accent).Bold(true)
+	st.gutterSep = s().Foreground(p.DarkForeground)
 	return st
 }
 
@@ -76,6 +83,7 @@ func (e *Editor) View() []string {
 	kinds := e.classify()
 	out := make([]string, 0, e.h)
 	d := 0
+	digits := max(len(strconv.Itoa(len(e.lines))), 2)
 	for row := 0; row < len(e.lines) && len(out) < e.h; row++ {
 		starts := e.segments(row)
 		if d+len(starts) <= e.top {
@@ -86,7 +94,22 @@ func (e *Editor) View() []string {
 		e.markSel(row, slots)
 		for s := range starts {
 			if d >= e.top && len(out) < e.h {
-				out = append(out, e.renderSegment(row, starts, s, slots))
+				seg := e.renderSegment(row, starts, s, slots)
+				if e.lineNumbers {
+					var prefix string
+					if s == 0 {
+						numStr := fmt.Sprintf("%*d", digits, row+1)
+						if row == e.row {
+							prefix = e.st.activeGutter.Render(numStr) + e.st.gutterSep.Render(" │ ")
+						} else {
+							prefix = e.st.gutter.Render(numStr) + e.st.gutterSep.Render(" │ ")
+						}
+					} else {
+						prefix = e.st.gutter.Render(fmt.Sprintf("%*s", digits, "")) + e.st.gutterSep.Render(" │ ")
+					}
+					seg = prefix + seg
+				}
+				out = append(out, seg)
 			}
 			d++
 		}

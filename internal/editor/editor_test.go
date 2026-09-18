@@ -301,3 +301,41 @@ func TestVimBasics(t *testing.T) {
 		t.Error("esc in Normal mode should close")
 	}
 }
+
+func TestLineNumbersGutter(t *testing.T) {
+	e := open("first line\nsecond line\nthird line")
+	if e.LineNumbers() {
+		t.Error("LineNumbers should default to false")
+	}
+	if gw := e.GutterWidth(); gw != 0 {
+		t.Errorf("GutterWidth() = %d, want 0 when line numbers disabled", gw)
+	}
+
+	e.SetLineNumbers(true)
+	if !e.LineNumbers() {
+		t.Error("LineNumbers() should be true after SetLineNumbers(true)")
+	}
+	// 3 lines -> digits = 2 -> digits + 3 = 5
+	if gw := e.GutterWidth(); gw != 5 {
+		t.Errorf("GutterWidth() = %d, want 5 for 3-line file", gw)
+	}
+
+	e.SetSize(30, 5)
+	view := strings.Join(e.View(), "\n")
+	plain := ansi.Strip(view)
+	if !strings.Contains(plain, " 1 │ ") || !strings.Contains(plain, " 2 │ ") || !strings.Contains(plain, " 3 │ ") {
+		t.Errorf("expected gutter line numbers in view, got:\n%s", plain)
+	}
+
+	// Soft wrap continuation test
+	eWrapped := open("this is a very long line that should wrap onto multiple display rows in a narrow width")
+	eWrapped.SetLineNumbers(true)
+	eWrapped.SetSize(20, 5)
+	wrappedView := ansi.Strip(strings.Join(eWrapped.View(), "\n"))
+	if !strings.Contains(wrappedView, " 1 │ ") {
+		t.Errorf("expected source line 1 in wrapped view, got:\n%s", wrappedView)
+	}
+	if !strings.Contains(wrappedView, "   │ ") {
+		t.Errorf("expected continuation padding in wrapped view, got:\n%s", wrappedView)
+	}
+}

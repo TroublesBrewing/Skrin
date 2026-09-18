@@ -68,6 +68,22 @@ func settingsItems() []settingsItem {
 				m.opts.Config.Render.Images = boolPtr(v)
 			},
 		},
+		{
+			label: "Line numbers in notes",
+			help:  "Show line numbers along the left edge of notes and the editor. L in main toggles this too.",
+			get:   func(m *Model) bool { return m.opts.LineNumbers },
+			set: func(m *Model, v bool) {
+				m.opts.LineNumbers = v
+				m.opts.Config.Render.LineNumbers = boolPtr(v)
+				m.renderedW = 0
+				if m.split != nil {
+					m.split.renderedW = 0
+				}
+				if m.editor != nil {
+					m.editor.SetLineNumbers(v)
+				}
+			},
+		},
 	}
 }
 

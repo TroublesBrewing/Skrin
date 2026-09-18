@@ -8,6 +8,8 @@ import (
 	"io/fs"
 	"os/exec"
 	"path"
+	"strconv"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -105,6 +107,9 @@ type Options struct {
 	// placeholder frame always, everywhere. Either way a found embed's
 	// name, dimensions and size still show.
 	Images bool
+	// LineNumbers turns on line numbers along the left edge of notes and
+	// the built-in editor.
+	LineNumbers bool
 	// Config is the config.toml Skrin loaded, kept so the Settings tab
 	// of `?` can show and persist toggles back to it. Its own bare
 	// fields (Vim, RolloverTodos, ...) above are what the rest of Skrin
@@ -476,6 +481,8 @@ func (m *Model) do(a action) tea.Cmd {
 		m.restoreVersion(true)
 	case actHints:
 		m.startHints(false)
+	case actLineNumbers:
+		m.toggleLineNumbers()
 	case actBacklinks:
 		m.showBacklinks()
 	case actOutline:
@@ -693,6 +700,26 @@ func (m *Model) toggleZen() {
 	}
 }
 
+// toggleLineNumbers turns line numbers on or off across notes and the editor.
+func (m *Model) toggleLineNumbers() {
+	m.opts.LineNumbers = !m.opts.LineNumbers
+	m.opts.Config.Render.LineNumbers = boolPtr(m.opts.LineNumbers)
+	_ = config.Save(m.opts.Config)
+	if m.opts.LineNumbers {
+		m.flash = "Line numbers on"
+	} else {
+		m.flash = "Line numbers off"
+	}
+	m.renderedW = 0
+	if m.split != nil {
+		m.split.renderedW = 0
+	}
+	if m.editor != nil {
+		m.editor.SetLineNumbers(m.opts.LineNumbers)
+	}
+	m.settle()
+}
+
 // step moves a cursor over n rows; page is the visible height.
 func step(cur, n int, a action, page int) int {
 	switch a {
@@ -798,15 +825,22 @@ func (m *Model) settle() {
 	}
 	l := m.layout()
 	vis := l.bodyH - 2
+	textW := m.noteTextW()
 	if m.editor != nil {
-		m.editor.SetSize(l.noteTextW(), vis)
+		m.editor.SetSize(textW, vis)
 	}
-	if m.notePath != "" && m.noteErr == nil && l.noteTextW() != m.renderedW {
-		m.lines = markdown.Render(m.noteSrc, markdown.Options{Width: l.noteTextW(), Palette: m.pal, Resolve: m.resolve, Images: m.imageOptions(m.notePath, vis), Embeds: m.embedOptions(m.notePath)})
-		m.renderedW = l.noteTextW()
+	if m.notePath != "" && m.noteErr == nil && textW != m.renderedW {
+		m.lines = markdown.Render(m.noteSrc, markdown.Options{Width: textW, Palette: m.pal, Resolve: m.resolve, Images: m.imageOptions(m.notePath, vis), Embeds: m.embedOptions(m.notePath)})
+		m.renderedW = textW
 	}
 	if s := m.split; s != nil {
-		if w := l.splitW - 4; s.err == nil && w != s.renderedW {
+		w := l.splitW - 4
+		if m.opts.LineNumbers && s.src != "" {
+			digits := max(len(strconv.Itoa(strings.Count(s.src, "\n")+1)), 2)
+			w -= (digits + 3) - 1
+		}
+		w = max(w, 10)
+		if s.err == nil && w != s.renderedW {
 			s.lines = markdown.Render(s.src, markdown.Options{Width: w, Palette: m.pal, Resolve: m.resolveFrom(s.path), Images: m.imageOptions(s.path, vis), Embeds: m.embedOptions(s.path)})
 			s.renderedW = w
 		}
@@ -843,6 +877,34 @@ func scrollTo(cur, off, vis, n int) int {
 		off = cur - vis + 1
 	}
 	return clamp(off, 0, max(n-vis, 0))
+}
+
+// totalSrcLines counts lines in the open note's source text.
+func (m *Model) totalSrcLines() int {
+	if m.noteSrc == "" {
+		return 1
+	}
+	return strings.Count(m.noteSrc, "\n") + 1
+}
+
+// gutterWidth is the width of the line numbers column (e.g. " 1 │ ").
+func (m *Model) gutterWidth() int {
+	if !m.opts.LineNumbers {
+		return 0
+	}
+	digits := max(len(strconv.Itoa(m.totalSrcLines())), 2)
+	return digits + 3
+}
+
+// noteTextW is the width notes and editor render at: the pane minus
+// borders, line number gutter (if on), and a one-cell margin.
+func (m *Model) noteTextW() int {
+	l := m.layout()
+	w := l.noteW - 4
+	if m.opts.LineNumbers {
+		w -= m.gutterWidth() - 1
+	}
+	return max(w, 10)
 }
 
 // resolve reports whether a wikilink in the open note leads anywhere.

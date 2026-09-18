@@ -2,6 +2,17 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.19.0 — 2026-09-18
+
+**New: line numbers in notes.** From the ticket [[Line numbers in notes]] (spec: [[skrin line numbers]]), signed off the same day.
+
+- `L` in the main context toggles a dim line-number gutter on and off, live, across the reading pane, zen mode, the split view, and the built-in editor — flashing "Line numbers on"/"Line numbers off". Also toggleable from the Settings tab of `?` ("Line numbers in notes"), persisted to `config.toml` as `[render] line_numbers` (default `false`, off).
+- **Reading view, zen and split** each draw the gutter as a prefix on every display line: the real source line number for the first display line of a wrapped paragraph, a blank gutter for its continuation lines, keeping the existing `1:n` Src mapping honest. Digit width grows with the note's line count (minimum 2 columns).
+- **The editor** draws its own gutter with the same digit-width rule, and bolds/accents the current line's number so the cursor's line is easy to find at a glance.
+- Link hints (`f`) and the `[[` completion popup both account for the gutter's width when it's on, so hint labels and the popup still land in the right column.
+- Tests: toggling in the reading view, split view and zen mode, the editor gaining line numbers when opened with the setting on, and the Settings-tab checkbox round-tripping to config. Full suite green (`-count=1`), `go vet` clean, `gofmt` clean on the touched files, and verified live in tmux against the scratch vault — including a real split opened by skimming (the original test only pressed an unbound `s` key and never actually exercised split rendering; fixed to skim a real split open before asserting on it).
+- **What isn't fully verified:** the editor's active-line-number color (Accent, in addition to bold) rendered as bold-only with no color in this tmux sandbox's 256-color downgrade path — traced to the terminal's color-profile downgrade, not the code: a direct call to `editor.View()` and a standalone truecolor run both produced the correct bold *and* accent-colored escape sequence (`\x1b[1;38;2;125;174;163m`). This matches the project's existing pattern of sandbox-only color/pixel gaps (e.g. the v0.16.0 sixel draw) — needs a look in `foot` to confirm it renders with color there too.
+
 ## v0.18.2 — 2026-09-17
 
 Fix: Skrin was still reopening the last open note on startup even when "Remember last open note" was disabled.

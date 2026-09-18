@@ -459,8 +459,14 @@ func (m *Model) completionBox() ([]string, int, int) {
 	r, col := m.editor.CursorPos()
 	// Where the editor's text starts on screen.
 	ox, oy := l.filesW+2, headerHeight+1
+	if m.editor != nil && m.editor.LineNumbers() {
+		ox = l.filesW + 1 + m.editor.GutterWidth()
+	}
 	if m.zen {
 		ox, oy = (m.width-l.noteTextW())/2, 1
+		if m.editor != nil && m.editor.LineNumbers() {
+			ox = (m.width-m.noteTextW()-m.editor.GutterWidth())/2 + m.editor.GutterWidth()
+		}
 	}
 	x := clamp(ox+col, 0, max(m.width-w, 0))
 	y := oy + r + 1

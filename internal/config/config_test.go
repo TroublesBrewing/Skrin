@@ -112,6 +112,34 @@ func TestRenderImagesReadsOverride(t *testing.T) {
 	}
 }
 
+func TestRenderLineNumbers(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.RenderLineNumbers() {
+		t.Error("RenderLineNumbers should default to off")
+	}
+
+	home := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", home)
+	dir := filepath.Join(home, "skrin")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte("[render]\nline_numbers = true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.RenderLineNumbers() {
+		t.Error("RenderLineNumbers() = false, want true per config")
+	}
+}
+
 func TestLibraryReadsOverrides(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", home)

@@ -95,6 +95,7 @@ func (m *Model) openEditor(rel string) {
 		row = m.lines[m.noteOff].Src
 	}
 	m.editor = editor.New(text, m.opts.Vim, m.pal)
+	m.editor.SetLineNumbers(m.opts.LineNumbers)
 	m.edit = editSession{rel: rel, base: text, linkFormat: obsidian.LoadSettings(m.vault.Root).NewLinkFormat}
 	m.focus = paneNote
 	m.settle()
@@ -288,7 +289,11 @@ func (m *Model) editorBody(vis int) (string, []string) {
 		}
 	} else {
 		for _, l := range m.editor.View() {
-			body = append(body, " "+l)
+			if m.editor.LineNumbers() {
+				body = append(body, l)
+			} else {
+				body = append(body, " "+l)
+			}
 		}
 	}
 	return title, body

@@ -86,6 +86,7 @@ const (
 	actHabits    // T: the habits overlay
 	actHabitTab  // H inside it: today → this week → this month
 	actQuickNote // i: the quick-note overlay
+	actLineNumbers
 )
 
 // Contexts say where a binding works. Each gets its own keymap, built from
@@ -192,6 +193,7 @@ var defaultBindings = []binding{
 	{actUndoEdit, []string{"u"}, "undo the note's last edit", groupNote, inMain},
 	{actRedoEdit, []string{"ctrl+r"}, "redo it", groupNote, inMain},
 	{actHints, []string{"f"}, "follow a link: letters appear on each", groupNote, inMain},
+	{actLineNumbers, []string{"L"}, "toggle line numbers in notes", groupNote, inMain},
 	{actBacklinks, []string{"b"}, "notes linking here", groupNote, inMain},
 	{actOutline, []string{"o"}, "outline: jump to a heading", groupNote, inMain},
 	{actNextHeading, []string{"}"}, "next heading", groupNote, inMain},
@@ -343,7 +345,7 @@ var actionName = map[action]string{
 	actEscape: "escape", actUndoOp: "undo-op", actDaily: "daily",
 	actEdit: "edit", actEditExternal: "edit-external",
 	actUndoEdit: "undo-edit", actRedoEdit: "redo-edit",
-	actHints: "hints", actBacklinks: "backlinks", actOutline: "outline",
+	actHints: "hints", actLineNumbers: "line-numbers", actBacklinks: "backlinks", actOutline: "outline",
 	actNextHeading: "next-heading", actPrevHeading: "prev-heading",
 	actBack: "back", actForward: "forward",
 	actSearch: "search", actSwitcher: "switcher",

@@ -117,7 +117,8 @@ func run(vaultArg string) error {
 			CoversFolder:  cfg.LibraryCoversFolder(),
 			DefaultStatus: cfg.LibraryDefaultStatus(),
 		},
-		Images: cfg.RenderImages(),
+		Images:      cfg.RenderImages(),
+		LineNumbers: cfg.RenderLineNumbers(),
 	})
 	if err != nil {
 		return err

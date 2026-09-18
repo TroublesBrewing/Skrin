@@ -2,7 +2,10 @@ package ui
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
+	"strconv"
+	"strings"
 
 	"github.com/lurioso/skrin/internal/markdown"
 	"github.com/lurioso/skrin/internal/vault"
@@ -131,8 +134,23 @@ func (m *Model) splitPane(w, h int) []string {
 	if s.err != nil {
 		body = []string{"", "  " + m.st.errText.Render("Can't read this note: "+s.err.Error())}
 	}
+	totalLines := 1
+	if s.src != "" {
+		totalLines = strings.Count(s.src, "\n") + 1
+	}
+	digits := max(len(strconv.Itoa(totalLines)), 2)
 	for i := s.off; s.err == nil && i < min(len(s.lines), s.off+h-2); i++ {
-		body = append(body, " "+s.lines[i].Text)
+		var prefix string
+		if m.opts.LineNumbers {
+			if i == 0 || s.lines[i].Src != s.lines[i-1].Src {
+				prefix = m.st.muted.Render(fmt.Sprintf("%*d", digits, s.lines[i].Src+1)) + m.st.muted.Render(" │ ")
+			} else {
+				prefix = m.st.muted.Render(fmt.Sprintf("%*s", digits, "")) + m.st.muted.Render(" │ ")
+			}
+		} else {
+			prefix = " "
+		}
+		body = append(body, prefix+s.lines[i].Text)
 	}
 	return m.box(displayName(s.path), body, w, h, false)
 }

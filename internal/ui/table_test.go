@@ -32,9 +32,9 @@ func TestInsertTableFromTheEditorPalette(t *testing.T) {
 		t.Fatal("Insert table should open the form")
 	}
 	checkFrame(t, m, "table form")
-	press(m, "down")     // 2 columns
-	press(m, "tab", "4") // 4 rows
-	press(m, "tab")      // headings
+	press(m, "left")      // 2 columns
+	press(m, "down", "4") // 4 rows
+	press(m, "tab")       // headings
 	typeText(m, "Book, Grade")
 	if frame := ansi.Strip(m.render()); !strings.Contains(frame, "| Book | Grade |") {
 		t.Errorf("the form should preview the table:\n%s", frame)
@@ -96,13 +96,13 @@ func TestTableFormNumbersTypeLikeANumberField(t *testing.T) {
 	if f.cols != 10 {
 		t.Errorf("1 then 0 is 10: %d", f.cols)
 	}
-	press(m, "up", "up", "up", "up")
+	press(m, "right", "right", "right", "right")
 	if f.cols != tableMaxCols {
 		t.Errorf("columns stop at %d: %d", tableMaxCols, f.cols)
 	}
-	press(m, "tab")
+	press(m, "down")
 	for range 5 {
-		press(m, "down")
+		press(m, "left")
 	}
 	if f.rows != 1 {
 		t.Errorf("rows stop at 1: %d", f.rows)
@@ -161,5 +161,35 @@ func TestTableCommandFromThePalette(t *testing.T) {
 	runCommand(m, "table delete this row")
 	if m.flash != "The heading row stays: move to a row below it" {
 		t.Errorf("a refusal should say why: %q", m.flash)
+	}
+}
+
+func TestTableFormArrowsMatchWhatTheyShow(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "G", "enter")
+	runCommand(m, "table")
+	f := m.table
+	press(m, "right")
+	if f.cols != 4 || f.field != tableCols {
+		t.Errorf("→ on ‹ 3 › should make it 4 and stay on the field: %d, field %d", f.cols, f.field)
+	}
+	press(m, "left", "left")
+	if f.cols != 2 {
+		t.Errorf("← should make it one fewer: %d", f.cols)
+	}
+	press(m, "down")
+	if f.field != tableRows || f.cols != 2 {
+		t.Errorf("↓ should move to the next field and leave the number alone: field %d, cols %d", f.field, f.cols)
+	}
+	press(m, "down")
+	typeText(m, "Ab")
+	press(m, "left")
+	typeText(m, "x")
+	if f.heads.value() != "Axb" {
+		t.Errorf("← in the headings field moves the text cursor: %q", f.heads.value())
+	}
+	press(m, "up")
+	if f.field != tableRows {
+		t.Errorf("↑ should go back a field: %d", f.field)
 	}
 }

@@ -2,6 +2,14 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.29.1 — 2026-09-19
+
+**Fix: the arrows in Insert table now do what they show.** The user: "Pilarna som indikerar att man kan öka och minska antalet rader och kolumner pekar åt höger och vänster vid varje värde. Men det är med upp/ner-pilarna du faktiskt ändrar värdet." The number fields read `‹ 3 ›`, but ←/→ did nothing on them, and ↑/↓ changed the value. Fixed during the locked period as a bug: the form showed one thing and did another, and the arrows that did nothing gave no answer.
+
+- **←/→ change the number:** ← one fewer, → one more. In the headings field they move the text cursor, as before.
+- **↑/↓ move between the fields**, like Tab and Shift+Tab. The footer now reads "↑↓ field · ←→ or digits change".
+- Tests: a new test that each arrow does what the form shows, including ← in the headings field, plus the existing form tests moved to the new keys. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux.
+
 ## v0.29.0 — 2026-09-18
 
 **New: Insert template**, and three smaller quick reports. The user: "look at the quick notes and see what you can tackle next." Built directly; the reports that need a PO/UX or user decision were left for them (see `HANDOFF.md`).

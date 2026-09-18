@@ -123,12 +123,17 @@ func (m *Model) tableKey(k tea.KeyPressMsg) {
 	case actPrevField:
 		f.field, f.typed = (f.field+tableFields-1)%tableFields, false
 		return
-	case actUp:
-		f.bump(1)
-		return
-	case actDown:
-		f.bump(-1)
-		return
+	case actRight, actLeft:
+		// The ‹ n › arrows: ← one fewer, → one more. In the headings
+		// field they move the text cursor instead, below.
+		if f.field != tableHeads {
+			if m.actionIn(inTable, key) == actRight {
+				f.bump(1)
+			} else {
+				f.bump(-1)
+			}
+			return
+		}
 	}
 	if f.field == tableHeads {
 		f.heads.handle(k)
@@ -248,6 +253,6 @@ func (m *Model) tableBox() []string {
 	if more := len(md) - show; more > 0 {
 		body = append(body, " "+m.st.muted.Render(fmt.Sprintf("… and %s more", plural(more, "row"))))
 	}
-	body = append(body, "", " "+m.st.muted.Render("tab next field · ↑↓ or digits change · enter insert · esc cancel"))
+	body = append(body, "", " "+m.st.muted.Render("↑↓ field · ←→ or digits change · enter insert · esc cancel"))
 	return m.box("Insert table", body, w, len(body)+2, true)
 }

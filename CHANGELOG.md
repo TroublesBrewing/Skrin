@@ -2,6 +2,18 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.27.0 — 2026-09-18
+
+**New: Insert table.** From the quick report *Det behövs ett enkelt sätt att lägga till tabeller* ("there needs to be an easy way to add tables without spread — an interface"). Built directly at the user's go-ahead.
+
+- **Ctrl+P → "Insert table"** opens a small form: columns and rows (↑/↓, +/−, or type the number — the first digit replaces what's there, like any number field), and optional headings, comma-separated. A live preview shows the markdown it will write. Headings beyond the column count widen the table instead of being dropped; a `|` in a heading is escaped.
+- **Enter puts it at the cursor as a block of its own**: in place of a blank line, or after the line you're on, with one blank line kept above and below, since a markdown table needs that to be read as one. It's one undo step (`ctrl+z`), and the cursor lands in the first cell to fill: a heading when none were typed, otherwise the first cell under them. Columns are padded so the table reads as a table in the editor too.
+- **From the reading view** it opens the note in the editor first, at the line you were reading; with no note, it says "Select a note to put a table in".
+- Deliberately **insert only, not a table editor.** The wishlist lists a table editor under "considered and cut" ("big build, and tables are rarer than todos"), so this is the small version the report asked for: once in the note, a table is plain text. No new key: it lives in the palette (search "table"), where keyless commands belong, until the UX engineer says otherwise. Its form's keys are in the registry and the `?` manual as usual.
+- New `editor.InsertBlock`, a small general tool for putting whole lines in as their own block, which a future "Insert template" can use too.
+- The Guide has a short "Tables" section.
+- Tests: `InsertBlock` in four placements, with a one-step undo and cursor placement; the table markdown (padding, empty headings, widening, escaping); the form from the editor palette (preview, insert, flash, typing landing in the right cell); from the reading view (editor opens, saved to disk); the no-note refusal; number fields typing and staying within 1–12 columns and 1–50 rows; Esc inserting nothing. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux: the form from the reading view over the scratch vault, the default table inserted after a heading with blank lines around it, a heading typed, and the reading view drawing it as a real table. Then `u` restored the note.
+
 ## v0.26.0 — 2026-09-18
 
 **New: onboarding — one door to every command, and everything points at it.** The user: "a better on-boarding for new users … it's hard to find exactly the right keybinding if you don't already know them, it's not very searchable, and there's a high threshold to start using Skrin", then: "act as a senior UX designer … it's up to you to design and build this experience." Design and reasoning: [[skrin onboarding]]. Closes two quick reports, *On ctrl+p* and *ctrl+c should never close*.

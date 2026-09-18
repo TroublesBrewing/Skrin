@@ -153,6 +153,10 @@ func (m *Model) copySelection() tea.Cmd {
 func (m *Model) paste(s string) {
 	switch {
 	case m.conflict != nil:
+	case m.table != nil:
+		if m.table.field == tableHeads {
+			m.table.heads.insert(strings.ReplaceAll(s, "\n", " "))
+		}
 	case m.focus == paneClaude:
 		m.drawer.input.Paste(s)
 	case m.editor != nil:

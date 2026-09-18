@@ -109,6 +109,7 @@ const (
 	inBookCard  = "bookcard"  // the B card: bibliographic fields, quotes, notes
 	inHabits    = "habits"    // the T overlay: today's list, the week and month grids
 	inQuickNote = "quicknote" // the i overlay: capture text, folder row
+	inTable     = "table"     // Insert table, from the palette
 )
 
 // binding is one row of the keymap registry. Every key Skrin handles is
@@ -146,6 +147,7 @@ const (
 	groupBookCard  = "In the Book Card (B)"
 	groupHabits    = "In the habits view (T)"
 	groupQuickNote = "In the quick note (i)"
+	groupTable     = "In Insert table (from Ctrl+P)"
 )
 
 var defaultBindings = []binding{
@@ -330,6 +332,15 @@ var defaultBindings = []binding{
 	{actUp, []string{"up"}, "folder row: through the matches · text: up a line", groupQuickNote, inQuickNote},
 	{actDown, []string{"down"}, "folder row: through the matches · text: down a line", groupQuickNote, inQuickNote},
 	{actCancel, []string{"esc", "ctrl+c"}, "close, write nothing", groupQuickNote, inQuickNote},
+
+	{actNextField, []string{"tab"}, "columns → rows → headings", groupTable, inTable},
+	{actPrevField, []string{"shift+tab"}, "the field before", groupTable, inTable},
+	{actUp, []string{"up"}, "one more column or row", groupTable, inTable},
+	{actDown, []string{"down"}, "one fewer", groupTable, inTable},
+	{actNone, []string{"0-9", "+", "-"}, "columns, rows: type the number, or step it", groupTable, inTable},
+	{actNone, []string{"letters"}, "headings: comma-separated, and optional", groupTable, inTable},
+	{actPick, []string{"enter"}, "put the table in the note, at the cursor", groupTable, inTable},
+	{actCancel, []string{"esc", "ctrl+c"}, "close, insert nothing", groupTable, inTable},
 }
 
 // actionName is the name each action goes by in config.toml's [keys]

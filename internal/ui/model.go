@@ -200,6 +200,7 @@ type Model struct {
 	book      *bookCard
 	habits    *habitView
 	quickNote *quickNote
+	table     *tableForm // Insert table, over the editor
 
 	lastSearch *searchPanel // reopened by the next /
 
@@ -378,6 +379,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// never used to coexist, so this changes nothing else.
 		case m.chooser != nil:
 			cmd = m.chooserKey(msg)
+		case m.table != nil:
+			m.tableKey(msg)
 		case m.editor != nil:
 			if m.complete == nil || !m.completionKey(msg) {
 				cmd = m.editorKey(msg)

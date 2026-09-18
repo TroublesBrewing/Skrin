@@ -183,6 +183,38 @@ func (e *Editor) Paste(s string) {
 	e.scroll()
 }
 
+// InsertBlock puts lines in as a block of their own — a table, say — in
+// one undo step: in place of the cursor's line when it's blank, otherwise
+// after it, keeping one blank line between the block and any text above
+// or below, which a markdown table needs to be read as one. The cursor
+// lands on the block's line row, at col, ready to type.
+func (e *Editor) InsertBlock(lines []string, row, col int) {
+	if e.vim && e.mode == Normal {
+		e.mode = Insert
+	}
+	e.push("block")
+	e.sel = false
+	blank := func(r int) bool { return strings.TrimSpace(string(e.lines[r])) == "" }
+	at := e.row
+	if blank(at) {
+		e.lines = append(e.lines[:at], e.lines[at+1:]...)
+	} else {
+		at++
+	}
+	var block []string
+	if at > 0 && !blank(at-1) {
+		block = append(block, "")
+	}
+	start := at + len(block) + clamp(row, 0, len(lines)-1)
+	block = append(block, lines...)
+	if at < len(e.lines) && !blank(at) {
+		block = append(block, "")
+	}
+	e.insertLines(at, block)
+	e.row, e.col, e.goal = start, min(col, len(e.lines[start])), -1
+	e.scroll()
+}
+
 // HandleKey applies one key press.
 func (e *Editor) HandleKey(k tea.KeyPressMsg) Action {
 	s := k.String()

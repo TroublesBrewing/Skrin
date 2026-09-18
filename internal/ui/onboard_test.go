@@ -242,7 +242,7 @@ func TestPaletteInTheEditor(t *testing.T) {
 
 func TestPaletteRunsTheEditorsOwnKeys(t *testing.T) {
 	for _, c := range editorCommands {
-		if c.act != actNone || strings.HasPrefix(c.name, "Save") || strings.HasPrefix(c.name, "Leave") {
+		if c.act != actNone || c.key == "" || strings.HasPrefix(c.name, "Save") || strings.HasPrefix(c.name, "Leave") {
 			continue
 		}
 		if got := keyPress(c.key).String(); got != c.key {

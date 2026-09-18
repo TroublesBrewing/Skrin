@@ -373,3 +373,37 @@ func TestShiftEnterUndoesLikeEnter(t *testing.T) {
 		t.Errorf("second undo should drop the newline: got %q", got)
 	}
 }
+
+func TestInsertBlockKeepsItsOwnLines(t *testing.T) {
+	table := []string{"| A | B |", "| - | - |", "|   |   |"}
+	cases := []struct {
+		name, text string
+		row        int
+		want       string
+	}{
+		{"in the middle of a paragraph line", "one\ntwo", 0, "one\n\n| A | B |\n| - | - |\n|   |   |\n\ntwo"},
+		{"on a blank line between paragraphs", "one\n\ntwo", 1, "one\n\n| A | B |\n| - | - |\n|   |   |\n\ntwo"},
+		{"in an empty note", "", 0, "| A | B |\n| - | - |\n|   |   |"},
+		{"after the last line", "one", 0, "one\n\n| A | B |\n| - | - |\n|   |   |"},
+	}
+	for _, c := range cases {
+		e := open(c.text)
+		e.GoTo(c.row)
+		e.InsertBlock(table, 0, 2)
+		if e.Text() != c.want {
+			t.Errorf("%s:\n got %q\nwant %q", c.name, e.Text(), c.want)
+		}
+		if row := e.row; e.Text() != "" && string(e.lines[row]) != "| A | B |" || e.col != 2 {
+			t.Errorf("%s: cursor at %d:%d, want on the block's first line at 2", c.name, e.row, e.col)
+		}
+		keys(e, "ctrl+z")
+		if e.Text() != c.text {
+			t.Errorf("%s: one undo should take the whole block back: %q", c.name, e.Text())
+		}
+	}
+	e := open("")
+	e.InsertBlock(table, 2, 2)
+	if e.row != 2 || e.col != 2 {
+		t.Errorf("row 2 should put the cursor in the first body cell: %d:%d", e.row, e.col)
+	}
+}

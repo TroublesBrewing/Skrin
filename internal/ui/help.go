@@ -345,6 +345,10 @@ func (m *Model) guideText(w int) []manualLine {
 	para("In the editor, Alt-z, Alt-b and Alt-o reach zen, backlinks and the outline without leaving it — the outline moves the editor's own cursor, and picking a backlink saves first, since that leaves the note. Alt is how a view-mode action reaches you while you're still typing.")
 	para("Renaming or moving offers to update the links to what moved, as Obsidian does.")
 
+	head("Tables")
+	para("Insert table, in the commands (Ctrl+P, then \"table\"), makes a markdown table without typing its pipes: choose the columns and rows, and headings if you like — \"Name, Rating, Date\" — and a preview shows what goes in. Enter puts it at the cursor as a block of its own, with a blank line kept around it so it reads as a table, and leaves the cursor in the first cell to fill. From the reading view it opens the note in the editor first. Ctrl+Z takes the whole table back out.")
+	para("Once it's in, a table is plain text like the rest of the note: type into the cells between the pipes. They needn't line up — the reading view draws the table either way.")
+
 	head("Spreads")
 	para("A spread is a small query in a ```spread block. In the note it shows what it finds — a table or a list of notes — and stays current as notes change. The query language is a subset of Dataview's, so a ```dataview block works the same, and shows the same in Obsidian with Dataview installed.")
 	key(`TABLE a, b AS "B"`, "a table: the note, then those fields")

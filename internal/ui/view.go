@@ -41,6 +41,9 @@ func (m *Model) render() string {
 	if m.quickNote != nil {
 		out = m.overlay(out, m.quickNoteBox())
 	}
+	if m.table != nil {
+		out = m.overlay(out, m.tableBox())
+	}
 	switch {
 	case m.chooser != nil:
 		out = m.overlay(out, m.chooserBox())

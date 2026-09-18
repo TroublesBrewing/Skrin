@@ -100,6 +100,7 @@ var editorCommands = []editorCommand{
 	{act: actZen, name: "Zen mode, still editing", also: "focus distraction free fullscreen"},
 	{act: actBacklinks, name: "Backlinks: notes linking here", also: "references mentions incoming"},
 	{act: actOutline, name: "Outline: jump to a heading", also: "headings toc sections"},
+	{name: "Insert table", also: "add new grid columns rows markdown tabell", run: func(m *Model) tea.Cmd { m.startTable(); return nil }},
 }
 
 // editorKeyRun runs one of the editor's own keys, as if it were pressed.
@@ -193,6 +194,10 @@ func (m *Model) mainPaletteItems() []choice {
 		items = append(items, m.actionChoice(inMain, e.act, e.name, e.also))
 	}
 	return append(items,
+		choice{label: "Insert table", also: "add new grid columns rows markdown tabell", run: m.paletteRun("Insert table", func() tea.Cmd {
+			m.startTable()
+			return nil
+		})},
 		choice{label: "Settings", also: "preferences options config toggles", run: m.paletteRun("Settings", func() tea.Cmd {
 			m.openManual()
 			m.manualGoTab(manualTabSettings)

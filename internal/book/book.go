@@ -1,8 +1,8 @@
 // Package book is Skrin's Library & Book Card: metadata lookups (Open
-// Library, with a Libris fallback for Swedish ISBNs), cover image
-// downloads into the vault, and the note template a Book Card reads and
-// writes. Nothing here touches the UI; internal/ui/book_card.go is the
-// Bubble Tea front end.
+// Library, Google Books and Libris, with Libris asked first for Swedish
+// ISBNs), cover image downloads into the vault, and the note template a
+// Book Card reads and writes. Nothing here touches the UI;
+// internal/ui/book_card.go is the Bubble Tea front end.
 package book
 
 import "strings"

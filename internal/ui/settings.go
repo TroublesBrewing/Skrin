@@ -6,10 +6,10 @@ import (
 	"github.com/lurioso/skrin/internal/config"
 )
 
-// settingsItem is one on/off toggle in the Settings tab. get and set both
-// go through Options, the single source of truth the rest of Skrin reads,
-// so a toggle takes effect at once; set also updates the config so it
-// survives a restart.
+// settingsItem is one row of the Settings tab: an on/off toggle, or a
+// choice such as a folder. A toggle's get and set go through Options, the
+// single source of truth the rest of Skrin reads, so it takes effect at
+// once; set also updates the config so it survives a restart.
 type settingsItem struct {
 	label, help string
 	get         func(m *Model) bool

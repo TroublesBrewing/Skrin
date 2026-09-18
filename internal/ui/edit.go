@@ -12,6 +12,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	udiff "github.com/aymanbagabas/go-udiff"
 
+	"github.com/lurioso/skrin/internal/duedate"
 	"github.com/lurioso/skrin/internal/editor"
 	"github.com/lurioso/skrin/internal/obsidian"
 	"github.com/lurioso/skrin/internal/snapshot"
@@ -22,6 +23,7 @@ import (
 type editSession struct {
 	rel         string
 	base        string // the note as it was on disk when last loaded or saved
+	opened      string // the note as it was when the editor opened, whatever saves came since
 	snapshotted bool   // the version from before this session is in the snapshot store
 	linkFormat  string // Obsidian's newLinkFormat, for [[ completion
 }
@@ -96,7 +98,7 @@ func (m *Model) openEditor(rel string) {
 	}
 	m.editor = editor.New(text, m.opts.Vim, m.pal)
 	m.editor.SetLineNumbers(m.opts.LineNumbers)
-	m.edit = editSession{rel: rel, base: text, linkFormat: obsidian.LoadSettings(m.vault.Root).NewLinkFormat}
+	m.edit = editSession{rel: rel, base: text, opened: text, linkFormat: obsidian.LoadSettings(m.vault.Root).NewLinkFormat}
 	m.focus = paneNote
 	m.settle()
 	m.editor.GoTo(row)
@@ -174,6 +176,10 @@ func (m *Model) paste(s string) {
 // meantime, in which case the user decides.
 func (m *Model) saveEdit(closing bool) {
 	s := &m.edit
+	var dates string
+	if closing {
+		dates = m.resolveDueDates()
+	}
 	text := m.editor.Text()
 	if text == s.base {
 		if closing {
@@ -203,10 +209,30 @@ func (m *Model) saveEdit(closing bool) {
 	}
 	s.base = text
 	m.editor.MarkSaved()
-	m.flash = "Saved " + s.rel
+	m.flash = "Saved " + s.rel + dates
 	if closing {
 		m.closeEditor()
 	}
+}
+
+// resolveDueDates turns "due:: tomorrow" and the like into dates in the
+// editor's text, on the lines typed or changed since the editor opened —
+// a Ctrl-s along the way doesn't make them old — and says what it did for
+// the save flash.
+func (m *Model) resolveDueDates() string {
+	text, changes := duedate.Resolve(m.editor.Text(), m.edit.opened, m.opts.Now())
+	if len(changes) == 0 {
+		return ""
+	}
+	m.editor.Reset(text)
+	var parts []string
+	for _, c := range changes {
+		parts = append(parts, c.Word+" → "+c.Date)
+	}
+	if len(changes) == 1 {
+		return " · due:: " + parts[0]
+	}
+	return fmt.Sprintf(" · %d due dates: %s", len(changes), strings.Join(parts, ", "))
 }
 
 func (m *Model) conflictKey(k tea.KeyPressMsg) {

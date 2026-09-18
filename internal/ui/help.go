@@ -353,6 +353,7 @@ func (m *Model) guideText(w int) []manualLine {
 	para("Fields are the note's frontmatter properties, plus file.name, file.link, file.folder, file.path, file.tags, file.mtime and file.size. Numbers and ISO dates compare as numbers and dates.")
 	para("A field can also live in the note's text, Dataview's way: \"rating:: 4\" on a line of its own, or \"[due:: 2026-09-22]\" or \"(due:: 2026-09-22)\" in a sentence. A name with spaces is queried with dashes: \"Due Date::\" is due-date.")
 	para("In a TASK spread, WHERE and SORT look at each task: text, status (what's between the brackets), completed, checked, line, and the fields on the task's own line — so \"- [ ] call the printer [due:: 2026-09-22]\" answers to WHERE !completed AND due <= \"2026-09-30\". A task shows with the tasks nested under it. Checkboxes under ### Habits aren't tasks, and don't show.")
+	para("A due date can be written as a word: today, tomorrow, or a weekday. Leaving the editor turns it into the date it means — \"due:: friday\" becomes the coming Friday, the next one if it's Friday already — on the lines you typed or changed, and the status line says what it set. The note then holds a real date, which spreads and Obsidian both read.")
 	para("Every note in the answer is a link: f and Enter follow it, and a task's ↗ opens its note at that task, where Ctrl-l ticks it. A spread only reads, never writes. Without LIMIT it stops at 200 rows and says how many more there are; a mistake, or Dataview syntax Skrin doesn't do yet, shows as a ⚠ line naming it.")
 
 	head("Undo")

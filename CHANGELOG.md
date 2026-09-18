@@ -2,6 +2,17 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.21.1 — 2026-09-18
+
+Asked for by the user: "could we add natural language recognition to due dates? … In the action of leaving the edit mode 'tomorrow' in a due key becomes the upcoming date?"
+
+- **New: a due date can be written as a word.** `due:: today`, `tomorrow`, or a weekday — in any of the three field forms (`due:: x`, `[due:: x]`, `(due:: x)`) — becomes the date it means when you leave the editor: `[due:: friday]` → `[due:: 2026-09-25]`. A weekday is always the coming one, so `friday` on a Friday is next week (the user's call). The status line names each one it set, after "Saved": `· due:: friday → 2026-09-25`.
+- **Written once, not kept "live":** the note holds a real date from then on, which spreads, sorting and Obsidian all read the same way.
+- **Only what you typed this time:** lines already in the note when the editor opened are left alone, so an old `due:: tomorrow` from Obsidian keeps meaning its author's tomorrow. A `Ctrl-s` along the way doesn't make a line "old", and `Ctrl-s` itself never rewrites — that would change the text under the cursor mid-thought.
+- **Kept small on purpose** (the user asked whether it was over-engineered): English words only, `due` only, the built-in editor only. No `in 3 days`, no other date keys, no Quick Notes — each easy to add if missed. Left alone: `due:: tomorrow morning`, `overdue::`, one-colon `due:`, code spans and fenced code.
+- `u` takes the dates back together with the rest of the edit, like any save.
+- New `internal/duedate`; hooked into `saveEdit` on leaving; one Guide paragraph. Tests: the word → date rules (including Friday-on-a-Friday), every form and every look-alike that must stay, only-changed-lines, and in `internal/ui` the flash, `Ctrl-s` then leaving, several dates at once, and undo. Verified live in tmux on a real Friday.
+
 ## v0.21.0 — 2026-09-18
 
 **New: spreads, phase 2 — tasks and inline fields.** Ticket `Backlog/Refined/Spreads phase 2.md`, spec [[skrin spreads]] ("Phase 2 as built"). Built at the user's go-ahead ("Include bracketed fields, and build it now") while the PO/UX reviewer was away.

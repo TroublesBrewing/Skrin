@@ -183,11 +183,34 @@ func TestWordsCrossingStylesStayTogether(t *testing.T) {
 	}
 }
 
-func TestNarrowTableClips(t *testing.T) {
+func TestNarrowTableCellsWrap(t *testing.T) {
 	src := "| Topic | Decision |\n|---|---|\n| Stack | Go with Bubble Tea, Bubbles and Lip Gloss in one binary |\n"
 	lines := render(t, src, 30)
-	if s := plainAt(lines, 2); !strings.Contains(s, "…") {
-		t.Errorf("long cell not clipped: %q", s)
+	var rows []Line
+	for _, l := range lines {
+		if l.Src == 2 {
+			rows = append(rows, l)
+		}
+	}
+	if len(rows) < 2 {
+		t.Fatalf("long cell should wrap onto several display rows, got %d: %q", len(rows), plainAt(lines, 2))
+	}
+	full := plainAt(lines, 2)
+	if strings.Contains(full, "…") {
+		t.Errorf("cell was clipped instead of wrapped: %q", full)
+	}
+	for _, word := range []string{"Bubble", "Tea,", "Bubbles", "Lip", "Gloss", "binary"} {
+		if !strings.Contains(full, word) {
+			t.Errorf("wrapped cell lost %q: %q", word, full)
+		}
+	}
+	if !strings.Contains(ansi.Strip(rows[0].Text), "Stack") {
+		t.Errorf("first row should still show the short cell: %q", ansi.Strip(rows[0].Text))
+	}
+	for _, r := range rows[1:] {
+		if strings.Contains(ansi.Strip(r.Text), "Stack") {
+			t.Errorf("continuation row repeats the short cell instead of blanking it: %q", ansi.Strip(r.Text))
+		}
 	}
 }
 

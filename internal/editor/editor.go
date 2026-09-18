@@ -23,6 +23,7 @@ const (
 	None  Action = iota
 	Save         // write the note and keep editing
 	Close        // write the note and leave the editor
+	Copy         // copy the selection to the system clipboard; keep editing
 )
 
 // Mode is the vim mode. Without vim keys the editor is always in Insert.
@@ -188,6 +189,9 @@ func (e *Editor) HandleKey(k tea.KeyPressMsg) Action {
 	case "ctrl+s":
 		return Save
 	case "ctrl+c":
+		if e.sel {
+			return Copy
+		}
 		return Close
 	case "ctrl+l":
 		e.push("todo")

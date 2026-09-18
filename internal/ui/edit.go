@@ -102,17 +102,41 @@ func (m *Model) openEditor(rel string) {
 	m.editor.GoTo(row)
 }
 
-func (m *Model) editorKey(k tea.KeyPressMsg) {
+func (m *Model) editorKey(k tea.KeyPressMsg) tea.Cmd {
 	if m.actionIn(inEditor, k.String()) == actAskClaude {
 		m.openDrawer()
-		return
+		return nil
 	}
 	switch m.editor.HandleKey(k) {
 	case editor.Save:
 		m.saveEdit(false)
 	case editor.Close:
 		m.saveEdit(true)
+	case editor.Copy:
+		return m.copySelection()
 	}
+	return nil
+}
+
+// copySelection sends the current selection to the system clipboard over
+// OSC 52 — the terminal itself relays it, so this works the same in a
+// local terminal, over SSH, or inside tmux with clipboard passthrough on,
+// with no OS-specific clipboard tool and no cgo. It's a no-op, silently,
+// when the terminal doesn't support OSC 52 at all: there's no reliable way
+// to tell in advance, so the flash names what was attempted rather than
+// promising it landed.
+func (m *Model) copySelection() tea.Cmd {
+	s := m.selectionText()
+	if s == "" {
+		return nil
+	}
+	n := strings.Count(s, "\n") + 1
+	if n == 1 {
+		m.flash = "Copied 1 line"
+	} else {
+		m.flash = fmt.Sprintf("Copied %d lines", n)
+	}
+	return tea.SetClipboard(s)
 }
 
 func (m *Model) paste(s string) {
@@ -132,6 +156,14 @@ func (m *Model) paste(s string) {
 	case m.chooser != nil:
 		m.chooser.in.insert(s)
 		m.chooser.filter()
+	case m.quickNote != nil:
+		c := m.quickNote
+		if c.area == quickNoteText {
+			c.text.insert(s)
+		} else {
+			c.folder.insert(s)
+			c.filterFolders()
+		}
 	case m.search != nil:
 		m.search.paste(s)
 		m.runSearch()

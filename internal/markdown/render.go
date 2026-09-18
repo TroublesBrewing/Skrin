@@ -610,15 +610,35 @@ func (r *renderer) table(rows []string, start int) {
 	}
 	bar := r.st.rule.Render("│")
 	for k := range rows {
-		var b strings.Builder
-		var links []Link
 		if cells[k] == nil {
+			var b strings.Builder
 			parts := make([]string, len(widths))
 			for c, w := range widths {
 				parts[c] = strings.Repeat("─", w+2)
 			}
 			b.WriteString(r.st.rule.Render("├" + strings.Join(parts, "┼") + "┤"))
-		} else {
+			r.out = append(r.out, Line{Text: ansi.Truncate(b.String(), r.width, ""), Src: start + k})
+			continue
+		}
+		// A cell wraps within its column instead of clipping: each cell's
+		// content word-wraps to its column width, and the row grows to fit
+		// its tallest cell rather than cutting the rest short. Every
+		// sub-row past the first still carries the row's one source line,
+		// the same "blank gutter on a wrapped continuation" rule a normal
+		// paragraph gets.
+		cellRows := make([][][]token, len(widths))
+		height := 1
+		for c, w := range widths {
+			var spans []span
+			if c < len(cells[k]) {
+				spans = cells[k][c]
+			}
+			cellRows[c] = wrap(spans, w, wrapWords)
+			height = max(height, len(cellRows[c]))
+		}
+		for j := 0; j < height; j++ {
+			var b strings.Builder
+			var links []Link
 			b.WriteString(bar)
 			col := 1
 			for c, w := range widths {
@@ -626,31 +646,18 @@ func (r *renderer) table(rows []string, start int) {
 				if c < len(cells[k]) {
 					spans = cells[k][c]
 				}
-				for _, sp := range spans {
-					if sp.link >= 0 && col+1 < r.width {
-						l := r.links[sp.link]
-						l.Col = col + 1
-						links = append(links, l)
-						break
-					}
+				text := ""
+				if j < len(cellRows[c]) {
+					toks := cellRows[c][j]
+					text = renderTokens(toks, spans)
+					links = append(links, r.linksIn(toks, spans, col+1)...)
 				}
-				b.WriteString(" " + r.fitSpans(spans, w) + " " + bar)
+				b.WriteString(" " + padRight(text, w) + " " + bar)
 				col += w + 3
 			}
+			r.out = append(r.out, Line{Text: ansi.Truncate(b.String(), r.width, ""), Src: start + k, Links: links})
 		}
-		r.out = append(r.out, Line{Text: ansi.Truncate(b.String(), r.width, ""), Src: start + k, Links: links})
 	}
-}
-
-// fitSpans renders spans in exactly w cells, clipping with "…".
-func (r *renderer) fitSpans(spans []span, w int) string {
-	lines := wrap(spans, w, clip)
-	tail := ""
-	if len(lines) > 1 {
-		lines = wrap(spans, max(w-1, 1), clip)
-		tail = r.st.muted.Render("…")
-	}
-	return padRight(renderTokens(lines[0], spans)+tail, w)
 }
 
 func spansWidth(spans []span) int {

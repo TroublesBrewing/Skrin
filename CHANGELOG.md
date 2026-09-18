@@ -2,6 +2,15 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.19.1 — 2026-09-18
+
+Three quick reports, fixed directly (no formal tickets — see `Quick reports/`):
+
+- **New: Ctrl+C copies a selection to the system clipboard.** Ctrl+C already meant quit/close/cancel everywhere in the keymap, so this follows the same pattern Esc already uses ("clears a selection first, otherwise the bigger action"): with an active selection — the editor's Shift+arrow/vim `v` selection, or the reading view's `v` line selection — Ctrl+C copies it and flashes "Copied N lines" instead of quitting or closing; with no selection, Ctrl+C is unchanged. The copy goes out over OSC 52 (`tea.SetClipboard`), which the terminal itself relays to the system clipboard — no OS-specific clipboard tool, no cgo, and it works the same locally, over SSH, or in tmux with clipboard passthrough on. Not every terminal supports OSC 52 for writing (and even fewer allow reading it back, which is why this doesn't touch `Ctrl+V` — see below); there's no reliable way to detect that in advance, so the flash names what was attempted rather than promising it landed.
+- **Fixed: pasting into a Quick Note did nothing.** `Ctrl+V`/bracketed paste already worked in the editor, search, and several other places, but the quick-note overlay (`i`) was missing from the dispatch — pasting into either its text box or its folder field was silently swallowed. Both now accept a paste. (A similar gap exists in the Book Card's fields; not fixed here, out of scope for this pass.)
+- **Investigated, not reproduced: arrow keys disabled in a zen-mode Quick Note.** Tried the exact reported scenario — opening `i` over a note in zen mode, typing enough lines to force the capture box's own internal scroll, navigating with ↑/↓ — live in tmux, twice, and both worked correctly. This looks like it was already fixed by v0.16.3's Quick Note scroll fix, which shipped about two and a half hours before this report was filed; flagging rather than closing outright in case it's still reproducible on a real terminal.
+- **Fixed: table cells no longer clip long text — they wrap inside the cell.** `internal/markdown`'s table renderer used to shrink columns to fit the pane and then hard-clip whatever still didn't fit, with a trailing "…"; it now word-wraps each cell to its column's width instead, and a table row grows to fit its tallest cell. Every sub-row past a cell's first still carries the row's one source line, the same "blank gutter on a wrapped continuation" rule a normal paragraph or list item gets (and that the new line-numbers gutter already relies on). Verified live in zen mode, the normal view, and at a narrow terminal width; box borders stay aligned throughout.
+
 ## v0.19.0 — 2026-09-18
 
 **New: line numbers in notes.** From the ticket [[Line numbers in notes]] (spec: [[skrin line numbers]]), signed off the same day.

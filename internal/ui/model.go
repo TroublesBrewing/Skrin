@@ -351,7 +351,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.drawerKey(msg)
 		case m.editor != nil:
 			if m.complete == nil || !m.completionKey(msg) {
-				m.editorKey(msg)
+				cmd = m.editorKey(msg)
 				m.updateCompletion()
 			}
 		case m.manual != nil:
@@ -385,6 +385,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			if act := m.actionIn(inMain, key); act != actNone {
 				if act == actQuit {
+					if key == "ctrl+c" && m.noteSel != nil {
+						cmd = m.copySelection()
+						break
+					}
 					return m, tea.Quit
 				}
 				cmd = m.do(act)

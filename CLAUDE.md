@@ -2,11 +2,20 @@
 
 Skrin is a keyboard-driven terminal UI for Obsidian vaults, written in Go with Bubble Tea v2 (`charm.land/*/v2`).
 
-The spec and milestone plan live in the user's vault at `~/Documents/vault-1/tui.md`. The user signs off there and leaves comments at the bottom, so read it before starting a milestone.
+## Read first: the steering document
+
+`~/Documents/vault-1/Skrin/skrin styrdokument.md` (Swedish) says what Skrin is for, what gets built next and what doesn't. Read it at the start of every Skrin session, before the backlog, `HANDOFF.md` or any quick report. It outranks the backlog, the wishlist and quick reports; only the user outranks it. In short:
+
+- **The north star, in order:** understandable before powerful ("Vim is confusing; this shouldn't be"); capture and find first ("a ten-second thought must cost ten seconds"); the user owns their documents.
+- **The course runs in phases** (freeze and use → decide and consolidate → earn v1.0). Work only on what the current phase lists, plus bugs. A quick report is input, not an order: triage it against the phase and note it rather than building it on arrival.
+- **Every idea passes the document's four questions** before it becomes code. If the user says "build it anyway", say what it costs against the phase, build it, and record that in `HANDOFF.md`.
+- **Don't approve your own UX calls:** new keys and changed flows are marked provisional in `HANDOFF.md` until the UX review.
+
+The spec and milestone plan live in the user's vault at `~/Documents/vault-1/Skrin/tui.md`. The user signs off there and leaves comments at the bottom, so read it before starting a milestone.
 
 ## Roles
 
-There are four of us. You (Claude Code) are the **builder**. Hermes Agent is the **product owner**; its reviews and stories come with PO callouts in the vault notes and it holds the UX/keybinding-ergonomics bar. The **UX engineer** is a dedicated role Hermes also runs: a senior interaction specialist whose only loyalty is UX — it holds Skrin to the charter in `~/Documents/vault-1/skrin ux.md` (read it before designing keys or flows), runs UX passes on proposal notes before the user signs off and on UX-significant changes before release, and can hold or veto a keybinding on UX grounds. The user has the final word and signs off in `tui.md`. Practical points:
+There are four of us. You (Claude Code) are the **builder**. Hermes Agent is the **product owner**; its reviews and stories come with PO callouts in the vault notes and it holds the UX/keybinding-ergonomics bar. The **UX engineer** is a dedicated role Hermes also runs: a senior interaction specialist whose only loyalty is UX — it holds Skrin to the charter in `~/Documents/vault-1/Skrin/skrin ux.md` (read it before designing keys or flows), runs UX passes on proposal notes before the user signs off and on UX-significant changes before release, and can hold or veto a keybinding on UX grounds. The user has the final word and signs off in `tui.md`. Practical points:
 
 - Before starting a milestone, read `tui.md`, `skrin backlog.md`, and any proposal note with an open sign-off box (e.g. [[skrin split view]]). Proposal notes define scope before a story is built.
 - The 13 stories tagged *(LLM-added …)* in the backlog were found by Hermes's code review of v0.5.4; they are triaged in the notes around them but not yet human verified. The stories tagged *Product owner, 2026-09-15* are from user feedback after daily use and reflect the user's current intent.

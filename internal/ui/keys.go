@@ -488,17 +488,6 @@ func (km *keymap) changed(where string, a action) bool {
 	return ok
 }
 
-// defaultKeys is what the registry ships for this binding, whatever the
-// user has since made of it.
-func defaultKeys(where string, a action) []string {
-	for _, b := range defaultBindings {
-		if b.where == where && b.act == a {
-			return b.keys
-		}
-	}
-	return nil
-}
-
 // holder names what already has key k in context where, and whether that
 // can be rebound. An empty name means the key is free.
 func (km *keymap) holder(where, key string) (help string, rebindable bool) {

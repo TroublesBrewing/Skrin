@@ -22,9 +22,9 @@ func TestCoverPathAvoidsDuplicates(t *testing.T) {
 
 func TestCoverExtDefaultsToJPG(t *testing.T) {
 	cases := map[string]string{
-		"https://covers.openlibrary.org/b/id/1-L.jpg":  ".jpg",
-		"https://example.com/cover.PNG?x=1":            ".png",
-		"https://example.com/cover-with-no-extension":  ".jpg",
+		"https://covers.openlibrary.org/b/id/1-L.jpg": ".jpg",
+		"https://example.com/cover.PNG?x=1":           ".png",
+		"https://example.com/cover-with-no-extension": ".jpg",
 	}
 	for url, want := range cases {
 		if got := CoverExt(url); got != want {

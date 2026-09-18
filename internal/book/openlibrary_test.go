@@ -48,14 +48,6 @@ func emptyGoogleBooksServer(t *testing.T) {
 	})
 }
 
-func emptyLibrisServer(t *testing.T) {
-	t.Helper()
-	withLibrisServer(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/xml")
-		w.Write([]byte(`<xsearch records="0"><collection /></xsearch>`))
-	})
-}
-
 func TestSearchOpenLibrary(t *testing.T) {
 	withOpenLibraryServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasPrefix(r.URL.Path, "/search.json") {

@@ -23,8 +23,8 @@ type librisRecord struct {
 }
 
 type librisField struct {
-	Tag       string             `xml:"tag,attr"`
-	Subfields []librisSubfield   `xml:"subfield"`
+	Tag       string           `xml:"tag,attr"`
+	Subfields []librisSubfield `xml:"subfield"`
 }
 
 type librisSubfield struct {

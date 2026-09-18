@@ -8,8 +8,6 @@ import (
 // at puts the cursor on row, col.
 func at(e *Editor, row, col int) { e.row, e.col = row, col }
 
-func lines(e *Editor) string { return e.Text() }
-
 func TestTabStartsATableFromAHeadingLine(t *testing.T) {
 	e := open("| Name | Age")
 	at(e, 0, 12)

@@ -21,14 +21,14 @@ type gbItem struct {
 }
 
 type gbVolumeInfo struct {
-	Title               string              `json:"title"`
-	Subtitle            string              `json:"subtitle"`
-	Authors             []string            `json:"authors"`
-	Publisher           string              `json:"publisher"`
-	PublishedDate       string              `json:"publishedDate"`
-	PageCount           int                 `json:"pageCount"`
-	IndustryIdentifiers []gbIdentifier      `json:"industryIdentifiers"`
-	ImageLinks          gbImageLinks        `json:"imageLinks"`
+	Title               string         `json:"title"`
+	Subtitle            string         `json:"subtitle"`
+	Authors             []string       `json:"authors"`
+	Publisher           string         `json:"publisher"`
+	PublishedDate       string         `json:"publishedDate"`
+	PageCount           int            `json:"pageCount"`
+	IndustryIdentifiers []gbIdentifier `json:"industryIdentifiers"`
+	ImageLinks          gbImageLinks   `json:"imageLinks"`
 }
 
 type gbIdentifier struct {

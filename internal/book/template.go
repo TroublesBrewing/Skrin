@@ -3,7 +3,6 @@ package book
 import (
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -252,15 +251,4 @@ func parseQuotes(body string) []Quote {
 		quotes = append(quotes, q)
 	}
 	return quotes
-}
-
-// ParseYear turns a string into an int for sorting or display, or 0 if it
-// isn't one (original years like "180 BCE" are kept as free text and
-// simply sort as 0).
-func ParseYear(s string) int {
-	n, err := strconv.Atoi(strings.TrimSpace(s))
-	if err != nil {
-		return 0
-	}
-	return n
 }

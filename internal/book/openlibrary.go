@@ -135,28 +135,28 @@ type olSearchResponse struct {
 }
 
 type olDoc struct {
-	Title             string   `json:"title"`
-	Subtitle          string   `json:"subtitle"`
-	AuthorName        []string `json:"author_name"`
-	FirstPublishYear  int      `json:"first_publish_year"`
-	PublishYear       []int    `json:"publish_year"`
-	Publisher         []string `json:"publisher"`
-	ISBN              []string `json:"isbn"`
-	NumberOfPagesMed  int      `json:"number_of_pages_median"`
-	CoverI            int      `json:"cover_i"`
-	Key               string   `json:"key"`
+	Title            string   `json:"title"`
+	Subtitle         string   `json:"subtitle"`
+	AuthorName       []string `json:"author_name"`
+	FirstPublishYear int      `json:"first_publish_year"`
+	PublishYear      []int    `json:"publish_year"`
+	Publisher        []string `json:"publisher"`
+	ISBN             []string `json:"isbn"`
+	NumberOfPagesMed int      `json:"number_of_pages_median"`
+	CoverI           int      `json:"cover_i"`
+	Key              string   `json:"key"`
 }
 
 type olISBNResponse struct {
-	Title      string   `json:"title"`
-	Subtitle   string   `json:"subtitle"`
-	Authors    []olRef  `json:"authors"`
-	Publishers []string `json:"publishers"`
-	PublishDate string  `json:"publish_date"`
-	NumberOfPages int   `json:"number_of_pages"`
-	Covers     []int    `json:"covers"`
-	ISBN10     []string `json:"isbn_10"`
-	ISBN13     []string `json:"isbn_13"`
+	Title         string   `json:"title"`
+	Subtitle      string   `json:"subtitle"`
+	Authors       []olRef  `json:"authors"`
+	Publishers    []string `json:"publishers"`
+	PublishDate   string   `json:"publish_date"`
+	NumberOfPages int      `json:"number_of_pages"`
+	Covers        []int    `json:"covers"`
+	ISBN10        []string `json:"isbn_10"`
+	ISBN13        []string `json:"isbn_13"`
 }
 
 type olRef struct {

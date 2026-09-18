@@ -110,3 +110,14 @@ func TestExpandTemplate(t *testing.T) {
 		t.Errorf("got %q\nwant %q", got, want)
 	}
 }
+
+func TestInvisibleMarksAreNotTodos(t *testing.T) {
+	for _, mark := range []string{"\u200b", "\u200c", "\u200d", "\u202e"} {
+		if got := UnfinishedTodos([]string{"- [" + mark + "] looks empty"}, false, "xX-"); len(got) != 0 {
+			t.Errorf("a box holding only %U shouldn't count as a todo: %q", []rune(mark)[0], got)
+		}
+	}
+	if got := UnfinishedTodos([]string{"- [ ] a real one", "- [?] odd but visible"}, false, "xX-"); len(got) != 2 {
+		t.Errorf("visible marks still count: %q", got)
+	}
+}

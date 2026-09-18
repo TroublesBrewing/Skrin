@@ -156,7 +156,10 @@ func isTodo(line, done string) bool {
 	if m == nil || uniseg.GraphemeClusterCount(m[1]) != 1 {
 		return false
 	}
-	if strings.ContainsAny(m[1], "‮​‌‍") {
+	// A mark you can't see isn't a mark: a box holding only a zero-width
+	// space or joiner, or a right-to-left override, looks empty or garbled,
+	// so it isn't counted as a todo with an odd marker.
+	if strings.ContainsAny(m[1], "\u202e\u200b\u200c\u200d") {
 		return false
 	}
 	g := uniseg.NewGraphemes(done)

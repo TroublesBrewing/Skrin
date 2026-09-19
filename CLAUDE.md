@@ -6,22 +6,14 @@ Skrin is a keyboard-driven terminal UI for Obsidian vaults, written in Go with B
 
 At the start of every Skrin session, read two notes in the user's vault, both in Swedish:
 
-- `~/Documents/vault-1/Skrin/skrin styrdokument.md` says what Skrin is for, the course to v1.0 and how we work. It outranks everything except the user.
-- `~/Documents/vault-1/Skrin/Skrin nu.md` shows the current state: the phase, what's being done now (at most one thing), known bugs and a short log. It replaced `HANDOFF.md`, the backlog and the quick reports on 2026-09-19, when the user reset every process ("clean slate"). The old material is archived, untouched, under `~/Documents/vault-1/Skrin/Archive/Skrin/Process till 2026-09-19/`.
+- `~/Documents/vault-1/Skrin/skrin styrdokument.md` holds the direction, the course to v1.0 and, in its section *Hur vi arbetar*, every rule for how we work: roles, the idea box and board, the pace, and what you may build now. It outranks everything except the user. Follow its rules; they are kept only there, on purpose, so they are not repeated here.
+- `~/Documents/vault-1/Skrin/Skrin nu.md` shows where things stand: the phase, what's being built now, bugs, the board and the log.
 
-In short:
+The user's first rule for project management is **no information in two places when it can be avoided**. Give each thing one home and point to it rather than copying it: this file, commit messages and the log point to the vault and CHANGELOG, not the other way round.
 
-- **The north star, in order:** understandable before powerful ("Vim is confusing; this shouldn't be"); capture and find first ("a ten-second thought must cost ten seconds"); the user owns their documents.
-- **There are two roles.** The user decides and you build. Hermes is an advisor the user calls in, not a reviewer every release waits for. There is no turn-taking and no review queue.
-- **Ideas go in the idea box,** the folder `~/Documents/vault-1/Skrin/Idélåda/`, one note per idea with the date it was added. An idea is input, not an order.
-- **Locked period, 2026-09-19 to 2026-10-19:** no new features, bugs only. After that, the cooling rule applies: an idea is built only on the weekly build day (Sunday unless the user says otherwise), at most two per build day, and only once it has been in the idea box for at least 7 days.
-- **You plan the board; the user doesn't pick** (decided 2026-09-19). The board is in "Skrin nu" and is built from spreads over the idea notes. Each idea note carries `status` (Idé, Planerad, Pågår, Senare, Avfärdad, Klar), `inlagd`, `plan`, `motivering`, and `ordning` when it is Planerad. Judge every new idea against one question: is it in line with the core idea, and with where we are in the process? Then set its status, plan and a one-line motivation. You may reject it, advise against it or schedule it, but never delete an idea.
-- **"kolla tavlan" means triage new ideas. "kör tavlan" means build the next ripe Planerad item.** Keep only one item in Pågår at a time. The calendar still sets the pace: the locked period and cooling rule apply however you plan.
-- **You are the brake.** When the user says "build this", it becomes an idea on the board. Build it only when they explicitly override ("bygg nu, trots låset"). Then say what it costs against the phase and log it in "Skrin nu".
-- **Every idea passes the steering document's four questions** before it becomes code.
-- **After every work session, add one line** to the log in "Skrin nu", newest first. Mark any new key or changed flow as provisional there. Whether it gets Hermes's second opinion is the user's call.
+The old process (HANDOFF.md, the backlog, quick reports, a milestone per version) was retired on 2026-09-19. It is archived, untouched, under `~/Documents/vault-1/Skrin/Archive/Skrin/Process till 2026-09-19/`.
 
-`~/Documents/vault-1/Skrin/tui.md` is the original spec and stays the reference for how things work. The UX charter `~/Documents/vault-1/Skrin/skrin ux.md` is the rulebook for keys and flows (read it before designing either); its section on where the UX engineer sits in the process no longer applies.
+`~/Documents/vault-1/Skrin/tui.md` is the original spec and stays the reference for how things work. The UX charter `~/Documents/vault-1/Skrin/skrin ux.md` is the rulebook for keys and flows: read it before designing either.
 
 ## Commands
 
@@ -89,7 +81,7 @@ Release when there is something worth releasing, not after every fix: new featur
 3. Add a section to `CHANGELOG.md`.
 4. Commit, then `git tag vX.Y.Z`.
 5. Reinstall the binary.
-6. Add a line to the log in "Skrin nu".
+6. Add a line to the log in "Skrin nu" that points to the release.
 
 ## Rules
 

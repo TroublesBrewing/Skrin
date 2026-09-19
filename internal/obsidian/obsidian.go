@@ -4,9 +4,12 @@ package obsidian
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 )
@@ -61,8 +64,36 @@ func (r Registry) IsOpen(root string) bool {
 	return false
 }
 
-// Running reports whether Obsidian desktop is running.
-func Running() bool { return running("/proc") }
+// Running reports whether Obsidian desktop is running. Linux answers from
+// /proc; elsewhere pgrep asks. When neither can tell, Obsidian counts as
+// running: skipping a rollover beats doing it twice.
+func Running() bool {
+	if runtime.GOOS == "linux" {
+		return running("/proc")
+	}
+	return runningByName(pgrep)
+}
+
+// runningByName asks find whether a process called Obsidian is running,
+// and takes an error to mean it might be.
+func runningByName(find func(name string) (bool, error)) bool {
+	found, err := find("Obsidian")
+	return err != nil || found
+}
+
+// pgrep looks for a process with exactly this name. Its exit status 1 means
+// none; anything else that goes wrong is an error.
+func pgrep(name string) (bool, error) {
+	err := exec.Command("pgrep", "-x", name).Run()
+	var exit *exec.ExitError
+	switch {
+	case err == nil:
+		return true, nil
+	case errors.As(err, &exit) && exit.ExitCode() == 1:
+		return false, nil
+	}
+	return false, err
+}
 
 // running scans a /proc-style directory. Obsidian runs either as its own
 // binary (AppImage, .deb, Flatpak) or as system Electron loading

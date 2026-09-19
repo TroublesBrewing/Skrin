@@ -351,3 +351,18 @@ func TestInstantOpenReadsOverride(t *testing.T) {
 		t.Error("instant_open = false should turn it off")
 	}
 }
+
+func TestObsidiansVaultListPerSystem(t *testing.T) {
+	cases := []struct{ goos, xdg, appData, want string }{
+		{"linux", "", "", "/home/u/.config/obsidian/obsidian.json"},
+		{"linux", "/x/cfg", "", "/x/cfg/obsidian/obsidian.json"},
+		{"darwin", "/x/cfg", "", "/home/u/Library/Application Support/obsidian/obsidian.json"},
+		{"windows", "", "/w/Roaming", "/w/Roaming/obsidian/obsidian.json"},
+		{"windows", "", "", "/home/u/AppData/Roaming/obsidian/obsidian.json"},
+	}
+	for _, c := range cases {
+		if got := filepath.ToSlash(registryPath(c.goos, "/home/u", c.xdg, c.appData)); got != c.want {
+			t.Errorf("%s (XDG %q, APPDATA %q): %s, want %s", c.goos, c.xdg, c.appData, got, c.want)
+		}
+	}
+}

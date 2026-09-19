@@ -2,6 +2,15 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.29.2 — 2026-09-19
+
+**Fix: Skrin on macOS.** Found when a build for the user's MacBook Air M1 was checked against the code, before Skrin had ever run on a Mac. Three things assumed Linux. On Linux nothing changes.
+
+- **The vault is found on a Mac.** Obsidian keeps its vault list in the system's own settings folder: `~/Library/Application Support/obsidian/` on macOS and `%APPDATA%\obsidian\` on Windows. Skrin looked only in the Linux place, so without `vault = …` in `config.toml` it found no vault.
+- **Todos are no longer carried over twice on a Mac.** Skrin tells whether Obsidian is running, so that only one of them runs the Rollover Daily Todos carry-over. It asked `/proc`, which only Linux has, so on a Mac it always thought Obsidian was closed. Elsewhere it now asks `pgrep`, and when it can't tell it counts Obsidian as running, the rule Skrin already had: skipping a carry-over beats doing it twice.
+- **Deleted notes go to the Mac's own trash**, `~/.Trash`, where Finder shows them, instead of a Linux trash folder that Finder never looks in. `U` brings them back as before. Finder's own "Put Back" doesn't know about them, since that needs Finder's private record. A vault on another disk uses its `.trash`, as on Linux.
+- Tests: the vault-list path on Linux, with and without `XDG_CONFIG_HOME`, and on macOS and Windows; the running check when Obsidian is running, when it isn't and when it can't be told, plus the real `pgrep`'s exit code for a missing process; and the Mac trash (into `~/.Trash`, a name clash, `U` restoring it, and the freedesktop trash untouched), plus the Linux trash unchanged. Everything can be tested on Linux because each piece takes the system as a parameter. Full suite green (`-count=1`), `go vet` clean for Linux and for macOS on ARM, `gofmt` clean. Not verifiable here: a real run on a Mac, which the user does.
+
 ## v0.29.1 — 2026-09-19
 
 **Fix: the arrows in Insert table now do what they show.** The user: "Pilarna som indikerar att man kan öka och minska antalet rader och kolumner pekar åt höger och vänster vid varje värde. Men det är med upp/ner-pilarna du faktiskt ändrar värdet." The number fields read `‹ 3 ›`, but ←/→ did nothing on them, and ↑/↓ changed the value. Fixed during the locked period as a bug: the form showed one thing and did another, and the arrows that did nothing gave no answer.

@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -183,9 +184,27 @@ func Save(c Config) error {
 	return os.Rename(tmp, path)
 }
 
-// ObsidianRegistry is where Obsidian keeps its list of vaults.
+// ObsidianRegistry is where Obsidian keeps its list of vaults: in the
+// system's own settings folder, which differs from one system to another.
 func ObsidianRegistry() string {
-	return filepath.Join(configHome(), "obsidian", "obsidian.json")
+	home, _ := os.UserHomeDir()
+	return registryPath(runtime.GOOS, home, os.Getenv("XDG_CONFIG_HOME"), os.Getenv("APPDATA"))
+}
+
+func registryPath(goos, home, xdgConfig, appData string) string {
+	switch goos {
+	case "darwin":
+		return filepath.Join(home, "Library", "Application Support", "obsidian", "obsidian.json")
+	case "windows":
+		if appData == "" {
+			appData = filepath.Join(home, "AppData", "Roaming")
+		}
+		return filepath.Join(appData, "obsidian", "obsidian.json")
+	}
+	if xdgConfig == "" {
+		xdgConfig = filepath.Join(home, ".config")
+	}
+	return filepath.Join(xdgConfig, "obsidian", "obsidian.json")
 }
 
 // DiscoverVault asks Obsidian's vault list which vault to use: the one

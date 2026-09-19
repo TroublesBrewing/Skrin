@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -20,19 +21,40 @@ type Trashed struct {
 }
 
 // Trash moves rel to the trash named by Obsidian's trashOption: "local" is
-// the vault's own .trash folder, anything else the system (freedesktop)
-// trash. If the system trash is on another filesystem, .trash is used.
+// the vault's own .trash folder, anything else the system's trash. If the
+// system trash is on another filesystem, .trash is used.
 func (v *Vault) Trash(rel, option string) (Trashed, error) {
+	return v.trashOn(runtime.GOOS, rel, option)
+}
+
+func (v *Vault) trashOn(goos, rel, option string) (Trashed, error) {
 	if rel == "" {
 		return Trashed{}, errors.New("refusing to trash the vault root")
 	}
 	if option != "local" {
-		t, err := v.trashSystem(rel)
+		var t Trashed
+		var err error
+		if goos == "darwin" {
+			t, err = v.trashMac(rel)
+		} else {
+			t, err = v.trashSystem(rel)
+		}
 		if !errors.Is(err, syscall.EXDEV) {
 			return t, err
 		}
 	}
 	return v.trashLocal(rel)
+}
+
+// trashMac moves rel into ~/.Trash, where Finder shows it. Finder's "Put
+// Back" doesn't know about it, since that needs Finder's own record, but U
+// in Skrin brings it back.
+func (v *Vault) trashMac(rel string) (Trashed, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return Trashed{}, err
+	}
+	return v.moveInto(filepath.Join(home, ".Trash"), 0o700, rel)
 }
 
 // trashSystem follows the freedesktop.org trash spec: reserve a name by
@@ -83,8 +105,12 @@ func (v *Vault) trashSystem(rel string) (Trashed, error) {
 // trashLocal moves rel into the vault's .trash folder, as Obsidian does
 // with the "Move to Obsidian trash" option.
 func (v *Vault) trashLocal(rel string) (Trashed, error) {
-	dir := filepath.Join(v.Root, ".trash")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	return v.moveInto(filepath.Join(v.Root, ".trash"), 0o755, rel)
+}
+
+// moveInto moves rel into the folder dir under a name nothing there has.
+func (v *Vault) moveInto(dir string, perm fs.FileMode, rel string) (Trashed, error) {
+	if err := os.MkdirAll(dir, perm); err != nil {
 		return Trashed{}, err
 	}
 	for n := 1; ; n++ {

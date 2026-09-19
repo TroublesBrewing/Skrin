@@ -1,7 +1,9 @@
 package obsidian
 
 import (
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -97,5 +99,34 @@ func TestLoadSettingsReadsTheTemplatesPlugin(t *testing.T) {
 	os.WriteFile(filepath.Join(root, ".obsidian", "templates.json"), []byte(`{"folder":"/Meta/Templates/","dateFormat":"D MMM"}`), 0o644)
 	if s := LoadSettings(root).Templates; s.Folder != "Meta/Templates" || s.DateFormat != "D MMM" || s.TimeFormat != "HH:mm" {
 		t.Errorf("from templates.json: %+v", s)
+	}
+}
+
+func TestRunningByNameCountsUnsureAsRunning(t *testing.T) {
+	cases := []struct {
+		name  string
+		found bool
+		err   error
+		want  bool
+	}{
+		{"Obsidian is running", true, nil, true},
+		{"Obsidian isn't running", false, nil, false},
+		{"can't tell: pgrep missing or failing", false, errors.New("exec: pgrep not found"), true},
+	}
+	for _, c := range cases {
+		asked := ""
+		got := runningByName(func(n string) (bool, error) { asked = n; return c.found, c.err })
+		if got != c.want || asked != "Obsidian" {
+			t.Errorf("%s: running = %v (asked for %q), want %v", c.name, got, asked, c.want)
+		}
+	}
+}
+
+func TestPgrepTellsFoundFromNotFound(t *testing.T) {
+	if _, err := exec.LookPath("pgrep"); err != nil {
+		t.Skip("no pgrep here")
+	}
+	if found, err := pgrep("skrin-test-no-such-process"); found || err != nil {
+		t.Errorf("no such process: found %v, err %v; want false, nil", found, err)
 	}
 }

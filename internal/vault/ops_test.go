@@ -141,3 +141,38 @@ func TestUndoCreateKeepsEditedFiles(t *testing.T) {
 		t.Errorf("edited note should be in the trash: %q, %v", b, err)
 	}
 }
+
+func TestMacTrashUsesTheFinderTrashAndComesBack(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	v := makeVault(t, "Filosofi/My note.md", "Other/My note.md")
+
+	first, err := v.trashOn("darwin", "Filosofi/My note.md", "system")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v.Exists("Filosofi/My note.md") || first.Stored != filepath.Join(home, ".Trash", "My note.md") || first.Info != "" {
+		t.Fatalf("a Mac should trash into ~/.Trash, with no freedesktop info file: %+v", first)
+	}
+	second, err := v.trashOn("darwin", "Other/My note.md", "system")
+	if err != nil || filepath.Base(second.Stored) != "My note 2.md" {
+		t.Errorf("name clash in ~/.Trash: %q, %v", second.Stored, err)
+	}
+	if err := v.Restore(first); err != nil || !v.Exists("Filosofi/My note.md") {
+		t.Errorf("U should bring it back from ~/.Trash: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(os.Getenv("XDG_DATA_HOME"), "Trash")); !errors.Is(err, os.ErrNotExist) {
+		t.Error("a Mac shouldn't touch the freedesktop trash at all")
+	}
+}
+
+func TestLinuxTrashIsUnchanged(t *testing.T) {
+	data := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", data)
+	v := makeVault(t, "Welcome.md")
+	tr, err := v.trashOn("linux", "Welcome.md", "system")
+	if err != nil || tr.Stored != filepath.Join(data, "Trash", "files", "Welcome.md") || tr.Info == "" {
+		t.Errorf("Linux should keep the freedesktop trash: %+v, %v", tr, err)
+	}
+}

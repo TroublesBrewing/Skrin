@@ -2,6 +2,17 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.35.0 — 2026-09-20
+
+**New: renaming a heading brings its links along.** The last requirement on the v1.0 bar that wasn't code yet, and a basic Obsidian feature: built during the locked period with the user's yes to this card.
+
+- **Change a heading in the editor** and, when you leave the note, Skrin says which links point at the old name and offers to update them: `"Morning" is now "Sunrise": update 4 links in 3 notes so they keep working?` — `y` updates, `n` or Esc leaves them.
+- **Both kinds follow:** `[[Note#Heading]]` and `[[Note#Heading|alias]]` in other notes, `[[#Heading]]` in the note itself, embeds, markdown links, and a heading path like `[[Note#Outer#Inner]]`, where only the part that was renamed changes. A `^block` id is never touched.
+- **One U undoes the link edits**, and leaves your heading as you typed it: renaming the heading and updating the links are two things, and you answered them separately.
+- **What counts as a rename:** the headings that are still there hold as anchors, and in the gaps a heading gone with one arrived in its place, at the same level, is the rename. Adding or removing a heading is not a rename, nor is changing only spacing or case (those links still resolve), nor is a heading whose name lives on elsewhere in the note.
+- Under the hood: `index.ParseHeadings`, `AllLinksTo`, `SameHeading` and `RenameSub`, an `Edit.Sub` that rewrites a link's `#sub`, and the write loop shared with moves (`applyLinkEdits`) so both are snapshotted and undone the same way.
+- Tests: eight cases for what is and isn't a rename, the full offer through the keys with links in three notes, `U` putting only the links back, `n` changing nothing, and a heading nobody links to asking nothing. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux on a scratch vault: 3 links updated across two notes, and `U` put them back.
+
 ## v0.34.0 — 2026-09-20
 
 **New: Ctrl+F finds text in the note you're reading too.** The same field as in the editor, now also in the reading view. A basic Obsidian feature, built during the locked period with the user's yes to this card.

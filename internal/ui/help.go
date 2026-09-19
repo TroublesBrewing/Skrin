@@ -348,6 +348,7 @@ func (m *Model) guideText(w int) []manualLine {
 	para("Backspace or Ctrl-o goes back, Ctrl-i goes forward, and b lists the notes linking here.")
 	para("In the editor, Alt-z, Alt-b and Alt-o reach zen, backlinks and the outline without leaving it — the outline moves the editor's own cursor, and picking a backlink saves first, since that leaves the note. Alt is how a view-mode action reaches you while you're still typing.")
 	para("Renaming or moving offers to update the links to what moved, as Obsidian does.")
+	para("Renaming a heading does too. Change a heading in the editor and, when you leave the note, Skrin says which links point at the old name and offers to bring them along — [[Note#Heading]] in other notes and [[#Heading]] in this one. One U undoes the link edits, leaving your heading as you typed it.")
 	para("While you type, Skrin suggests what the vault already uses, so the same thing keeps the same name. A #tag suggests the tags other notes have, each spelling on its own row, so \"Filosofi\" and \"filosofi\" show side by side and you can pick one instead of making a third. In frontmatter, a property suggests the values other notes gave it: \"type: vi\" offers village if a note already says so. Links go in quotes, so the YAML stays valid. Dates and numbers aren't suggested, and neither are title and created. Enter or Tab puts a suggestion in, and Esc closes the popup for that word.")
 
 	head("Tables")

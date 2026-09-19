@@ -203,7 +203,7 @@ func (m *Model) saveEdit(closing bool) {
 	text := m.editor.Text()
 	if text == s.base {
 		if closing {
-			m.closeEditor()
+			m.closeEditing(text)
 		}
 		return
 	}
@@ -231,8 +231,16 @@ func (m *Model) saveEdit(closing bool) {
 	m.editor.MarkSaved()
 	m.flash = "Saved " + s.rel + dates
 	if closing {
-		m.closeEditor()
+		m.closeEditing(text)
 	}
+}
+
+// closeEditing leaves the editor with the note saved as text, and offers
+// to bring the links along when a heading changed name while it was open.
+func (m *Model) closeEditing(text string) {
+	rel, opened := m.edit.rel, m.edit.opened
+	m.closeEditor()
+	m.offerHeadingRelink(rel, opened, text)
 }
 
 // resolveDueDates turns "due:: tomorrow" and the like into dates in the

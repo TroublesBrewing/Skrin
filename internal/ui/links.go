@@ -773,9 +773,7 @@ func (m *Model) moveNow(moves [][2]string, refs []relink, desc string, update bo
 	return moved, relinked, failed
 }
 
-// relinkAfter rewrites the links in refs once the moves are done. Each
-// changed note is snapshotted and becomes a journal step, so U undoes the
-// link edits together with the move.
+// relinkAfter rewrites the links in refs once the moves are done.
 func (m *Model) relinkAfter(refs []relink, moves [][2]string) ([]vault.Step, int, error) {
 	if err := m.idx.Update(m.vault); err != nil {
 		return nil, 0, err
@@ -793,6 +791,13 @@ func (m *Model) relinkAfter(refs []relink, moves [][2]string) ([]vault.Step, int
 		}
 		bySource[src] = append(bySource[src], index.Edit{Link: r.link, Target: text})
 	}
+	return m.applyLinkEdits(bySource)
+}
+
+// applyLinkEdits rewrites the links of each note in bySource. Every note it
+// changes is snapshotted first and becomes a journal step, so one U undoes
+// the lot together with whatever caused it. It reports the links changed.
+func (m *Model) applyLinkEdits(bySource map[string][]index.Edit) ([]vault.Step, int, error) {
 	sources := make([]string, 0, len(bySource))
 	for s := range bySource {
 		sources = append(sources, s)

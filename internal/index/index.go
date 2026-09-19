@@ -4,6 +4,7 @@
 package index
 
 import (
+	"cmp"
 	"path"
 	"sort"
 	"strconv"
@@ -453,6 +454,7 @@ func RelPath(dir, to string) string {
 type Edit struct {
 	Link   Link
 	Target string // new wikilink target, or new markdown path (with extension)
+	Sub    string // new #sub; empty keeps the link's own
 }
 
 // Apply rewrites the given links in a note's content.
@@ -474,8 +476,8 @@ func render(e Edit) string {
 		bang = "!"
 	}
 	sub := ""
-	if l.Sub != "" {
-		sub = "#" + l.Sub
+	if s := cmp.Or(e.Sub, l.Sub); s != "" {
+		sub = "#" + s
 	}
 	if l.Markdown {
 		return bang + "[" + l.Alias + "](" + strings.ReplaceAll(e.Target+sub, " ", "%20") + ")"
@@ -485,4 +487,34 @@ func render(e Edit) string {
 		alias = l.Sep + l.Alias
 	}
 	return bang + "[[" + e.Target + sub + alias + "]]"
+}
+
+// ParseHeadings reads the headings of a note that isn't in the index, or
+// isn't in it as it now stands — the text in an editor, say. Headings in
+// code fences are left out, as everywhere else.
+func ParseHeadings(content string) []Heading { return parse(content).headings }
+
+// AllLinksTo is Backlinks including the ones rel makes to itself, which a
+// heading rename has to follow as well: [[#Heading]] in the note whose
+// heading it is.
+func (x *Index) AllLinksTo(rel string) []Backlink {
+	return x.linksTo(func(target string) bool { return target == rel }, "")
+}
+
+// SameHeading says whether two headings are the same one to a link:
+// spacing and case don't matter, as in Obsidian.
+func SameHeading(a, b string) bool { return normHeading(a) == normHeading(b) }
+
+// RenameSub rewrites a link's #sub when it names the heading from. A sub
+// can be a path of headings, [[Note#Outer#Inner]], so each part is looked
+// at; a ^block id is never a heading. It reports whether anything changed.
+func RenameSub(sub, from, to string) (string, bool) {
+	parts := strings.Split(sub, "#")
+	changed := false
+	for i, p := range parts {
+		if !strings.HasPrefix(p, "^") && SameHeading(p, from) {
+			parts[i], changed = to, true
+		}
+	}
+	return strings.Join(parts, "#"), changed
 }

@@ -390,6 +390,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// never used to coexist, so this changes nothing else.
 		case m.chooser != nil:
 			cmd = m.chooserKey(msg)
+		case m.noteFind != nil && m.editor == nil:
+			m.noteFindKey(msg)
 		case m.table != nil:
 			m.tableKey(msg)
 		case m.noteFind != nil && m.editor != nil:
@@ -563,6 +565,8 @@ func (m *Model) do(a action) tea.Cmd {
 		m.openSearch()
 	case actSwitcher:
 		m.openSwitcher()
+	case actFindNote:
+		m.openNoteFind()
 	case actPalette:
 		m.openPalette()
 	default:

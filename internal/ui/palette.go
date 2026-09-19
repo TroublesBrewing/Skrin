@@ -62,6 +62,7 @@ var mainCommands = []paletteEntry{
 	{actOrderReset, "Put this level back in the default order", "arrange sort alphabetical reset"},
 	{actPane1, "Focus Files", "tree sidebar panel"},
 	{actPane2, "Focus the note", "panel"},
+	{actFindNote, "Find in the note", "search sök hitta text ctrl+f"},
 	{actHelp, "Keys: every key, and change them", "help manual shortcuts keybindings hotkeys cheatsheet"},
 	{actQuit, "Quit Skrin", "exit close leave"},
 }

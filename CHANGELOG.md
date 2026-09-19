@@ -2,6 +2,17 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.34.0 — 2026-09-20
+
+**New: Ctrl+F finds text in the note you're reading too.** The same field as in the editor, now also in the reading view. A basic Obsidian feature, built during the locked period with the user's yes to this card.
+
+- **Ctrl+F while reading** opens the find field without going into the editor. Each letter jumps to the next match from where you were, the note scrolls to it, and the match is highlighted where it stands.
+- **Enter or ↓ goes to the next match, and Shift+Enter or ↑ to the one before**, round the note, with `2 of 5` in the status line. `no match` leaves the note exactly where it was.
+- **Esc closes it where you are**, keeping the scroll position. In the editor nothing changes: the match stays selected, so typing replaces it.
+- **The palette has *Find in the note*** in the reading view as well as in the editor.
+- Matches are counted on the rendered line, so a match inside a table or a list is highlighted in the right place and wide characters line up.
+- Tests: the count and the highlight while reading; a match below the fold scrolls the note; stepping round both ways; Esc closing without leaving anything highlighted; no match leaving the scroll alone; and Ctrl+F with no note open saying so. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux: `mall` in *Om mallarna* found 5, scrolled to each, went round and left the view at 12%.
+
 ## v0.33.0 — 2026-09-20
 
 **New: Go to note offers the notes you opened lately.** From the wishlist, where it was the cheap thing to try before tabs. A basic Obsidian feature (its quick switcher does the same), built during the locked period with the user's yes to this card.

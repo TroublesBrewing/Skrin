@@ -243,6 +243,11 @@ func (m *Model) noteBody(w, vis int) (string, []string) {
 				}
 			}
 		}
+		if f := m.noteFind; f != nil && f.inView && len(f.matches) > 0 {
+			if mt := f.matches[f.cur]; mt.row == i {
+				line = m.highlight(line, findMatch{i, mt.col + prefixLen, mt.end + prefixLen})
+			}
+		}
 		body = append(body, line)
 	}
 	return displayName(m.notePath), body
@@ -262,6 +267,9 @@ func (m *Model) statusLine() string {
 		return m.promptLine()
 	case m.confirm != nil:
 		return m.confirmLine()
+	}
+	if m.noteFind != nil {
+		return m.noteFindLine()
 	}
 	mode := " VIEW "
 	switch {

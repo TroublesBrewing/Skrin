@@ -207,6 +207,7 @@ var defaultBindings = []binding{
 	{actNextHeading, []string{"}"}, "next heading", groupNote, inMain},
 	{actPrevHeading, []string{"{"}, "previous heading", groupNote, inMain},
 	{actSearch, []string{"/"}, "search (Alt-r in there: search & replace)", groupSearch, inMain},
+	{actFindNote, []string{"ctrl+f"}, "find text in the open note", groupSearch, inMain},
 	{actSwitcher, []string{"g"}, "go to a note by name (Alt+←/→ there: split)", groupSearch, inMain},
 	{actClaude, []string{"c"}, "open or hide the Claude drawer", groupClaude, inMain},
 	{actClaudeInput, []string{"C"}, "type to Claude, with the highlighted text if any", groupClaude, inMain},

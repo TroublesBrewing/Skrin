@@ -100,3 +100,87 @@ func TestFindInTheNoteTakesAPaste(t *testing.T) {
 		t.Errorf("a paste should go into the find field and search: %q", m.editor.Selection())
 	}
 }
+
+// viewFindModel reads a note long enough to scroll, with "stoa" on the
+// first line and far down it.
+func viewFindModel(t *testing.T) *Model {
+	t.Helper()
+	m := newTestModel(t)
+	body := "Stoa överst\n\n" + strings.Repeat("fyllnad\n\n", 40) + "stoa längst ned\n"
+	if err := os.WriteFile(m.vault.Abs("Welcome.md"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m.reload()
+	press(m, "G", "l") // Welcome, being read
+	return m
+}
+
+func TestFindInTheViewFindsHighlightsAndScrolls(t *testing.T) {
+	m := viewFindModel(t)
+	press(m, "ctrl+f")
+	if m.noteFind == nil || !m.noteFind.inView {
+		t.Fatal("ctrl+f while reading should find in the note")
+	}
+	typeText(m, "stoa")
+	if n := len(m.noteFind.matches); n != 2 {
+		t.Fatalf("matches: %d, want 2", n)
+	}
+	if s := ansi.Strip(m.statusLine()); !strings.Contains(s, "1 of 2") {
+		t.Errorf("the status line should count: %q", s)
+	}
+	checkFrame(t, m, "finding while reading")
+	if !strings.Contains(m.render(), m.st.selFocus.Render("Stoa")) {
+		t.Error("the match should be highlighted where it stands")
+	}
+	press(m, "enter") // the one far down
+	if m.noteOff == 0 {
+		t.Error("a match below the fold should scroll the note to it")
+	}
+	if s := ansi.Strip(m.statusLine()); !strings.Contains(s, "2 of 2") {
+		t.Errorf("status after enter: %q", s)
+	}
+	press(m, "enter") // round to the first
+	if s := ansi.Strip(m.statusLine()); !strings.Contains(s, "1 of 2") {
+		t.Errorf("forward from the last should go round: %q", s)
+	}
+	press(m, "shift+enter")
+	if s := ansi.Strip(m.statusLine()); !strings.Contains(s, "2 of 2") {
+		t.Errorf("shift+enter should go back: %q", s)
+	}
+}
+
+func TestFindInTheViewCloses(t *testing.T) {
+	m := viewFindModel(t)
+	press(m, "ctrl+f")
+	typeText(m, "stoa")
+	press(m, "esc")
+	if m.noteFind != nil {
+		t.Fatal("esc should close the find field")
+	}
+	if strings.Contains(m.render(), m.st.selFocus.Render("Stoa")) {
+		t.Error("nothing should stay highlighted once it's closed")
+	}
+	if s := ansi.Strip(m.statusLine()); !strings.Contains(s, "VIEW") {
+		t.Errorf("the status line should go back: %q", s)
+	}
+}
+
+func TestFindInTheViewWithNoMatchStaysPut(t *testing.T) {
+	m := viewFindModel(t)
+	press(m, "ctrl+f")
+	typeText(m, "zzz")
+	if s := ansi.Strip(m.statusLine()); !strings.Contains(s, "no match") {
+		t.Errorf("status: %q", s)
+	}
+	if m.noteOff != 0 {
+		t.Errorf("nothing found: the note shouldn't move: %d", m.noteOff)
+	}
+}
+
+func TestFindNeedsANoteToFindIn(t *testing.T) {
+	m := newTestModel(t) // the vault root: no note open
+	press(m, "ctrl+f")
+	if m.noteFind != nil || m.flash != "Select a note to find in" {
+		t.Errorf("find %v, flash %q", m.noteFind != nil, m.flash)
+	}
+}

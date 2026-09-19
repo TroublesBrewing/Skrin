@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"net/url"
 	"path"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -405,13 +406,25 @@ func (m *Model) headingJump(dir int) {
 	}
 }
 
-// --- [[ completion in the editor ---------------------------------------
+// --- completion in the editor: [[links]], #tags, frontmatter values -----
 
 type suggestion struct {
 	label, detail, insert string
 }
 
+// completionKind is what the popup completes, which decides how a pick
+// goes in: a link is closed with ]], a tag or value replaces what's typed.
+type completionKind int
+
+const (
+	completeLink completionKind = iota
+	completeTag
+	completeValue
+)
+
 type completion struct {
+	kind  completionKind
+	query string // what's typed so far, which a tag or value pick replaces
 	items []suggestion
 	cur   int
 }
@@ -425,18 +438,105 @@ func (m *Model) updateCompletion() {
 		m.complete, m.noComplete = nil, false
 		return
 	}
-	q, ok := m.editor.LinkQuery()
-	if !ok {
+	kind, q, items := completeLink, "", []suggestion(nil)
+	if lq, ok := m.editor.LinkQuery(); ok {
+		q = lq
+		if !m.noComplete {
+			items = m.suggest(q)
+		}
+	} else if tq, ok := m.editor.TagQuery(); ok {
+		kind, q = completeTag, tq
+		if !m.noComplete {
+			items = m.suggestTags(q)
+		}
+	} else if key, vq, ok := m.editor.ValueQuery(); ok && vq != "" {
+		kind, q = completeValue, vq
+		if !m.noComplete {
+			items = m.suggestValues(key, vq)
+		}
+	} else {
 		m.complete, m.noComplete = nil, false
 		return
 	}
-	if m.noComplete {
-		return
-	}
 	m.complete = nil
-	if items := m.suggest(q); len(items) > 0 {
-		m.complete = &completion{items: items}
+	if len(items) > 0 {
+		m.complete = &completion{kind: kind, query: q, items: items}
 	}
+}
+
+// suggestTags lists the tags the vault already uses that fit what's typed,
+// each spelling on its own row, so "Filosofi" and "filosofi" are seen side
+// by side and one can be chosen instead of a third being made.
+func (m *Model) suggestTags(q string) []suggestion {
+	uses := m.idx.Tags()
+	spellings := map[string][]string{}
+	for _, u := range uses {
+		k := strings.ToLower(u.Text)
+		spellings[k] = append(spellings[k], u.Text)
+	}
+	var all []suggestion
+	for _, u := range uses {
+		detail := plural(u.Notes, "note")
+		for _, other := range spellings[strings.ToLower(u.Text)] {
+			if other != u.Text {
+				detail += " · also written " + other
+			}
+		}
+		all = append(all, suggestion{label: "#" + u.Text, detail: detail, insert: u.Text})
+	}
+	return dropEcho(filterSuggestions(all, q), q)
+}
+
+// valueKeysSkipped are properties whose values are one of a kind, where
+// other notes' values would only be noise.
+var valueKeysSkipped = map[string]bool{"title": true, "aliases": true, "alias": true, "created": true}
+
+// suggestValues lists the values other notes give property key that fit
+// what's typed. Dates and numbers are left out: they are never the same
+// thing twice, so suggesting them doesn't keep anything tidy.
+func (m *Model) suggestValues(key, q string) []suggestion {
+	if valueKeysSkipped[strings.ToLower(key)] {
+		return nil
+	}
+	if k := strings.ToLower(key); k == "tags" || k == "tag" {
+		// The same tags as #tags in the text: one set, one list of suggestions.
+		tq := strings.TrimPrefix(strings.Trim(q, `"'`), "#")
+		items := m.suggestTags(tq)
+		for i := range items {
+			items[i].insert = yamlValue(items[i].insert)
+		}
+		return dropEcho(items, q)
+	}
+	var all []suggestion
+	for _, u := range m.idx.PropertyValues(key) {
+		if isDateOrNumber(u.Text) {
+			continue
+		}
+		all = append(all, suggestion{label: u.Text, detail: plural(u.Notes, "note"), insert: yamlValue(u.Text)})
+	}
+	return dropEcho(filterSuggestions(all, strings.Trim(q, `"'`)), q)
+}
+
+// dropEcho closes the popup when all it would offer is exactly what's
+// already typed.
+func dropEcho(items []suggestion, q string) []suggestion {
+	if len(items) == 1 && (items[0].insert == q || items[0].label == q) {
+		return nil
+	}
+	return items
+}
+
+var dateOrNumberRE = regexp.MustCompile(`^(\d{4}-\d{2}-\d{2}.*|[-+]?\d+([.,]\d+)?)$`)
+
+func isDateOrNumber(s string) bool { return dateOrNumberRE.MatchString(strings.TrimSpace(s)) }
+
+// yamlValue writes a value so the frontmatter stays valid YAML: a link, or
+// anything YAML would read as something else, goes in quotes.
+func yamlValue(v string) string {
+	if strings.HasPrefix(v, "[[") || strings.ContainsAny(v, ":#{}[],&*!|>'\"%@`") {
+		return `"` + strings.ReplaceAll(v, `"`, `\"`) + `"`
+	}
+	return v
 }
 
 // suggest lists link completions for what follows "[[": notes and their
@@ -501,7 +601,11 @@ func (m *Model) completionKey(k tea.KeyPressMsg) bool {
 	case actDown:
 		c.cur = min(c.cur+1, len(c.items)-1)
 	case actPick:
-		m.editor.CompleteLink(c.items[c.cur].insert)
+		if c.kind == completeLink {
+			m.editor.CompleteLink(c.items[c.cur].insert)
+		} else {
+			m.editor.CompleteWord(c.query, c.items[c.cur].insert)
+		}
 		m.complete = nil
 	case actCancel:
 		m.complete, m.noComplete = nil, true

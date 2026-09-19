@@ -27,6 +27,7 @@ type note struct {
 	headings []Heading
 	aliases  []string
 	tags     []string            // lower-case, without '#', from the body and the tags property
+	written  []string            // the same tags as the note spells them, each spelling once
 	props    map[string][]string // frontmatter, lower-case keys, values as written
 	fields   map[string][]string // inline "key:: value" fields in the body, keys as fieldKey makes them
 	tasks    []Task
@@ -93,7 +94,12 @@ func parse(content string) note {
 		}
 		offset += len(raw) + 1
 	}
-	n.tags = unique(tags)
+	n.written = unique(tags)
+	lower := make([]string, len(tags))
+	for i, t := range tags {
+		lower[i] = strings.ToLower(t)
+	}
+	n.tags = unique(lower)
 	return n
 }
 
@@ -132,10 +138,11 @@ func findLinks(l string, line, offset int) []Link {
 	return out
 }
 
+// inlineTags finds a line's #tags, as they are written.
 func inlineTags(l string) []string {
 	var out []string
 	for _, m := range tagRE.FindAllStringSubmatch(maskCode(l), -1) {
-		out = append(out, strings.ToLower(m[1]))
+		out = append(out, m[1])
 	}
 	return out
 }
@@ -195,7 +202,7 @@ func frontmatter(front string) (props map[string][]string, aliases, tags []strin
 		case "tags", "tag":
 			for _, v := range vals {
 				for _, t := range strings.FieldsFunc(v, func(r rune) bool { return r == ',' || unicode.IsSpace(r) }) {
-					tags = append(tags, strings.ToLower(strings.TrimPrefix(t, "#")))
+					tags = append(tags, strings.TrimPrefix(t, "#"))
 				}
 			}
 		}

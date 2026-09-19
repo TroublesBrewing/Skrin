@@ -143,7 +143,7 @@ const (
 	groupManual    = "In the Keys tab (?)"
 	groupSettings  = "In Settings"
 	groupGuide     = "In the Guide"
-	groupComplete  = "In link completion ([[)"
+	groupComplete  = "In completion ([[, #tags, properties)"
 	groupBookCard  = "In the Book Card (B)"
 	groupHabits    = "In the habits view (T)"
 	groupQuickNote = "In the quick note (i)"
@@ -217,6 +217,7 @@ var defaultBindings = []binding{
 	{actNone, []string{"enter"}, "new line · table: next row; empty last row leaves", groupEditor, inEditor},
 	{actNone, []string{"ctrl+l"}, "make the line a to-do, or tick it off", groupEditor, inEditor},
 	{actNone, []string{"[["}, "link completion: note names and aliases; add # for headings", groupEditor, inEditor},
+	{actNone, []string{"#"}, "tag completion: tags the vault already uses", groupEditor, inEditor},
 	{actNone, []string{"shift+left", "shift+right", "shift+up", "shift+down"}, "select text; typing replaces it", groupEditor, inEditor},
 	{actAskClaude, []string{"ctrl+k"}, "ask Claude, with the selection", groupEditor, inEditor},
 	{actPalette, []string{"ctrl+p"}, "commands: find any command by what it does, and run it", groupEditor, inEditor},
@@ -287,7 +288,7 @@ var defaultBindings = []binding{
 
 	{actUp, []string{"up", "ctrl+p"}, "up the list", groupComplete, inComplete},
 	{actDown, []string{"down", "ctrl+n"}, "down the list", groupComplete, inComplete},
-	{actPick, []string{"enter", "tab"}, "put the link in", groupComplete, inComplete},
+	{actPick, []string{"enter", "tab"}, "put the suggestion in", groupComplete, inComplete},
 	{actCancel, []string{"esc"}, "close the popup and carry on typing", groupComplete, inComplete},
 
 	{actUp, []string{"up", "ctrl+p"}, "previous field (line up inside Notes)", groupBookCard, inBookCard},

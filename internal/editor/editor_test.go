@@ -431,3 +431,71 @@ func TestArrowsPastTheEdgesGoToTheLineEnds(t *testing.T) {
 		t.Errorf("vim's j on the last line stays put, as in vim: col %d", v.col)
 	}
 }
+
+// place opens text and puts the cursor on row at col.
+func place(text string, row, col int) *Editor {
+	e := open(text)
+	e.row, e.col = row, col
+	return e
+}
+
+func TestTagQuery(t *testing.T) {
+	cases := []struct {
+		name, text string
+		row, col   int
+		want       string
+		ok         bool
+	}{
+		{"after a space", "text #fil", 0, 9, "fil", true},
+		{"at the line start", "#fil", 0, 4, "fil", true},
+		{"nested tags", "#a/b", 0, 4, "a/b", true},
+		{"a heading", "# Heading", 0, 9, "", false},
+		{"a bare #", "text #", 0, 6, "", false},
+		{"inside a word", "a#b", 0, 3, "", false},
+		{"a link's heading", "[[Note#Hea", 0, 10, "", false},
+		{"cursor mid-word", "#filosofi", 0, 4, "", false},
+		{"in code", "```\n#fil\n```", 1, 4, "", false},
+		{"in frontmatter", "---\ntags: #fil\n---", 1, 10, "", false},
+	}
+	for _, c := range cases {
+		q, ok := place(c.text, c.row, c.col).TagQuery()
+		if q != c.want || ok != c.ok {
+			t.Errorf("%s: %q, %v; want %q, %v", c.name, q, ok, c.want, c.ok)
+		}
+	}
+}
+
+func TestValueQuery(t *testing.T) {
+	cases := []struct {
+		name, text string
+		row, col   int
+		key, q     string
+		ok         bool
+	}{
+		{"a value", "---\ntype: vi\n---", 1, 8, "type", "vi", true},
+		{"a quoted link", "---\nland: \"[[Al\n---", 1, 11, "land", "\"[[Al", true},
+		{"a list item", "---\ntags:\n  - fil\n---", 2, 7, "tags", "fil", true},
+		{"a dash item", "---\ntags:\n- fil\n---", 2, 5, "tags", "fil", true},
+		{"cursor mid-line", "---\ntype: village\n---", 1, 8, "", "", false},
+		{"the closing line", "---\ntype: x\n---", 2, 3, "", "", false},
+		{"outside frontmatter", "type: vi", 0, 8, "", "", false},
+	}
+	for _, c := range cases {
+		k, q, ok := place(c.text, c.row, c.col).ValueQuery()
+		if k != c.key || q != c.q || ok != c.ok {
+			t.Errorf("%s: %q, %q, %v; want %q, %q, %v", c.name, k, q, ok, c.key, c.q, c.ok)
+		}
+	}
+}
+
+func TestCompleteWordIsOneUndoStep(t *testing.T) {
+	e := place("text #fil more", 0, 9)
+	e.CompleteWord("fil", "Filosofi")
+	if e.Text() != "text #Filosofi more" || e.col != 14 {
+		t.Fatalf("got %q, cursor at %d", e.Text(), e.col)
+	}
+	keys(e, "ctrl+z")
+	if e.Text() != "text #fil more" {
+		t.Errorf("one undo should take the completion back: %q", e.Text())
+	}
+}

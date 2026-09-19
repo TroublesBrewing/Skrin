@@ -290,3 +290,56 @@ func TestLineAnchor(t *testing.T) {
 		}
 	}
 }
+
+func TestTagsKeepEachSpellingAndCountNotes(t *testing.T) {
+	x, _ := build(t, map[string]string{
+		"a.md": "---\ntags: [Filosofi]\n---\nText #Filosofi #stoa",
+		"b.md": "Mer #filosofi och #Filosofi",
+		"c.md": "#Filosofi",
+	})
+	got := map[string]int{}
+	for _, u := range x.Tags() {
+		got[u.Text] = u.Notes
+	}
+	want := map[string]int{"Filosofi": 3, "filosofi": 1, "stoa": 1}
+	if len(got) != len(want) {
+		t.Fatalf("tags %v, want %v", got, want)
+	}
+	for k, n := range want {
+		if got[k] != n {
+			t.Errorf("%s in %d notes, want %d (a note counts once)", k, got[k], n)
+		}
+	}
+	if first := x.Tags()[0]; first.Text != "Filosofi" {
+		t.Errorf("most used first: %+v", first)
+	}
+	if doc, _ := x.Doc("b.md"); len(doc.Tags) != 1 || doc.Tags[0] != "filosofi" {
+		t.Errorf("search still sees one lower-case tag per note: %v", doc.Tags)
+	}
+}
+
+func TestPropertyValuesCountEachNoteOnce(t *testing.T) {
+	x, _ := build(t, map[string]string{
+		"a.md": "---\ntype: village\nland: \"[[Aldalor]]\"\nfolk: [elf, elf, human]\n---\n",
+		"b.md": "---\nType: city\nland: \"[[Aldalor]]\"\n---\n",
+		"c.md": "---\ntype: village\n---\n",
+	})
+	check := func(key string, want map[string]int) {
+		t.Helper()
+		got := map[string]int{}
+		for _, u := range x.PropertyValues(key) {
+			got[u.Text] = u.Notes
+		}
+		if len(got) != len(want) {
+			t.Fatalf("%s: %v, want %v", key, got, want)
+		}
+		for k, n := range want {
+			if got[k] != n {
+				t.Errorf("%s: %s in %d notes, want %d", key, k, got[k], n)
+			}
+		}
+	}
+	check("type", map[string]int{"village": 2, "city": 1})
+	check("land", map[string]int{"[[Aldalor]]": 2})
+	check("folk", map[string]int{"elf": 1, "human": 1})
+}

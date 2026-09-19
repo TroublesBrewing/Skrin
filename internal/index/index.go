@@ -144,6 +144,57 @@ func (x *Index) Doc(rel string) (search.Doc, bool) {
 	return search.Doc{Rel: rel, Lines: n.lines, Tags: n.tags, Props: n.props}, true
 }
 
+// Usage is one way the vault writes something, and how many notes write it
+// that way.
+type Usage struct {
+	Text  string
+	Notes int
+}
+
+// Tags lists every tag in the vault the way notes spell it, without the
+// '#', most used first. A tag written two ways appears twice, once per
+// spelling, so the difference can be seen.
+func (x *Index) Tags() []Usage {
+	count := map[string]int{}
+	for _, n := range x.notes {
+		for _, t := range n.written {
+			count[t]++
+		}
+	}
+	return usages(count)
+}
+
+// PropertyValues lists the values notes give the frontmatter property key,
+// as written, most used first. List items count one by one.
+func (x *Index) PropertyValues(key string) []Usage {
+	key = strings.ToLower(key)
+	count := map[string]int{}
+	for _, n := range x.notes {
+		seen := map[string]bool{}
+		for _, v := range n.props[key] {
+			if v = strings.TrimSpace(v); v != "" && !seen[v] {
+				seen[v] = true
+				count[v]++
+			}
+		}
+	}
+	return usages(count)
+}
+
+func usages(count map[string]int) []Usage {
+	out := make([]Usage, 0, len(count))
+	for t, n := range count {
+		out = append(out, Usage{t, n})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Notes != out[j].Notes {
+			return out[i].Notes > out[j].Notes
+		}
+		return out[i].Text < out[j].Text
+	})
+	return out
+}
+
 // Fields are a note's inline "key:: value" fields, from its body.
 func (x *Index) Fields(rel string) map[string][]string {
 	if n := x.notes[rel]; n != nil {

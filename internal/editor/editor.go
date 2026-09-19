@@ -1036,6 +1036,86 @@ func (e *Editor) LinkQuery() (string, bool) {
 	return q, true
 }
 
+// TagQuery reports the #tag being typed in the note's body: the letters
+// after a # that starts a word, with the cursor at their end. A # followed
+// by a space is a heading, and a # in code or frontmatter isn't a tag.
+func (e *Editor) TagQuery() (string, bool) {
+	line := e.lines[e.row]
+	if e.col < len(line) && isTagRune(line[e.col]) {
+		return "", false // not at the end of the word
+	}
+	i := e.col
+	for i > 0 && isTagRune(line[i-1]) {
+		i--
+	}
+	if i == e.col || i == 0 || line[i-1] != '#' {
+		return "", false
+	}
+	if i >= 2 && !unicode.IsSpace(line[i-2]) {
+		return "", false // a # inside a word, as in a URL or [[Note#Heading]]
+	}
+	if k := e.classify()[e.row]; k == kMeta || k == kCode {
+		return "", false
+	}
+	return string(line[i:e.col]), true
+}
+
+func isTagRune(r rune) bool {
+	return unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' || r == '-' || r == '/'
+}
+
+// ValueQuery reports the frontmatter value being typed: the property's key
+// and what's typed so far, with the cursor at the end of the line. A list
+// item ("  - x") belongs to the key on the nearest line above it.
+func (e *Editor) ValueQuery() (key, q string, ok bool) {
+	line := e.lines[e.row]
+	if e.row == 0 || e.col != len(line) || e.classify()[e.row] != kMeta {
+		return "", "", false
+	}
+	s := string(line)
+	if t := strings.TrimSpace(s); t == "---" || t == "..." {
+		return "", "", false
+	}
+	if item, isItem := strings.CutPrefix(strings.TrimLeft(s, " "), "- "); isItem {
+		for r := e.row - 1; r > 0; r-- {
+			above := string(e.lines[r])
+			if k, rest, found := strings.Cut(above, ":"); found && !strings.HasPrefix(above, " ") && !strings.HasPrefix(above, "-") {
+				if strings.TrimSpace(rest) != "" {
+					return "", "", false // the key holds a value of its own, not a list
+				}
+				return strings.TrimSpace(k), item, true
+			}
+		}
+		return "", "", false
+	}
+	if strings.HasPrefix(s, " ") {
+		return "", "", false
+	}
+	k, rest, found := strings.Cut(s, ":")
+	if !found || strings.TrimSpace(k) == "" {
+		return "", "", false
+	}
+	return strings.TrimSpace(k), strings.TrimLeft(rest, " "), true
+}
+
+// CompleteWord replaces q, just typed before the cursor, with text, in one
+// undo step, and leaves the cursor after it.
+func (e *Editor) CompleteWord(q, text string) {
+	n := utf8.RuneCountInString(q)
+	if n > e.col {
+		return
+	}
+	e.push("complete")
+	line := e.lines[e.row]
+	start := e.col - n
+	rest := append([]rune(nil), line[e.col:]...)
+	ins := []rune(text)
+	e.lines[e.row] = append(append(append([]rune(nil), line[:start]...), ins...), rest...)
+	e.col = start + len(ins)
+	e.lastKind, e.goal = "", -1
+	e.scroll()
+}
+
 // CompleteLink replaces the link query with text and closes the link,
 // leaving the cursor after the "]]".
 func (e *Editor) CompleteLink(text string) {

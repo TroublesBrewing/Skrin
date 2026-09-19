@@ -2,6 +2,17 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.30.0 — 2026-09-19
+
+**New: suggestions for tags and property values the vault already uses.** The user: "förslag när man använder taggar som man redan använt i andra anteckningar. Det minimerar property sprawl ('Filosofi, filosofi, Philosophy, philosophy' och felstavningar)". It was planned for after the locked period, and **the user chose to override the lock for it** ("Kör på"): the first exception to it, and worth having while the vault is still young.
+
+- **`#tags` in the text.** Typing `#fil` suggests the tags the vault already uses, each *spelling* on its own row with how many notes use it: `#Filosofi · 2 notes · also written filosofi`. Choosing one keeps one name instead of making a third. The tag must start a word, so a `#` in a URL or in `[[Note#Heading]]` doesn't count. `# ` is a heading, and code and frontmatter are left alone.
+- **Values in frontmatter.** Typing a property's value suggests what other notes gave that property: `type: vi` → `village`. List items under a key (`  - x`) count too. A `tags` property suggests every tag in the vault, including the ones written as `#tag` in note text. Links go in quotes, so the YAML stays valid. Dates, numbers, `title` and `created` aren't suggested, since they are never the same twice.
+- **The same popup as `[[` completion.** Enter or Tab puts a suggestion in, and Esc closes it for that word. It opens only at the end of the word being typed, not as the cursor passes an existing one, and not when all it could offer is what's already typed.
+- **The index keeps each tag's spelling.** Search and spreads still see one lower-case tag, as Obsidian does. The spelling is kept only to show variants. New: `Index.Tags` and `Index.PropertyValues`.
+- The Keys tab's completion group now covers `[[`, `#tags` and properties, and the Guide explains it under Links.
+- Tests: the index (spellings counted per note, most used first, search unchanged; values per key with list items and a note counted once); the editor (when a `#` is a tag being typed, in 10 cases; when a frontmatter value is, in 7; a completion as one undo step); the whole flow in Skrin (both spellings side by side with counts, picking; a value picked; a link quoted and dates skipped; a `tags` list fed by every tag; Esc closing for the word and a new tag reopening it). Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux: `#fil` showed both spellings, and `type: vi` became `type: village` and was saved.
+
 ## v0.29.2 — 2026-09-19
 
 **Fix: Skrin on macOS.** Found when a build for the user's MacBook Air M1 was checked against the code, before Skrin had ever run on a Mac. Three things assumed Linux. On Linux nothing changes.

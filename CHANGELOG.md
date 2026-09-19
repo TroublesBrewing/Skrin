@@ -2,6 +2,15 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.33.0 — 2026-09-20
+
+**New: Go to note offers the notes you opened lately.** From the wishlist, where it was the cheap thing to try before tabs. A basic Obsidian feature (its quick switcher does the same), built during the locked period with the user's yes to this card.
+
+- **`g` with nothing typed** lists the last ten notes you opened, newest first, marked "opened lately", before the rest of the vault. Typing searches the whole vault as before.
+- **Only opening a note counts:** `l`, Enter, a link, a search hit, Go to note, `t`, or opening it in the editor. The cursor passing over a note in Files doesn't, or the list would fill with everything skimmed by.
+- **It survives a restart**, kept per vault in the session beside the open folders and the cursor. A note that has since gone is left out.
+- Tests: a note opened counts and one only passed doesn't; newest first without repeats and capped at ten; kept across a restart with vanished notes dropped; and a note in the vault root reading without a dangling separator. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux: `g` listed the note opened before the current one at the top.
+
 ## v0.32.0 — 2026-09-19
 
 **New: find in the note while editing, with Ctrl+F.** Planned from the honest review ("Ingen sökning i editorn … den största enskilda friktionen för någon som skriver på riktigt"). A basic Obsidian feature, built during the locked period with the user's yes to this card.

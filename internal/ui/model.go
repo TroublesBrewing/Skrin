@@ -47,6 +47,8 @@ const (
 	splitMinWidth = 80
 	// splitFilesW is Files' width while the view is split: its minimum.
 	splitFilesW = 24
+	// recentNotes is how many notes Go to note offers before the rest.
+	recentNotes = 10
 	// flashLinger is how long a message nobody asked for stays. Flashes
 	// that answer a keypress wait for the next key, because you pressed
 	// something and are owed an answer; one that answers a resize has to
@@ -185,7 +187,8 @@ type Model struct {
 	// selected never closes Skrin by surprise.
 	lastCtrlC time.Time
 
-	recentCmds []string // the palette's commands run lately, newest first
+	recentCmds  []string // the palette's commands run lately, newest first
+	recentNotes []string // notes opened lately, newest first, for Go to note
 
 	journal vault.Journal
 	marks   map[string]bool // marked items by vault path; may span folders
@@ -277,6 +280,11 @@ func New(v *vault.Vault, pal theme.Palette, opts Options) (*Model, error) {
 	}
 	m.lastPeekCur = m.files.cur
 	m.lastPeekRel = m.files.selected().Rel
+	for _, rel := range opts.Session.Recent {
+		if vault.IsNote(rel) && v.Exists(rel) && len(m.recentNotes) < recentNotes {
+			m.recentNotes = append(m.recentNotes, rel)
+		}
+	}
 	return m, nil
 }
 
@@ -288,6 +296,7 @@ func (m *Model) Session() session.State {
 		Cursor:   m.files.selected().Rel,
 		Open:     m.notePath,
 		Offset:   m.noteOff,
+		Recent:   m.recentNotes,
 		Claude:   m.drawer.id,
 		Drawer:   m.drawerSide(),
 	}
@@ -656,6 +665,7 @@ func (m *Model) openRow(edit bool) {
 		m.visual = nil
 		m.files.toggle()
 	case vault.IsNote(e.Name):
+		m.remember(e.Rel)
 		switch {
 		case m.split != nil && e.Rel == m.split.path:
 			m.swapPanes()

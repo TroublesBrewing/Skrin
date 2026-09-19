@@ -87,6 +87,7 @@ func (m *Model) startEdit() {
 // openEditor opens rel in the built-in editor, at the line the note pane
 // was showing at its top.
 func (m *Model) openEditor(rel string) {
+	m.remember(rel)
 	text, err := m.vault.Read(rel)
 	if err != nil {
 		m.flash = "Can't open " + rel + ": " + err.Error()

@@ -226,9 +226,26 @@ func (m *Model) goToLine(rel string, line int) {
 	m.jumpSrc = line
 }
 
+// remember puts rel at the top of the notes opened lately, which Go to
+// note offers first. Only opening a note counts, not the cursor passing
+// over it in Files, or the list would fill with everything skimmed by.
+func (m *Model) remember(rel string) {
+	if rel == "" {
+		return
+	}
+	out := []string{rel}
+	for _, r := range m.recentNotes {
+		if r != rel && len(out) < recentNotes {
+			out = append(out, r)
+		}
+	}
+	m.recentNotes = out
+}
+
 // open shows note rel on the right and moves over to it, remembering the
 // note it replaces so Backspace can go back.
 func (m *Model) open(rel string) {
+	m.remember(rel)
 	m.pushHistory()
 	m.showNote(rel)
 	m.show()

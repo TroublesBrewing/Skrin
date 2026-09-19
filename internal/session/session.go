@@ -19,6 +19,7 @@ type State struct {
 	Open     string   `json:"open"`     // the open note, if any
 	Offset   int      `json:"offset"`   // how far down the open note was scrolled
 	Claude   string   `json:"claude"`   // the Claude conversation to resume
+	Recent   []string `json:"recent"`   // notes opened lately, newest first
 	Drawer   string   `json:"drawer"`   // "bottom" or "right" once flipped with Alt-p; "" for the config's choice
 }
 

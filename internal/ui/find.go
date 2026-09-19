@@ -444,8 +444,17 @@ func (m *Model) openSwitcher() {
 	} else {
 		c.items = append(c.items, choice{detail: "stay here"})
 	}
+	for _, rel := range m.recentNotes {
+		if rel != open && m.vault.Exists(rel) {
+			detail := "opened lately"
+			if p := parentOf(rel); p != "" {
+				detail += " · " + p
+			}
+			c.items = append(c.items, choice{label: displayName(rel), detail: detail, rel: rel, do: func() { m.goTo(rel, "") }})
+		}
+	}
 	for _, rel := range m.idx.Notes() {
-		if rel != open {
+		if rel != open && !slices.Contains(m.recentNotes, rel) {
 			c.items = append(c.items, choice{label: displayName(rel), detail: parentOf(rel), rel: rel, do: func() { m.goTo(rel, "") }})
 		}
 		for _, a := range m.idx.Aliases(rel) {

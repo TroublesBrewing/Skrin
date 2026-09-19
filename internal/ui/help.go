@@ -306,6 +306,7 @@ func (m *Model) guideText(w int) []manualLine {
 	para("t opens today's daily note, made from Obsidian's daily-notes settings, with the unfinished todos of the last one carried over.")
 
 	head("The size of things")
+	para("Notes keep a readable line length: at most 80 characters wide, centred in their pane, the way they read in zen, whatever the size of the window. Long lines tire the eye, and a wide column makes short lines, like headings, list items and the end of a paragraph, sit far from full ones. Settings can turn it off, so a note fills its pane, as Obsidian's setting of the same name does. The editor follows it too.")
 	para("Making the text bigger or smaller is the terminal's own job, not Skrin's — in most terminals Ctrl+- and Ctrl++, which never reach Skrin at all. What Skrin is told is the new size in columns and rows, and it shows that in the status line for a moment whenever it changes, so a zoom you just made visibly lands. Zoom in and the numbers fall; zoom out and they rise.")
 	para("Two widths are worth knowing. Below 80 columns Files only shows while it has the focus, so the note keeps the screen — the indicator says so, because Files going quiet otherwise looks like a fault. Below 80 there's also no room for a split, and an open one closes, saying which note it closed.")
 

@@ -366,3 +366,19 @@ func TestObsidiansVaultListPerSystem(t *testing.T) {
 		}
 	}
 }
+
+func TestReadableWidthDefaultsOn(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.RenderReadableWidth() {
+		t.Error("a readable line length should be on unless turned off")
+	}
+	off := false
+	c.Render.ReadableWidth = &off
+	if c.RenderReadableWidth() {
+		t.Error("readable_width = false should turn it off")
+	}
+}

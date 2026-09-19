@@ -636,6 +636,7 @@ func (m *Model) completionBox() ([]string, int, int) {
 	if m.editor != nil && m.editor.LineNumbers() {
 		ox = l.filesW + 1 + m.editor.GutterWidth()
 	}
+	ox += m.noteMargin()
 	if m.zen {
 		ox, oy = (m.width-l.noteTextW())/2, 1
 		if m.editor != nil && m.editor.LineNumbers() {

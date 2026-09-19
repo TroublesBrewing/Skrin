@@ -107,6 +107,16 @@ func settingsItems() []settingsItem {
 			},
 		},
 		{
+			label: "Readable line length",
+			help:  "Notes stay at most 80 characters wide, centred in their pane, the way they read in zen and in Obsidian's setting of the same name. Off, they fill the pane however wide it is.",
+			get:   func(m *Model) bool { return m.opts.ReadableWidth },
+			set: func(m *Model, v bool) {
+				m.opts.ReadableWidth = v
+				m.opts.Config.Render.ReadableWidth = boolPtr(v)
+				m.rerender()
+			},
+		},
+		{
 			label: "Show spreads",
 			help:  "A ```spread (or ```dataview) block shows the table or list its query finds, kept current as notes change. Off shows the query as code.",
 			get:   func(m *Model) bool { return m.opts.Spreads },

@@ -186,6 +186,12 @@ func (m *Model) filesPane(w, h int) []string {
 
 func (m *Model) notePane(w, h int) []string {
 	title, body := m.noteBody(w-2, h-2)
+	if pad := m.noteMargin(); pad > 0 && (m.notePath != "" || m.editor != nil || len(m.proposals) > 0) {
+		margin := strings.Repeat(" ", pad)
+		for i := range body {
+			body[i] = margin + body[i]
+		}
+	}
 	return m.box(title, body, w, h, m.focus == paneNote || (m.editor != nil && m.focus != paneClaude))
 }
 

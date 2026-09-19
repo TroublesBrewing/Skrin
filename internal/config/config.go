@@ -54,9 +54,10 @@ type Config struct {
 		DefaultStatus string `toml:"default_status,omitempty"` // default: "reading"
 	} `toml:"library,omitempty"`
 	Render struct {
-		Images      *bool `toml:"images,omitempty"`       // unset means on
-		LineNumbers *bool `toml:"line_numbers,omitempty"` // unset means off: notes and editor start without line numbers
-		Spreads     *bool `toml:"spreads,omitempty"`      // unset means on
+		Images        *bool `toml:"images,omitempty"`         // unset means on
+		LineNumbers   *bool `toml:"line_numbers,omitempty"`   // unset means off: notes and editor start without line numbers
+		ReadableWidth *bool `toml:"readable_width,omitempty"` // unset means on: notes stay at most 80 characters wide
+		Spreads       *bool `toml:"spreads,omitempty"`        // unset means on
 	} `toml:"render,omitempty"`
 	// Keys is the user's own keymap, written by the Keys tab of `?`:
 	// context ("main", "editor", …) → action name → the keys that work
@@ -126,6 +127,13 @@ func (c Config) LibraryDefaultStatus() string {
 // gates whether a preview is ever attempted.
 func (c Config) RenderImages() bool {
 	return c.Render.Images == nil || *c.Render.Images
+}
+
+// RenderReadableWidth reports whether notes keep a readable line length,
+// at most 80 characters wide and centred in their pane, as in zen and in
+// Obsidian's "Readable line length". It is on unless turned off.
+func (c Config) RenderReadableWidth() bool {
+	return c.Render.ReadableWidth == nil || *c.Render.ReadableWidth
 }
 
 // RenderLineNumbers reports whether line numbers show along the left edge

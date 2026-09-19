@@ -2,6 +2,17 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.31.0 — 2026-09-19
+
+**New: a readable line length.** From the investigation *Läsbarhet*. The user found zen "mycket mer läsbart", works in full screen, and found long, uneven lines hardest: "raderna varierar mycket i längd vilket ger texten ett spretigt utseende". A basic Obsidian feature ("Readable line length"), built during the locked period with the user's yes to this card.
+
+- **Notes stay at most 80 characters wide outside zen**, the same width as zen, so both read alike. The text column sits centred in its pane however wide the window is. The editor follows it, as does the note in a split, each centred in its own pane.
+- **On by default**, with a Settings row, *Readable line length*, to turn it off so notes fill their pane again. Saved as `[render] readable_width` in `config.toml`.
+- A pane narrower than 80 characters keeps its whole width, with no margin, and zen keeps its own centring. The splash screen isn't shifted.
+- The margin sits outside each line, so link hints, selections, line numbers and wrapping work as before. The completion popup moves with it and still opens at the cursor.
+- The Guide says so under *The size of things*.
+- Tests: the column capped and centred in a 200-wide terminal, with the frame exact and the text starting after the margin; off filling the pane; a narrow pane and zen left alone; the editor wrapping at the readable width, with the completion popup at the cursor after the margin; a split opened by skimming, capped and centred; the Settings toggle widening the note at once and in config; the config default. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux: a long note in a 220-wide terminal reads as a centred 80-character column.
+
 ## v0.30.0 — 2026-09-19
 
 **New: suggestions for tags and property values the vault already uses.** The user: "förslag när man använder taggar som man redan använt i andra anteckningar. Det minimerar property sprawl ('Filosofi, filosofi, Philosophy, philosophy' och felstavningar)". It was planned for after the locked period, and **the user chose to override the lock for it** ("Kör på"): the first exception to it, and worth having while the vault is still young.

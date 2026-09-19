@@ -40,6 +40,9 @@ const (
 	filesAutoHideWidth = 80
 	// zenWidth is the widest a note runs in zen mode, for easy reading.
 	zenWidth = 80
+	// readableWidth is the widest a note runs outside zen with a readable
+	// line length on: the same as zen, so both read alike.
+	readableWidth = zenWidth
 	// splitMinWidth is the narrowest terminal a split view fits in.
 	splitMinWidth = 80
 	// splitFilesW is Files' width while the view is split: its minimum.
@@ -118,6 +121,10 @@ type Options struct {
 	// LineNumbers turns on line numbers along the left edge of notes and
 	// the built-in editor.
 	LineNumbers bool
+	// ReadableWidth keeps notes at most readableWidth characters wide
+	// outside zen, centred in their pane, as Obsidian's "Readable line
+	// length" does. Editable from the Settings tab of `?`.
+	ReadableWidth bool
 	// Spreads shows what ```spread and ```dataview blocks find; off shows
 	// the query as code.
 	Spreads bool
@@ -885,12 +892,7 @@ func (m *Model) settle() {
 		m.renderedW = textW
 	}
 	if s := m.split; s != nil {
-		w := l.splitW - 4
-		if m.opts.LineNumbers && s.src != "" {
-			digits := max(len(strconv.Itoa(strings.Count(s.src, "\n")+1)), 2)
-			w -= (digits + 3) - 1
-		}
-		w = max(w, 10)
+		w, _ := m.splitTextW()
 		if s.err == nil && w != s.renderedW {
 			s.lines = markdown.Render(s.src, markdown.Options{Width: w, Palette: m.pal, Resolve: m.resolveFrom(s.path), Images: m.imageOptions(s.path, vis), Embeds: m.embedOptions(s.path), Spreads: m.spreadOptions(s.path)})
 			s.renderedW = w
@@ -959,12 +961,52 @@ func (m *Model) gutterWidth() int {
 // noteTextW is the width notes and editor render at: the pane minus
 // borders, line number gutter (if on), and a one-cell margin.
 func (m *Model) noteTextW() int {
+	w := m.fullTextW()
+	if m.readable() {
+		w = min(w, readableWidth)
+	}
+	return w
+}
+
+// fullTextW is the note text's width with nothing holding it back: the
+// whole pane.
+func (m *Model) fullTextW() int {
 	l := m.layout()
 	w := l.noteW - 4
 	if m.opts.LineNumbers {
 		w -= m.gutterWidth() - 1
 	}
 	return max(w, 10)
+}
+
+// splitTextW is the width the split's note renders at, and the margin in
+// front of it that centres it, the way noteTextW and noteMargin are for the
+// focused note.
+func (m *Model) splitTextW() (w, margin int) {
+	full := m.layout().splitW - 4
+	if s := m.split; m.opts.LineNumbers && s != nil && s.src != "" {
+		digits := max(len(strconv.Itoa(strings.Count(s.src, "\n")+1)), 2)
+		full -= (digits + 3) - 1
+	}
+	full = max(full, 10)
+	w = full
+	if m.readable() {
+		w = min(w, readableWidth)
+	}
+	return w, (full - w) / 2
+}
+
+// readable reports whether notes keep a readable line length now. Zen has
+// its own, so it doesn't count there.
+func (m *Model) readable() bool { return m.opts.ReadableWidth && !m.zen }
+
+// noteMargin is the space in front of the note's text column: half of what
+// a readable line length leaves over, so the column sits centred.
+func (m *Model) noteMargin() int {
+	if !m.readable() {
+		return 0
+	}
+	return (m.fullTextW() - m.noteTextW()) / 2
 }
 
 // resolve reports whether a wikilink in the open note leads anywhere.

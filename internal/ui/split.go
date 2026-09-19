@@ -152,5 +152,11 @@ func (m *Model) splitPane(w, h int) []string {
 		}
 		body = append(body, prefix+s.lines[i].Text)
 	}
+	if _, pad := m.splitTextW(); pad > 0 {
+		margin := strings.Repeat(" ", pad)
+		for i := range body {
+			body[i] = margin + body[i]
+		}
+	}
 	return m.box(displayName(s.path), body, w, h, false)
 }

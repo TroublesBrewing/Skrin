@@ -80,8 +80,9 @@ Release when there is something worth releasing, not after every fix: new featur
 2. Set `Version` in `internal/version/version.go`.
 3. Add a section to `CHANGELOG.md`.
 4. Commit, then `git tag vX.Y.Z`.
-5. Reinstall the binary.
-6. Add a line to the log in "Skrin nu" that points to the release.
+5. Push the branch and the tag to GitHub: `git push origin master vX.Y.Z`.
+6. Reinstall the binary.
+7. Add a line to the log in "Skrin nu" that points to the release.
 
 ## Rules
 

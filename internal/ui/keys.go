@@ -87,7 +87,10 @@ const (
 	actHabitTab  // H inside it: today → this week → this month
 	actQuickNote // i: the quick-note overlay
 	actLineNumbers
-	actPalette // Ctrl+P: every command, found by name
+	actPalette   // Ctrl+P: every command, found by name
+	actFindNote  // Ctrl+F in the editor
+	actNextMatch // in it: the next match, and the one before
+	actPrevMatch
 )
 
 // Contexts say where a binding works. Each gets its own keymap, built from
@@ -110,6 +113,7 @@ const (
 	inHabits    = "habits"    // the T overlay: today's list, the week and month grids
 	inQuickNote = "quicknote" // the i overlay: capture text, folder row
 	inTable     = "table"     // Insert table, from the palette
+	inNoteFind  = "notefind"  // Ctrl+F in the editor
 )
 
 // binding is one row of the keymap registry. Every key Skrin handles is
@@ -148,6 +152,7 @@ const (
 	groupHabits    = "In the habits view (T)"
 	groupQuickNote = "In the quick note (i)"
 	groupTable     = "In Insert table (from Ctrl+P)"
+	groupNoteFind  = "Finding in the note (Ctrl+F)"
 )
 
 var defaultBindings = []binding{
@@ -221,6 +226,7 @@ var defaultBindings = []binding{
 	{actNone, []string{"shift+left", "shift+right", "shift+up", "shift+down"}, "select text; typing replaces it", groupEditor, inEditor},
 	{actAskClaude, []string{"ctrl+k"}, "ask Claude, with the selection", groupEditor, inEditor},
 	{actPalette, []string{"ctrl+p"}, "commands: find any command by what it does, and run it", groupEditor, inEditor},
+	{actFindNote, []string{"ctrl+f"}, "find text in the note", groupEditor, inEditor},
 	{actZen, []string{"alt+z"}, "zen mode, still editing", groupEditor, inEditor},
 	{actBacklinks, []string{"alt+b"}, "notes linking here", groupEditor, inEditor},
 	{actOutline, []string{"alt+o"}, "outline: jump to a heading", groupEditor, inEditor},
@@ -343,6 +349,11 @@ var defaultBindings = []binding{
 	{actNone, []string{"letters"}, "headings: comma-separated, and optional", groupTable, inTable},
 	{actPick, []string{"enter"}, "put the table in the note, at the cursor", groupTable, inTable},
 	{actCancel, []string{"esc", "ctrl+c"}, "close, insert nothing", groupTable, inTable},
+
+	{actNone, []string{"letters"}, "what to find; case doesn't matter", groupNoteFind, inNoteFind},
+	{actNextMatch, []string{"enter", "down"}, "the next match, round to the top", groupNoteFind, inNoteFind},
+	{actPrevMatch, []string{"shift+enter", "up"}, "the match before", groupNoteFind, inNoteFind},
+	{actCancel, []string{"esc"}, "close; the match stays selected", groupNoteFind, inNoteFind},
 }
 
 // actionName is the name each action goes by in config.toml's [keys]
@@ -386,7 +397,8 @@ var actionName = map[action]string{
 	actAddQuote: "add-quote", actSaveBook: "save-book",
 	actFolderJumpUp: "folder-jump-up", actFolderJumpDown: "folder-jump-down",
 	actHabits: "habits", actHabitTab: "habit-tab", actQuickNote: "quick-note",
-	actPalette: "palette",
+	actPalette:  "palette",
+	actFindNote: "find-note", actNextMatch: "next-match", actPrevMatch: "prev-match",
 }
 
 // actionByName is actionName the other way round, for reading overrides

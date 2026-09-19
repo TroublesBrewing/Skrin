@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -497,5 +498,28 @@ func TestCompleteWordIsOneUndoStep(t *testing.T) {
 	keys(e, "ctrl+z")
 	if e.Text() != "text #fil more" {
 		t.Errorf("one undo should take the completion back: %q", e.Text())
+	}
+}
+
+func TestFindIgnoresCaseAndDoesntOverlap(t *testing.T) {
+	e := open("Stoa och stoa\naaaa\nINGET här STOA")
+	got := e.Find("stoa")
+	want := []Match{{0, 0, 4}, {0, 9, 13}, {2, 10, 14}}
+	if !slices.Equal(got, want) {
+		t.Errorf("stoa: %v, want %v", got, want)
+	}
+	if got := e.Find("aa"); len(got) != 2 || got[0].Col != 0 || got[1].Col != 2 {
+		t.Errorf("matches shouldn't overlap: %v", got)
+	}
+	if got := e.Find(""); got != nil {
+		t.Errorf("nothing to find: %v", got)
+	}
+	e.Show(Match{2, 10, 14})
+	if e.Selection() != "STOA" || e.row != 2 || e.col != 14 {
+		t.Errorf("Show should select the match, cursor at its end: %q at %d:%d", e.Selection(), e.row, e.col)
+	}
+	e.MoveTo(0, 3)
+	if e.Selection() != "" || e.row != 0 || e.col != 3 {
+		t.Errorf("MoveTo should clear the selection: %q at %d:%d", e.Selection(), e.row, e.col)
 	}
 }

@@ -2,6 +2,17 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.32.0 — 2026-09-19
+
+**New: find in the note while editing, with Ctrl+F.** Planned from the honest review ("Ingen sökning i editorn … den största enskilda friktionen för någon som skriver på riktigt"). A basic Obsidian feature, built during the locked period with the user's yes to this card.
+
+- **Ctrl+F in the editor** opens a find field in the status line. Each letter jumps to the next match from where the cursor was, and the match shows selected. It works in vim mode too.
+- **Enter or ↓ goes to the next match, and Shift+Enter or ↑ to the one before**, round the note. The status line says which match of how many, `2 of 6`, or `no match`, in which case the cursor goes back to where it was.
+- **Esc closes it with the match still selected**, as in Obsidian, so typing replaces it. A second Esc clears the selection, as it always has. Case doesn't matter. Pasting goes into the field.
+- Also in the palette, "Find in the note", and in the editor's status-line hints (`ctrl+f find`). The Guide explains it under *Search*.
+- New: `editor.Find`, `Show` and `MoveTo`.
+- Tests: finding ignores case and doesn't overlap, `Show` selects, `MoveTo` clears; in Skrin, the first match after the cursor is selected and the note is untouched while typing, the count, moving forward and back with wrapping, Esc leaving the match selected so typing replaces it, no match going back to the cursor, and a paste searching. The test helper learned Shift+Enter, which it used to read as the letter s. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux: "låsning" found `1 of 6`, Enter moved to `2 of 6`, and Esc left it selected.
+
 ## v0.31.0 — 2026-09-19
 
 **New: a readable line length.** From the investigation *Läsbarhet*. The user found zen "mycket mer läsbart", works in full screen, and found long, uneven lines hardest: "raderna varierar mycket i längd vilket ger texten ett spretigt utseende". A basic Obsidian feature ("Readable line length"), built during the locked period with the user's yes to this card.

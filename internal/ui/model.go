@@ -208,6 +208,7 @@ type Model struct {
 	habits    *habitView
 	quickNote *quickNote
 	table     *tableForm // Insert table, over the editor
+	noteFind  *noteFind  // Ctrl+F in the editor
 
 	lastSearch *searchPanel // reopened by the next /
 
@@ -382,6 +383,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd = m.chooserKey(msg)
 		case m.table != nil:
 			m.tableKey(msg)
+		case m.noteFind != nil && m.editor != nil:
+			m.noteFindKey(msg)
 		case m.editor != nil:
 			if m.complete == nil || !m.completionKey(msg) {
 				cmd = m.editorKey(msg)

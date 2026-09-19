@@ -115,6 +115,9 @@ func (m *Model) editorKey(k tea.KeyPressMsg) tea.Cmd {
 	case actPalette:
 		m.openPalette()
 		return nil
+	case actFindNote:
+		m.openNoteFind()
+		return nil
 	case actZen, actBacklinks, actOutline:
 		return m.do(a)
 	}
@@ -153,6 +156,9 @@ func (m *Model) copySelection() tea.Cmd {
 func (m *Model) paste(s string) {
 	switch {
 	case m.conflict != nil:
+	case m.noteFind != nil && m.editor != nil:
+		m.noteFind.in.insert(strings.ReplaceAll(s, "\n", " "))
+		m.refind()
 	case m.table != nil:
 		if m.table.field == tableHeads {
 			m.table.heads.insert(strings.ReplaceAll(s, "\n", " "))
@@ -383,7 +389,10 @@ func (m *Model) diffLine(l string) string {
 }
 
 func (m *Model) editLine() string {
-	mode, hint := " EDIT ", "ctrl+s save · ctrl+l to-do · esc done"
+	if m.noteFind != nil {
+		return m.noteFindLine()
+	}
+	mode, hint := " EDIT ", "ctrl+s save · ctrl+f find · ctrl+l to-do · esc done"
 	if m.editor.InTable() {
 		hint = "tab next cell · enter next row · esc done"
 	}

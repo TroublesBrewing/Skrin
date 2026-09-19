@@ -5,6 +5,7 @@ package editor
 
 import (
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -1034,6 +1035,53 @@ func (e *Editor) LinkQuery() (string, bool) {
 		return "", false
 	}
 	return q, true
+}
+
+// Match is one place a search found: its line and where it starts and
+// ends on it, in runes.
+type Match struct{ Row, Col, End int }
+
+// Find lists every place q occurs in the note, ignoring case, in order.
+// Matches don't overlap.
+func (e *Editor) Find(q string) []Match {
+	want := []rune(strings.ToLower(q))
+	if len(want) == 0 {
+		return nil
+	}
+	var out []Match
+	for row, line := range e.lines {
+		low := []rune(strings.ToLower(string(line)))
+		if len(low) != len(line) {
+			continue // a letter whose lower case is longer; too rare to handle
+		}
+		for c := 0; c+len(want) <= len(low); {
+			if slices.Equal(low[c:c+len(want)], want) {
+				out = append(out, Match{row, c, c + len(want)})
+				c += len(want)
+				continue
+			}
+			c++
+		}
+	}
+	return out
+}
+
+// Show selects m, with the cursor at its end, and scrolls it into view.
+func (e *Editor) Show(m Match) {
+	if m.Row >= len(e.lines) {
+		return
+	}
+	e.row, e.col = m.Row, min(m.End, len(e.lines[m.Row]))
+	e.sel, e.srow, e.scol = true, m.Row, m.Col
+	e.goal = -1
+	e.scroll()
+}
+
+// MoveTo puts the cursor at row, col with nothing selected.
+func (e *Editor) MoveTo(row, col int) {
+	e.row = clamp(row, 0, len(e.lines)-1)
+	e.col, e.goal, e.sel = clamp(col, 0, len(e.lines[e.row])), -1, false
+	e.scroll()
 }
 
 // TagQuery reports the #tag being typed in the note's body: the letters

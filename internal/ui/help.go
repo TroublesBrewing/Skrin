@@ -336,6 +336,7 @@ func (m *Model) guideText(w int) []manualLine {
 	key("[key] [key:value]", "a frontmatter property")
 	key("path:Daily", "notes in that folder")
 	key("file:stoic", "notes by name")
+	para("In the editor, Ctrl+F finds text in the note you're writing, without leaving it. Each letter you type jumps to the next match from where you started, and the match shows selected. Enter or ↓ goes to the next one and Shift+Enter or ↑ to the one before, round the note. The status line says which match of how many. Esc closes it with the match still selected, so typing replaces it, and a second Esc clears the selection. Case doesn't matter.")
 	para("With Alt-r it becomes search & replace: every change is listed first, ⚠ marks matches inside [[links]], a note that changed on disk meanwhile is skipped, and one U undoes the whole replace.")
 
 	head("Links")

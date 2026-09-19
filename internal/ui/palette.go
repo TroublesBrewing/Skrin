@@ -101,6 +101,7 @@ var editorCommands = []editorCommand{
 	{act: actZen, name: "Zen mode, still editing", also: "focus distraction free fullscreen"},
 	{act: actBacklinks, name: "Backlinks: notes linking here", also: "references mentions incoming"},
 	{act: actOutline, name: "Outline: jump to a heading", also: "headings toc sections"},
+	{act: actFindNote, name: "Find in the note", also: "search sök hitta text"},
 	{name: "Insert table", also: "add new grid columns rows markdown tabell", run: func(m *Model) tea.Cmd { m.startTable(); return nil }},
 	{name: "Insert template", also: "add snippet boilerplate mall", run: func(m *Model) tea.Cmd { m.startTemplate(); return nil }},
 }

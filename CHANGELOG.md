@@ -2,6 +2,18 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.36.0 — 2026-09-20
+
+**Fix: Ctrl+V pastes.** Copying with Ctrl+C worked, pasting didn't: Skrin only ever took text from a bracketed paste (Ctrl+Shift+V), and a plain Ctrl+V fell through to nothing. Reported by the user: "vi har ctrl+c för att kopiera men ctrl+v fungerar inte för att klistra in."
+
+- **Ctrl+V pastes wherever you're typing:** the editor, the find field, search, the quick note, the table form, the Claude drawer, a list filter.
+- **How it works:** a program in a terminal can't reach the system clipboard itself, so Ctrl+V asks the terminal for it over OSC 52, the same channel Ctrl+C copies over.
+- **Terminals that won't hand the clipboard back** (reading it would let anything at the far end of an ssh session see what you copied) get a fallback after 300 ms: what you last copied in Skrin goes in, and the status line says that's what happened. With nothing copied here either, it says Ctrl+Shift+V is the way in.
+- **An empty clipboard** says so, rather than looking like a failure.
+- **Ctrl+V where nothing takes text**, in the reading view, says so instead of doing nothing.
+- **The manual says all this now:** `?` lists Ctrl+C as copy and Ctrl+V as paste in the editor, which it never did, and the Guide has a paragraph on copying, pasting and why Ctrl+Shift+V exists.
+- Tests: the terminal's answer landing in the editor; the fallback to what Ctrl+C copied, with the flash that explains it; the silent terminal with nothing copied; an empty clipboard; pasting where nothing takes text; and a bracketed paste reaching the search and find fields. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux: copy then Ctrl+V pasted the line, an empty clipboard said so, and Ctrl+Shift+V still pastes as before.
+
 ## v0.35.0 — 2026-09-20
 
 **New: renaming a heading brings its links along.** The last requirement on the v1.0 bar that wasn't code yet, and a basic Obsidian feature: built during the locked period with the user's yes to this card.

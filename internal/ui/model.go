@@ -187,6 +187,11 @@ type Model struct {
 	// selected never closes Skrin by surprise.
 	lastCtrlC time.Time
 
+	// copied is what Ctrl+C last put on the clipboard from in here, and
+	// pasting says a Ctrl+V is waiting for the terminal to answer.
+	copied  string
+	pasting bool
+
 	recentCmds  []string // the palette's commands run lately, newest first
 	recentNotes []string // notes opened lately, newest first, for Go to note
 
@@ -373,10 +378,24 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		delete(m.pendingThumb, thumbKey(msg.abs, msg.cols, msg.rows))
 	case tea.PasteMsg:
 		m.paste(msg.Content)
+	case tea.ClipboardMsg:
+		if m.pasting {
+			m.pasting = false
+			m.pasteFrom(msg.String(), true)
+		}
+	case pasteTimeoutMsg:
+		if m.pasting {
+			m.pasting = false
+			m.pasteFrom("", false)
+		}
 	case tea.KeyPressMsg:
 		m.flash = ""
 		lastG, lastCtrlC := m.lastG, m.lastCtrlC
 		m.lastG, m.lastCtrlC = time.Time{}, time.Time{}
+		if msg.String() == "ctrl+v" {
+			cmd = m.askPaste()
+			break
+		}
 		switch {
 		case m.conflict != nil:
 			m.conflictKey(msg)

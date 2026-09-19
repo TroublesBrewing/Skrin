@@ -151,12 +151,16 @@ func (m *Model) copySelection() tea.Cmd {
 	} else {
 		m.flash = fmt.Sprintf("Copied %d lines", n)
 	}
+	m.copied = s
 	return tea.SetClipboard(s)
 }
 
-func (m *Model) paste(s string) {
+// paste puts s wherever text is being typed, and reports whether anything
+// took it: in the reading view, with no field open, nothing does.
+func (m *Model) paste(s string) bool {
 	switch {
 	case m.conflict != nil:
+		return false
 	case m.noteFind != nil && m.editor != nil:
 		m.noteFind.in.insert(strings.ReplaceAll(s, "\n", " "))
 		m.refind()
@@ -189,7 +193,10 @@ func (m *Model) paste(s string) {
 	case m.search != nil:
 		m.search.paste(s)
 		m.runSearch()
+	default:
+		return false
 	}
+	return true
 }
 
 // saveEdit writes the editor's text, unless the note changed on disk in the

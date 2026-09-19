@@ -217,7 +217,9 @@ var defaultBindings = []binding{
 	{actQuit, []string{"q", "ctrl+c"}, "quit", groupSkrin, inMain},
 
 	{actNone, []string{"ctrl+s"}, "save", groupEditor, inEditor},
-	{actNone, []string{"esc", "ctrl+c"}, "leave the editor, saving first (esc clears a selection first)", groupEditor, inEditor},
+	{actNone, []string{"esc"}, "clear a selection, then leave the editor, saving", groupEditor, inEditor},
+	{actNone, []string{"ctrl+c"}, "copy the selection, or leave the editor", groupEditor, inEditor},
+	{actNone, []string{"ctrl+v"}, "paste from the clipboard", groupEditor, inEditor},
 	{actNone, []string{"ctrl+z", "ctrl+y"}, "undo / redo typing", groupEditor, inEditor},
 	{actNone, []string{"tab", "shift+tab"}, "indent / outdent · table: next / previous cell", groupEditor, inEditor},
 	{actNone, []string{"enter"}, "new line · table: next row; empty last row leaves", groupEditor, inEditor},

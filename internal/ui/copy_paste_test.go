@@ -129,3 +129,89 @@ func TestQuickNotePasteGoesIntoTheFolderField(t *testing.T) {
 		t.Errorf("folder field = %q", got)
 	}
 }
+
+// Ctrl+V asks the terminal for its clipboard and waits for the answer.
+// Terminals that won't answer get what Ctrl+C copied in Skrin instead.
+
+func TestCtrlVPastesWhatTheTerminalHandsBack(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "G", "l", "e") // the editor, on Welcome.md
+	m.editor.MoveTo(1, 0)
+	press(m, "ctrl+v")
+	if !m.pasting {
+		t.Fatal("ctrl+v should be waiting for the terminal")
+	}
+	m.Update(tea.ClipboardMsg{Content: "from elsewhere", Selection: 'c'})
+	if m.pasting {
+		t.Error("the answer should end the wait")
+	}
+	if !strings.Contains(m.editor.Text(), "from elsewhere") {
+		t.Errorf("editor = %q", m.editor.Text())
+	}
+	if m.flash != "Pasted" {
+		t.Errorf("flash = %q", m.flash)
+	}
+}
+
+func TestASilentTerminalGetsWhatYouCopiedHere(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "G", "l", "v", "ctrl+c") // copy a line of Welcome.md
+	press(m, "e")
+	m.editor.MoveTo(1, 0)
+	press(m, "ctrl+v")
+	m.Update(pasteTimeoutMsg{})
+	if !strings.Contains(m.editor.Text(), "# Welcome") {
+		t.Errorf("the line copied here should come back: %q", m.editor.Text())
+	}
+	if !strings.Contains(m.flash, "won't hand its clipboard over") {
+		t.Errorf("the flash should say what happened: %q", m.flash)
+	}
+}
+
+func TestASilentTerminalAndNothingCopiedSaysSo(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "G", "l", "e")
+	press(m, "ctrl+v")
+	m.Update(pasteTimeoutMsg{})
+	if !strings.Contains(m.flash, "ctrl+shift+v") {
+		t.Errorf("the flash should name the way that works: %q", m.flash)
+	}
+}
+
+func TestAnEmptyClipboardIsNotAFailedRead(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "G", "l", "e")
+	press(m, "ctrl+v")
+	m.Update(tea.ClipboardMsg{Selection: 'c'})
+	if m.flash != "The clipboard is empty" {
+		t.Errorf("flash = %q", m.flash)
+	}
+}
+
+func TestPastingWhereNothingTakesTextSaysSo(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "G", "l") // reading, not typing
+	press(m, "ctrl+v")
+	m.Update(tea.ClipboardMsg{Content: "text", Selection: 'c'})
+	if !strings.Contains(m.flash, "Nothing here takes text") {
+		t.Errorf("flash = %q", m.flash)
+	}
+	if strings.Contains(read(m, "Welcome.md"), "text") {
+		t.Error("nothing should have been written")
+	}
+}
+
+func TestPasteReachesEveryFieldThatTakesTyping(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "/") // the search field
+	m.Update(tea.PasteMsg{Content: "stoic"})
+	if !strings.Contains(m.statusLine()+m.render(), "stoic") {
+		t.Error("a paste should reach the search field")
+	}
+	press(m, "esc")
+	press(m, "G", "l", "e", "ctrl+f") // find in the note
+	m.Update(tea.PasteMsg{Content: "Wel\ncome"})
+	if got := m.noteFind.in.value(); got != "Wel come" {
+		t.Errorf("find field = %q, want the newline as a space", got)
+	}
+}

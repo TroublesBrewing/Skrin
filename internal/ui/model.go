@@ -204,6 +204,9 @@ type Model struct {
 	copied  string
 	pasting bool
 
+	// pulling is the block of lines waiting to become a note of its own,
+	// held while Skrin asks what to call it.
+	pulling *pull
 	// blinking says a blink is already on its way, so the overlay's
 	// updates don't pile ticks on top of each other.
 	blinking bool
@@ -446,6 +449,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.tableKey(msg)
 		case m.noteFind != nil && m.editor != nil:
 			m.noteFindKey(msg)
+		// A prompt is a modal question, so it takes keys even when the
+		// editor is open behind it — Pull out asks from in there.
+		case m.prompt != nil:
+			m.promptKey(msg)
 		case m.editor != nil:
 			if m.complete == nil || !m.completionKey(msg) {
 				cmd = m.editorKey(msg)
@@ -457,8 +464,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.confirmKey(msg)
 		case m.hints != nil:
 			m.hintKey(msg)
-		case m.prompt != nil:
-			m.promptKey(msg)
 		case m.book != nil:
 			cmd = m.bookCardKey(msg)
 		case m.habits != nil:
@@ -619,6 +624,8 @@ func (m *Model) do(a action) tea.Cmd {
 		m.openSwitcher()
 	case actFindNote:
 		m.openNoteFind()
+	case actExtract:
+		m.startExtract()
 	case actPin:
 		m.togglePin()
 	case actPins:

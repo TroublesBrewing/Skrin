@@ -355,6 +355,12 @@ func (m *Model) guideText(w int) []manualLine {
 	para("# lists every tag in the vault with how many notes use it, and picking one searches for it. Each spelling stands on its own row, so \"Filosofi\" and \"filosofi\" show side by side rather than hiding one another.")
 	para("With Alt-r it becomes search & replace: every change is listed first, ⚠ marks matches inside [[links]], a note that changed on disk meanwhile is skipped, and one U undoes the whole replace.")
 
+	head("Pulling text out")
+	para("x pulls the lines you have selected into a note of their own and leaves a link where they were — the other half of capture: what you caught quickly becomes something you can find. Alt+X does it from the editor. Select with v and j/k in the note, or Shift and the arrows while writing.")
+	para("The new note is named after the first line of what you picked, with its markup taken off, and lands beside the note it came from. When that first line gives nothing to go on, Skrin asks rather than inventing a name — a note called \"2026-09-20 1423\" is one you never find again. It never writes over a note that already exists; it asks for another name.")
+	para("It works on whole lines: a block of text is what becomes a note, not half a sentence. One U undoes the whole thing, the new note and the hole it left, because they are one entry in the journal.")
+	blank()
+
 	head("Links")
 	para("[[Note]], [[Note|alias]], [[Note#Heading]], [[Note#^block]], ![[embeds]] and markdown [text](path) links all work, and resolve the way Obsidian resolves them.")
 	para("f follows links, and only f does. With one link in view it goes straight there; with several it puts a letter on each, and you type the letter. Alt+F does the same into a split beside the note, as does Alt+ on a letter — Alt means \"into a split\" wherever a note can open.")

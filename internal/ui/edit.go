@@ -120,6 +120,9 @@ func (m *Model) editorKey(k tea.KeyPressMsg) tea.Cmd {
 	case actFindNote:
 		m.openNoteFind()
 		return nil
+	case actExtract:
+		m.startExtract()
+		return nil
 	case actZen, actBacklinks, actOutline:
 		return m.do(a)
 	}

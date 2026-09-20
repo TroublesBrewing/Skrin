@@ -1201,3 +1201,18 @@ func (e *Editor) CursorPos() (row, col int) {
 }
 
 func clamp(v, lo, hi int) int { return max(lo, min(v, hi)) }
+
+// SelectedRows is the first and last row the selection covers, the end
+// included, and whether there is a selection at all. A selection that
+// ends at the very start of a row covers the row above it, not that one —
+// one Shift+Down from the start of a line is one line.
+func (e *Editor) SelectedRows() (first, last int, ok bool) {
+	if !e.sel {
+		return 0, 0, false
+	}
+	r1, _, r2, c2 := e.selRange()
+	if c2 == 0 && r2 > r1 {
+		r2--
+	}
+	return r1, r2, true
+}

@@ -2,6 +2,21 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.44.0 — 2026-09-20
+
+**New: pull the selected lines into a note of their own.** The idea behind Obsidian's Note Refactor plugin, which the user pointed at — the part of it that earns its place. This is the other half of capture: what was caught quickly, in a daily note, becomes something that can be found.
+
+- **`x` in the note, `Alt+X` in the editor**, with lines selected: they become a new note and a `[[link]]` takes their place.
+- **The first line names it**, with its markup taken off — `## Stoicism`, `- [ ] ring the plumber` and `> a quote` all name themselves. Characters a file name can't hold go, as in Obsidian.
+- **When the first line gives nothing to go on, Skrin asks.** It never invents a name: a note called "2026-09-20 1423" is one you never find again.
+- **It never writes over a note that exists** — it asks for another name, with the reason shown.
+- **One U undoes the whole thing**, the new note and the hole it left, because they are one entry in the journal. With the editor open, the file is brought in line with the buffer first, so what the journal records is what was really there.
+- **Whole lines only.** A block of text is what becomes a note; half a sentence isn't one.
+- **Two fixes that fell out of building it:** a prompt opened while the editor was open never received any keys — the editor swallowed them — so a prompt now takes precedence, as a modal question should. And the lines are held from the moment you ask, so answering a question can't change what moves.
+- Tests: the round trip in the reading view with U putting both halves back; the same from the editor; prose naming itself; an empty first line being asked about and the answer naming it; refusing to overwrite; nothing selected saying what to do; and the name-cleaning rules. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux, including U restoring the note exactly.
+
+**Not built, deliberately:** splitting a whole note at its headings (step two, and it needs a preview of what it would create first), the prefix-as-file-name command, and transclusion by default.
+
 ## v0.43.0 — 2026-09-20
 
 **New: a built-in light palette, and (beta) paper grain under the note.** Both asked for by the user: "göra nuvarande aktiva tema (flexoki-light) till standardtemat för ljust tema … och jag vill att bakgrunden ska vara väldigt fint texturerat, så att det påminner om papper."

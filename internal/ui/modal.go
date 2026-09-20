@@ -87,6 +87,7 @@ const (
 	promptNewNote promptKind = iota
 	promptNewFolder
 	promptRename
+	promptExtract
 )
 
 // prompt asks for a name in the status line.

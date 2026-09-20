@@ -178,6 +178,8 @@ func (m *Model) submitPrompt() {
 		err = m.createFolder(input)
 	case promptRename:
 		err = m.rename(p.target, input)
+	case promptExtract:
+		err = m.extractTo(input)
 	}
 	if err != nil {
 		p.err = err.Error()

@@ -312,8 +312,8 @@ func TestStatusHintsLeaveClaudeOutWhenItIsOff(t *testing.T) {
 
 func TestAKeyThatDoesNothingSaysSo(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "x")
-	if m.flash != "x does nothing here · ctrl+p finds every command" {
+	press(m, "y")
+	if m.flash != "y does nothing here · ctrl+p finds every command" {
 		t.Errorf("flash %q", m.flash)
 	}
 	press(m, "j")

@@ -572,6 +572,13 @@ func (m *Model) do(a action) tea.Cmd {
 			m.escape()
 		}
 	case actOrderUp, actOrderDown:
+		// In Files these order an item; in the note they select, which is
+		// what Shift+arrow does everywhere else in Skrin and everywhere
+		// else at all.
+		if m.focus == paneNote {
+			m.noteAction(a)
+			return nil
+		}
 		m.shiftItem(a == actOrderDown)
 	case actSkimDown, actSkimUp:
 		m.skimSplit(a == actSkimDown)
@@ -829,7 +836,21 @@ func (m *Model) noteAction(a action) {
 		m.flash = "Marking is for Files · " + m.backToFiles() + " goes back there"
 		return
 	case actOrderUp, actOrderDown:
-		m.flash = "Your own order is for Files · " + m.backToFiles() + " goes back there"
+		// Shift+arrow selects in the editor, in every text field, and in
+		// every other program. It selects here too, lighting the cursor
+		// first when it isn't lit — which is what Shift+arrow does in a
+		// document that has no selection yet.
+		if m.noteSel == nil {
+			m.toggleNoteSel()
+			if m.noteSel == nil {
+				return
+			}
+		}
+		grow := actSelDown
+		if a == actOrderUp {
+			grow = actSelUp
+		}
+		m.moveNoteSel(grow, vis)
 		return
 	case actCollapseAll:
 		m.flash = "Folders are in Files · " + m.backToFiles() + " goes back there"

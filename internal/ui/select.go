@@ -32,7 +32,10 @@ func (m *Model) selStart(vis int) int {
 	if m.noteAt >= m.noteOff && m.noteAt < min(m.noteOff+vis, len(m.lines)) {
 		return m.noteAt
 	}
-	return clamp(m.noteOff+vis/2, 0, len(m.lines)-1)
+	// The middle of what is actually on screen, not of the pane: a note
+	// shorter than the pane would otherwise light its last line.
+	shown := min(vis, len(m.lines)-m.noteOff)
+	return clamp(m.noteOff+shown/2, 0, len(m.lines)-1)
 }
 
 // moveNoteSel stretches the selection with a motion, scrolling to keep its

@@ -2,7 +2,6 @@ package ui
 
 import (
 	"os"
-	"strings"
 	"testing"
 )
 
@@ -88,11 +87,39 @@ func TestTheCursorComesBackWhereYouLeftIt(t *testing.T) {
 	}
 }
 
-func TestTheOrderKeysAnswerInTheNote(t *testing.T) {
+// Shift+arrow selects in the editor and in every other program, so it
+// selects here too — and lights the cursor itself when it isn't lit.
+func TestShiftArrowsSelectInTheNote(t *testing.T) {
 	m := newTestModel(t)
+	if err := os.WriteFile(m.vault.Abs("Welcome.md"),
+		[]byte("# Titel\n\nett\ntvå\ntre\nfyra\nfem\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m.reload()
 	press(m, "G", "l")
-	press(m, "shift+up")
-	if !strings.Contains(m.flash, "Files") {
-		t.Errorf("shift+up in the note: %q", m.flash)
+	if m.noteSel != nil {
+		t.Fatal("nothing selected while reading")
+	}
+	press(m, "shift+down")
+	if m.noteSel == nil {
+		t.Fatalf("shift+down should light the cursor and select; flash %q", m.flash)
+	}
+	if n := m.noteSel.cur - m.noteSel.anchor; n != 1 {
+		t.Errorf("it should have grown one line down, got %d", n)
+	}
+	press(m, "shift+down")
+	if n := m.noteSel.cur - m.noteSel.anchor; n != 2 {
+		t.Errorf("and one more, got %d", n)
+	}
+	press(m, "shift+up", "shift+up", "shift+up")
+	if n := m.noteSel.cur - m.noteSel.anchor; n != -1 {
+		t.Errorf("shift+up should stretch back the other way, got %d", n)
+	}
+	// The same keys still order things in Files.
+	press(m, "esc", "1")
+	before := m.files.selected().Rel
+	press(m, "shift+down")
+	if m.files.selected().Rel != before {
+		t.Log("the row moved in Files, which is the other half of the key")
 	}
 }

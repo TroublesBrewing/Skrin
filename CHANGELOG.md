@@ -2,6 +2,15 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.45.1 — 2026-09-21
+
+**Fix: Shift+↑ and Shift+↓ select in the reading view too.** The user: "upp- och nerpilar måste kunna markera i view mode också. En del användare är vana vid det och pilarna fungerar på alla andra ställen." Quite right — Shift+arrow already selected in the editor and in every text field, so the reading view was the odd one out.
+
+- **Shift+↑ / Shift+↓ stretch the selection**, and light the cursor themselves when it isn't lit, which is what Shift+arrow does in a document with no selection yet. `J`/`K` do the same, as before.
+- **In Files those two keys still order an item** in your own order. One key, two panes, one row in the manual saying both — the same shape `l` and `→` already have.
+- **A bug the test found:** the cursor lit on the *last* line of a note shorter than the pane, because "the middle of the view" counted the pane's height rather than the text in it. It now lands in the middle of what is actually on screen, so there is room to stretch either way.
+- Tests: Shift+arrow lighting the cursor and growing from nothing, stretching back the other way, and the same keys still ordering in Files. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux: two, four, then three lines.
+
 ## v0.45.0 — 2026-09-20
 
 **Fix: you can pick lines out of the middle of a note.** The user, on the selection in the reading view: "Buggen med att inte kunna markera ordentligt i läsvyn har irriterat mig. Jag trodde att det var så det skulle vara och att det bara var helt värdelöst." It wasn't meant to be: the reading view has no cursor, only a scroll position, so `v` had nothing to anchor to and took the top line of the view. In a note that fits on the screen there is nothing to scroll, so a selection could only ever start at the first line.

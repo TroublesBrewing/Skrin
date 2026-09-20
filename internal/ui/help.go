@@ -358,6 +358,7 @@ func (m *Model) guideText(w int) []manualLine {
 	head("Picking lines out of a note")
 	para("Reading has no cursor: j and k scroll, and nothing is picked out. v asks for a cursor, and it lights where your eye already is — the middle of what you are looking at, or the line you last left it on in this note. That way a block in the middle of a note can be picked out, which it couldn't when the selection always began at the top.")
 	para("With the cursor lit, j and k move it and take the selection back to that one line, as an arrow key drops a selection anywhere else. J and K stretch it instead, down and up: the bigger version of the same keys. Esc puts the cursor out.")
+	para("Shift+↑ and Shift+↓ stretch it too, and light the cursor themselves if it isn't lit — the same Shift+arrow that selects in the editor and in every text field. In Files those two keys order an item in your own order; in the note they select.")
 	blank()
 
 	head("Pulling text out")

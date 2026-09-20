@@ -34,9 +34,11 @@ func TestShiftMovesTheItemUnderTheCursor(t *testing.T) {
 	if !strings.Contains(m.flash, "Already at the top") {
 		t.Errorf("shift+up at the top of a level: flash %q", m.flash)
 	}
+	// In the note the same key selects instead, as Shift+arrow does
+	// everywhere else, so nothing is ordered from there.
 	press(m, "2", "shift+down")
-	if !strings.Contains(m.flash, "Files") {
-		t.Errorf("moving an item is a Files key, and should say so: %q", m.flash)
+	if m.noteSel == nil {
+		t.Errorf("shift+down in the note should select: flash %q", m.flash)
 	}
 }
 

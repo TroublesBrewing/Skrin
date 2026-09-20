@@ -1,9 +1,12 @@
 package ui
 
 import (
+	"strings"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/lurioso/skrin/internal/config"
+	"github.com/lurioso/skrin/internal/theme"
 	"github.com/lurioso/skrin/internal/version"
 )
 
@@ -59,6 +62,16 @@ func (m *Model) settingsItems() []settingsItem {
 func betaSettings() []settingsItem {
 	return []settingsItem{
 		{
+			label: "Paper grain under the note",
+			help:  "A faint texture behind the note, so reading feels a little more like a page. It paints the note pane's background, so a transparent terminal turns solid there, and it costs more to draw than plain text — noticeable over ssh, not on a local terminal.",
+			get:   func(m *Model) bool { return m.opts.Paper },
+			set: func(m *Model, v bool) {
+				m.opts.Paper = v
+				m.opts.Config.Paper.Enabled = boolPtr(v)
+			},
+			beta: true,
+		},
+		{
 			label: "Habit tracker",
 			help:  "T shows today's habits, the week and the month, read from the ### Habits block of your daily note. An experiment: either it grows into something that stands on its own, or it goes. Your checkboxes are plain markdown and stay as they are either way.",
 			get:   func(m *Model) bool { return m.opts.Habits },
@@ -90,6 +103,12 @@ func ordinarySettings() []settingsItem {
 				m.opts.InstantOpen = v
 				m.opts.Config.General.InstantOpen = boolPtr(v)
 			},
+		},
+		{
+			label: "Colours when there is no system theme",
+			help:  "The palette Skrin carries itself, for a machine with no Omarchy theme to follow — a Mac, say. gruvbox is dark, flexoki-light is paper and ink. A system theme always wins over this. Enter chooses.",
+			value: func(m *Model) string { return m.opts.Config.ThemeBuiltin() },
+			pick:  (*Model).pickBuiltinTheme,
 		},
 		{
 			label: "Templates folder",
@@ -239,4 +258,53 @@ func (m *Model) settingsView(w int) []string {
 	out = append(out, "")
 	out = append(out, m.st.muted.Render("Saved to "+config.Path()+" as each toggle changes."))
 	return out
+}
+
+// pickBuiltinTheme is the Settings row for the palette Skrin falls back on
+// when no system theme is there to follow. Choosing one takes effect at
+// once on a machine that has no system theme; where one is in force it is
+// kept for later, and the row says so.
+func (m *Model) pickBuiltinTheme() {
+	setCur := 0
+	if m.manual != nil {
+		setCur = m.manual.setCur
+	}
+	back := func() {
+		m.openManual()
+		m.manualGoTab(manualTabSettings)
+		m.manual.setCur = setCur
+	}
+	var items []choice
+	for _, name := range theme.Names() {
+		items = append(items, choice{label: name, detail: builtinNote(name), do: func() {
+			m.opts.Config.Theme.Builtin = name
+			back()
+			if err := config.Save(m.opts.Config); err != nil {
+				m.flash = "couldn't save settings: " + err.Error()
+				return
+			}
+			if strings.HasSuffix(m.pal.Name, "(built-in)") {
+				m.setPalette(theme.Builtin(name))
+				m.flash = "Colours: " + name
+				return
+			}
+			m.flash = "Colours: " + name + " · your system theme (" + m.pal.Name + ") is in force, so this waits for a machine without one"
+		}})
+	}
+	m.manual = nil
+	m.openChooser(&chooser{
+		title:  "Colours when there is no system theme",
+		prompt: "Palette",
+		empty:  "No palette by that name",
+		verb:   "choose",
+		items:  items,
+		cancel: back,
+	})
+}
+
+func builtinNote(name string) string {
+	if theme.Builtin(name).Dark {
+		return "dark"
+	}
+	return "light"
 }

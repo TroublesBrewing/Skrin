@@ -48,9 +48,16 @@ type Config struct {
 	Templates struct {
 		Folder string `toml:"folder,omitempty"` // unset: Obsidian's own Templates folder
 	} `toml:"templates,omitempty"`
+	Theme struct {
+		Builtin string `toml:"builtin,omitempty"` // "gruvbox" (the default) or "flexoki-light", used when there is no system theme
+	} `toml:"theme,omitempty"`
 	Beta struct {
 		Enabled *bool `toml:"enabled,omitempty"` // unset means off: experiments are asked for, never assumed
 	} `toml:"beta,omitempty"`
+	Paper struct {
+		Enabled  *bool `toml:"enabled,omitempty"`  // unset means off
+		Strength int   `toml:"strength,omitempty"` // how far the grain moves from the background, 1-10; unset means 3
+	} `toml:"paper,omitempty"`
 	Habits struct {
 		Enabled *bool `toml:"enabled,omitempty"` // unset means off: the habits view is asked for, never assumed
 	} `toml:"habits,omitempty"`
@@ -101,11 +108,36 @@ func (c Config) InstantOpen() bool {
 	return c.General.InstantOpen == nil || *c.General.InstantOpen
 }
 
+// ThemeBuiltin is the palette Skrin uses when there is no system theme to
+// follow: gruvbox unless another built-in is named.
+func (c Config) ThemeBuiltin() string {
+	if c.Theme.Builtin == "" {
+		return "gruvbox"
+	}
+	return c.Theme.Builtin
+}
+
 // BetaEnabled reports whether Settings shows its beta block, where the
 // experiments live. Off unless asked for, and ignored altogether in a
 // build with version.Beta false.
 func (c Config) BetaEnabled() bool {
 	return c.Beta.Enabled != nil && *c.Beta.Enabled
+}
+
+// PaperEnabled reports whether the note gets its paper grain.
+func (c Config) PaperEnabled() bool {
+	return c.Paper.Enabled != nil && *c.Paper.Enabled
+}
+
+// PaperStrength is how far the grain's shades sit from the background, in
+// steps of 0-255. Three is a hair; ten is visible texture. Out-of-range
+// values are clamped rather than refused: a number in a config file
+// should never stop Skrin starting.
+func (c Config) PaperStrength() int {
+	if c.Paper.Strength == 0 {
+		return 3
+	}
+	return min(max(c.Paper.Strength, 1), 10)
 }
 
 // HabitsEnabled reports whether the habits view is switched on. It is off unless

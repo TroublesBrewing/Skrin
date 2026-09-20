@@ -57,6 +57,50 @@ var gruvbox = map[string]string{
 	"magenta":            "#d3869b",
 }
 
+// flexokiLight is the built-in light palette: Flexoki, Steph Ango's
+// paper-and-ink scheme, which is what a light terminal wants — warm paper
+// rather than white glare. The user picked it as Skrin's light default.
+var flexokiLight = map[string]string{
+	"mode":               "light",
+	"accent":             "#205EA6",
+	"selection":          "#DAD8CE",
+	"muted":              "#B7B5AC",
+	"background":         "#FFFCF0",
+	"dark_background":    "#F2EFE4",
+	"darker_background":  "#E5E2D8",
+	"lighter_background": "#E6E4D9",
+	"foreground":         "#100F0F",
+	"dark_foreground":    "#6F6E69",
+	"light_foreground":   "#403E3C",
+	"red":                "#AF3029",
+	"yellow":             "#AD8301",
+	"orange":             "#BC5215",
+	"green":              "#66800B",
+	"cyan":               "#24837B",
+	"blue":               "#205EA6",
+	"magenta":            "#A02F6F",
+}
+
+// builtins are the palettes Skrin carries itself, for a machine with no
+// system theme to follow — a Mac, or a Linux box without Omarchy.
+var builtins = map[string]map[string]string{
+	"gruvbox":       gruvbox,
+	"flexoki-light": flexokiLight,
+}
+
+// Builtin is the named built-in palette, or gruvbox when the name is
+// unknown or empty. Names come from config.toml, so an old or mistyped
+// one must give colours rather than an error.
+func Builtin(name string) Palette {
+	if v, ok := builtins[name]; ok {
+		return build(name+" (built-in)", v)
+	}
+	return Default()
+}
+
+// Names lists the built-in palettes, for Settings and the manual.
+func Names() []string { return []string{"gruvbox", "flexoki-light"} }
+
 // derived fills keys a theme may omit from ones it has, in order.
 var derived = [][2]string{
 	{"dark_background", "background"},
@@ -91,10 +135,14 @@ func DefaultDir() string {
 // Load reads colors.toml from an Omarchy theme directory, with an optional
 // skrin.toml next to it overriding colours or roles (h1–h6, link, tag, code,
 // border). A directory without colors.toml yields the built-in palette.
-func Load(dir string) (Palette, error) {
+func Load(dir string) (Palette, error) { return LoadOr(dir, Default()) }
+
+// LoadOr is Load with the palette to fall back on when the directory has
+// no theme in it: the built-in the user chose.
+func LoadOr(dir string, fallback Palette) (Palette, error) {
 	data, err := os.ReadFile(filepath.Join(dir, "colors.toml"))
 	if errors.Is(err, fs.ErrNotExist) {
-		return Default(), nil
+		return fallback, nil
 	}
 	if err != nil {
 		return Palette{}, err
@@ -176,6 +224,13 @@ func build(name string, v map[string]string) Palette {
 // theme. omarchy-theme-set replaces the whole theme directory and then
 // writes theme.name next to it, so the parent directory is what we watch.
 func Watch(ctx context.Context, dir string, onChange func(Palette)) error {
+	return WatchOr(ctx, dir, Default(), onChange)
+}
+
+// WatchOr is Watch with the built-in to fall back on when the system
+// theme goes away, so removing it doesn't drag a light setup into the
+// dark one.
+func WatchOr(ctx context.Context, dir string, fallback Palette, onChange func(Palette)) error {
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
 		return err
@@ -188,7 +243,7 @@ func Watch(ctx context.Context, dir string, onChange func(Palette)) error {
 		defer w.Close()
 		var timer *time.Timer
 		reload := func() {
-			if p, err := Load(dir); err == nil {
+			if p, err := LoadOr(dir, fallback); err == nil {
 				onChange(p)
 			}
 		}

@@ -2,6 +2,17 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.43.0 — 2026-09-20
+
+**New: a built-in light palette, and (beta) paper grain under the note.** Both asked for by the user: "göra nuvarande aktiva tema (flexoki-light) till standardtemat för ljust tema … och jag vill att bakgrunden ska vara väldigt fint texturerat, så att det påminner om papper."
+
+- **flexoki-light is built in.** Skrin has carried one palette of its own, gruvbox, for machines with no Omarchy theme to follow — which is every Mac. It now carries two, and Settings has a row to choose between them: *Colours when there is no system theme*. A system theme still wins over both, and removing one now falls back to the palette you chose rather than always to the dark one.
+- **Paper grain (beta):** a faint texture behind the note, one shade either side of the theme's own background. `paper.strength` in `config.toml` (1–10, 3 by default) says how far apart the shades sit.
+- **How it's drawn:** a terminal has no texture, only cell backgrounds, so the grain is painted in runs of four cells rather than cell by cell. Each run has to repeat the styling of the text above it; at one run per cell a screenful costs some hundred kilobytes a frame, and in runs it costs a fraction of that. The pattern is a hash of row and column, so it holds still while you scroll instead of shimmering.
+- **What it costs, plainly:** it paints the note pane's background, so a transparent terminal turns solid there, and it is more to draw than plain text — not noticeable locally, possibly over ssh. Hence beta, and off by default.
+- Tests: the grain leaving every character and every cell of width exactly as it was, including wide runes; holding still between frames and differing between rows; staying off until both switches are on; staying inside the borders; the built-in palettes reading light and dark; an unknown name in the config still giving colours; and the fallback following the chosen built-in. Full suite green (`-count=1`), `go vet` and `gofmt` clean.
+- **Not verified by eye.** This sandbox's tmux flattens colours a shade apart, so whether the grain reads as paper or as dirt is a judgement to make in foot. The tests prove it is painted, not that it is beautiful.
+
 ## v0.42.0 — 2026-09-20
 
 **New (beta): Habiton, and streaks.** Step one of building the habit tracker out rather than cutting it, named and shaped by the user: "Karaktären heter Habiton och han jobbar inte med skam eller med ord. Han är ordlös men uttrycksfull på sitt sätt. Kroppsspråk är kommunikationsvägen."

@@ -79,9 +79,10 @@ func run(vaultArg string) error {
 		return err
 	}
 	themeDir := theme.DefaultDir()
-	pal, themeErr := theme.Load(themeDir)
+	builtin := theme.Builtin(cfg.ThemeBuiltin())
+	pal, themeErr := theme.LoadOr(themeDir, builtin)
 	if themeErr != nil {
-		pal = theme.Default()
+		pal = builtin
 	}
 	exe, err := os.Executable()
 	if err != nil {
@@ -121,6 +122,7 @@ func run(vaultArg string) error {
 		Images:        cfg.RenderImages(),
 		Habits:        cfg.HabitsEnabled(),
 		Beta:          cfg.BetaEnabled(),
+		Paper:         cfg.PaperEnabled(),
 		LineNumbers:   cfg.RenderLineNumbers(),
 		ReadableWidth: cfg.RenderReadableWidth(),
 		Spreads:       cfg.RenderSpreads(),
@@ -136,7 +138,7 @@ func run(vaultArg string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	// Outside Omarchy there is no theme to watch; the built-in palette stays.
-	_ = theme.Watch(ctx, themeDir, func(pal theme.Palette) { p.Send(ui.ThemeMsg{Palette: pal}) })
+	_ = theme.WatchOr(ctx, themeDir, builtin, func(pal theme.Palette) { p.Send(ui.ThemeMsg{Palette: pal}) })
 	onTrouble := func(s string) { p.Send(ui.WatchTroubleMsg{Text: s}) }
 	if err := v.Watch(ctx, func() { p.Send(ui.VaultChangedMsg{}) }, onTrouble); err != nil {
 		m.Flash("live refresh off: " + err.Error())

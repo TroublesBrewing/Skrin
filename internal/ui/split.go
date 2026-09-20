@@ -158,5 +158,5 @@ func (m *Model) splitPane(w, h int) []string {
 			body[i] = margin + body[i]
 		}
 	}
-	return m.box(displayName(s.path), body, w, h, false)
+	return m.onPaper(m.box(displayName(s.path), body, w, h, false), w)
 }

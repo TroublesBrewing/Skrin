@@ -135,3 +135,34 @@ func TestWatchReloadsOnThemeSwitch(t *testing.T) {
 		t.Fatal("no reload after theme switch")
 	}
 }
+
+func TestBuiltinPalettes(t *testing.T) {
+	if p := Builtin("flexoki-light"); p.Dark {
+		t.Error("flexoki-light should read as a light palette")
+	}
+	if p := Builtin("gruvbox"); !p.Dark {
+		t.Error("gruvbox should read as a dark one")
+	}
+	// A name from an older config, or a typo, gives colours rather than
+	// an error: Skrin must always start.
+	if p := Builtin("nonesuch"); p.Name != Default().Name {
+		t.Errorf("unknown name gave %q", p.Name)
+	}
+	for _, n := range Names() {
+		if _, ok := builtins[n]; !ok {
+			t.Errorf("Names lists %q, which isn't a built-in", n)
+		}
+	}
+}
+
+// Without a system theme, the chosen built-in is what you get — and it is
+// what a theme being removed falls back to.
+func TestLoadOrFallsBackToTheChosenBuiltin(t *testing.T) {
+	p, err := LoadOr(t.TempDir(), Builtin("flexoki-light"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Dark {
+		t.Errorf("fell back to %q", p.Name)
+	}
+}

@@ -120,6 +120,10 @@ type Options struct {
 	// placeholder frame always, everywhere. Either way a found embed's
 	// name, dimensions and size still show.
 	Images bool
+	// Beta opens Settings' beta block, where experiments live. A beta
+	// feature needs this and its own switch, and a build with
+	// version.Beta false ignores both.
+	Beta bool
 	// Habits turns on the habits view (T). Off — the default — keeps it
 	// out of the way entirely: no key, no palette row, no tip, as the
 	// Claude drawer does when it is switched off. The "### Habits" block

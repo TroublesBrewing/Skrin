@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/lurioso/skrin/internal/config"
+	"github.com/lurioso/skrin/internal/version"
 )
 
 // settingsItem is one row of the Settings tab: an on/off toggle, or a
@@ -18,6 +19,10 @@ type settingsItem struct {
 	// set to now, and pick, which lets you choose; get and set are nil.
 	value func(m *Model) string
 	pick  func(m *Model)
+	// beta marks an experiment: shown only in beta mode, off unless
+	// switched on there, and gone entirely from a build that doesn't
+	// allow beta. See version.Beta.
+	beta bool
 }
 
 func boolPtr(v bool) *bool { return &v }
@@ -25,7 +30,48 @@ func boolPtr(v bool) *bool { return &v }
 // settingsItems are the toggles the Settings tab shows, in order. Each one
 // already exists in config.toml for hand-editing; this is the same knobs,
 // reachable without an editor.
-func settingsItems() []settingsItem {
+// settingsItems are the rows Settings shows, in order, for this model:
+// the ordinary ones, then the beta block when the build allows it, and
+// the experiments themselves only once beta mode is on.
+func (m *Model) settingsItems() []settingsItem {
+	items := ordinarySettings()
+	if !version.Beta {
+		return items
+	}
+	items = append(items, settingsItem{
+		label: "Beta features",
+		help:  "Opens the experiments below: things being tried out, which Skrin doesn't promise to keep. Off by default, and a release can leave every one of them out at once.",
+		get:   func(m *Model) bool { return m.opts.Beta },
+		set: func(m *Model, v bool) {
+			m.opts.Beta = v
+			m.opts.Config.Beta.Enabled = boolPtr(v)
+		},
+		beta: true,
+	})
+	if !m.opts.Beta {
+		return items
+	}
+	return append(items, betaSettings()...)
+}
+
+// betaSettings are the experiments. Each one is off until switched on
+// here, and off regardless in a build with version.Beta false.
+func betaSettings() []settingsItem {
+	return []settingsItem{
+		{
+			label: "Habit tracker",
+			help:  "T shows today's habits, the week and the month, read from the ### Habits block of your daily note. An experiment: either it grows into something that stands on its own, or it goes. Your checkboxes are plain markdown and stay as they are either way.",
+			get:   func(m *Model) bool { return m.opts.Habits },
+			set: func(m *Model, v bool) {
+				m.opts.Habits = v
+				m.opts.Config.Habits.Enabled = boolPtr(v)
+			},
+			beta: true,
+		},
+	}
+}
+
+func ordinarySettings() []settingsItem {
 	return []settingsItem{
 		{
 			label: "Remember last open note",
@@ -85,15 +131,6 @@ func settingsItems() []settingsItem {
 			},
 		},
 		{
-			label: "Habit tracker",
-			help:  "T opens today's habits, the week and the month, read from the ### Habits block of your daily note. Off hides it entirely. Your checkboxes are plain markdown and stay as they are either way.",
-			get:   func(m *Model) bool { return m.opts.Habits },
-			set: func(m *Model, v bool) {
-				m.opts.Habits = v
-				m.opts.Config.Habits.Enabled = boolPtr(v)
-			},
-		},
-		{
 			label: "Image previews",
 			help:  "Block-art previews of image embeds. Off shows the placeholder frame only; the embed's name, dimensions and size still show either way.",
 			get:   func(m *Model) bool { return m.opts.Images },
@@ -140,7 +177,7 @@ func settingsItems() []settingsItem {
 
 // settingsKey handles a key press while the Settings tab is showing.
 func (m *Model) settingsKey(k tea.KeyPressMsg) {
-	items := settingsItems()
+	items := m.settingsItems()
 	h := m.manual
 	switch k.String() {
 	case "esc", "q":
@@ -167,11 +204,17 @@ func (m *Model) settingsKey(k tea.KeyPressMsg) {
 // settingsView renders the Settings tab: a table of toggles, the cursor's
 // help text underneath.
 func (m *Model) settingsView(w int) []string {
-	items := settingsItems()
+	items := m.settingsItems()
 	h := m.manual
 	var out []string
 	out = append(out, "")
+	beta := false
 	for i, it := range items {
+		if it.beta && !beta {
+			// The experiments stand apart, and say so once.
+			beta = true
+			out = append(out, "", m.st.muted.Render("BETA · experiments, which a release can leave out"))
+		}
 		var row string
 		switch {
 		case it.pick != nil:

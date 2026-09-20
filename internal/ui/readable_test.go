@@ -125,7 +125,7 @@ func TestReadableWidthInTheSplit(t *testing.T) {
 
 func TestReadableWidthSettingsToggle(t *testing.T) {
 	m := readableModel(t, 200, true)
-	for _, it := range settingsItems() {
+	for _, it := range m.settingsItems() {
 		if it.label == "Readable line length" {
 			it.set(m, false)
 		}

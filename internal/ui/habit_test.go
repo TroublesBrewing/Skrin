@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"github.com/lurioso/skrin/internal/version"
 	"os"
 	"strings"
 	"testing"
@@ -24,7 +25,7 @@ func writeTemplate(t *testing.T, m *Model, tmpl string) {
 func habitModel(t *testing.T) *Model {
 	t.Helper()
 	m := newTestModel(t)
-	m.opts.Habits = true
+	m.opts.Beta, m.opts.Habits = true, true // as Settings switches them on
 	return m
 }
 
@@ -283,7 +284,7 @@ func TestSwitchingTheTrackerOnBringsItBack(t *testing.T) {
 func TestHabitsNeverRollOverWhicheverWayTheSwitchIs(t *testing.T) {
 	for _, on := range []bool{false, true} {
 		m := newTestModel(t)
-		m.opts.Habits = on
+		m.opts.Beta, m.opts.Habits = on, on
 		writeTemplate(t, m, habitsTemplate)
 		press(m, "t")
 		got := read(m, "Daily/2026-09-15.md")
@@ -293,33 +294,95 @@ func TestHabitsNeverRollOverWhicheverWayTheSwitchIs(t *testing.T) {
 	}
 }
 
-func TestTheSettingsRowTurnsTheTrackerOn(t *testing.T) {
+// The habit tracker is an experiment, so it takes two switches: beta mode
+// opens the block, and the row inside it switches the tracker on.
+func TestTheSettingsRowsTurnTheTrackerOn(t *testing.T) {
 	m := newTestModel(t)
 	press(m, "?", "tab")
-	for i := 0; i < 20 && !strings.Contains(settingLabel(m), "Habit"); i++ {
-		press(m, "j")
+	if rowAt(m, "Habit tracker") {
+		t.Fatal("an experiment shouldn't show before beta mode is on")
 	}
-	if !strings.Contains(settingLabel(m), "Habit") {
-		t.Fatal("no Habit tracker row in Settings")
-	}
+	settingsTo(t, m, "Beta features")
 	press(m, "enter")
-	if !m.opts.Habits {
-		t.Error("the row should switch it on")
+	if !m.opts.Beta || m.opts.Config.Beta.Enabled == nil || !*m.opts.Config.Beta.Enabled {
+		t.Fatalf("beta mode should be on and saved: %v", m.opts.Beta)
+	}
+	settingsTo(t, m, "Habit tracker")
+	press(m, "enter")
+	if !m.opts.Habits || !m.habitsOn() {
+		t.Error("the row should switch the tracker on")
 	}
 	if m.opts.Config.Habits.Enabled == nil || !*m.opts.Config.Habits.Enabled {
 		t.Error("and write it to config.toml, so it holds after a restart")
 	}
-	press(m, "enter")
-	if m.opts.Habits {
-		t.Error("and off again")
+}
+
+// Turning beta mode off again takes every experiment with it, whatever
+// its own switch says — which is how a release leaves them all out.
+func TestBetaOffTakesTheExperimentsWithIt(t *testing.T) {
+	m := newTestModel(t)
+	m.opts.Beta, m.opts.Habits = true, true
+	if !m.habitsOn() {
+		t.Fatal("both on: the tracker is on")
 	}
+	m.opts.Beta = false
+	if m.habitsOn() {
+		t.Error("beta off: the tracker is off, whatever its own switch says")
+	}
+	press(m, "1", "T")
+	if m.habits != nil || !strings.Contains(m.flash, "beta feature") {
+		t.Errorf("and T says why: %q", m.flash)
+	}
+}
+
+// settingsTo moves the Settings cursor to the row with that label.
+func settingsTo(t *testing.T, m *Model, label string) {
+	t.Helper()
+	for i := 0; i < 30 && !rowAt(m, label); i++ {
+		press(m, "j")
+	}
+	if !rowAt(m, label) {
+		t.Fatalf("no %q row in Settings", label)
+	}
+}
+
+func rowAt(m *Model, label string) bool {
+	return strings.Contains(settingLabel(m), label)
 }
 
 // settingLabel is the Settings row under the cursor.
 func settingLabel(m *Model) string {
-	rows := settingsItems()
+	rows := m.settingsItems()
 	if m.manual == nil || m.manual.setCur >= len(rows) {
 		return ""
 	}
 	return rows[m.manual.setCur].label
+}
+
+// version.Beta is the one line a release flips to leave every experiment
+// out. The test can't flip a constant, so it checks the shape that makes
+// the flip work: every beta row is gated on it, and nothing else is.
+func TestOneLineLeavesEveryExperimentOut(t *testing.T) {
+	m := newTestModel(t)
+	m.opts.Beta = true
+	var beta, plain int
+	for _, it := range m.settingsItems() {
+		if it.beta {
+			beta++
+		} else {
+			plain++
+		}
+	}
+	if beta < 2 || plain < 5 {
+		t.Fatalf("beta rows %d, ordinary rows %d: the split looks wrong", beta, plain)
+	}
+	if !version.Beta {
+		// The release build: the beta block is gone entirely.
+		if len(m.settingsItems()) != plain {
+			t.Error("with beta off in the build, Settings should show the ordinary rows only")
+		}
+		if m.habitsOn() {
+			t.Error("and no experiment can be on")
+		}
+	}
 }

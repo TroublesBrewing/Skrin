@@ -99,7 +99,7 @@ func TestLineNumbersSettingsToggle(t *testing.T) {
 		t.Fatal("expected settings tab open")
 	}
 
-	items := settingsItems()
+	items := m.settingsItems()
 	var row int
 	for i, it := range items {
 		if it.label == "Line numbers in notes" {

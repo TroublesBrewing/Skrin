@@ -468,7 +468,7 @@ func TestInstantOpenSettingsToggle(t *testing.T) {
 	if !m.opts.InstantOpen {
 		t.Fatal("setup: should default on")
 	}
-	for _, it := range settingsItems() {
+	for _, it := range m.settingsItems() {
 		if it.label == "Open notes on the cursor, not only on l/→ or Enter" {
 			it.set(m, false)
 		}

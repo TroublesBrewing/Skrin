@@ -12,6 +12,7 @@ import (
 	"github.com/lurioso/skrin/internal/habit"
 	"github.com/lurioso/skrin/internal/obsidian"
 	"github.com/lurioso/skrin/internal/vault"
+	"github.com/lurioso/skrin/internal/version"
 )
 
 // habitTab is which view the habits overlay shows.
@@ -40,9 +41,15 @@ type habitDay struct {
 
 // openHabits opens the habits overlay on today. The empty-template case
 // points at the template instead of showing a blank box (catch 4).
+// habitsOn is the habits view's real state: a beta feature needs the
+// build to allow beta, beta mode to be on, and its own switch on.
+func (m *Model) habitsOn() bool {
+	return version.Beta && m.opts.Beta && m.opts.Habits
+}
+
 func (m *Model) openHabits() {
-	if !m.opts.Habits {
-		m.flash = "The habit tracker is off: turn it on in Settings (" + note(m.keyFor(inMain, actHelp), "?") + " then tab)"
+	if !m.habitsOn() {
+		m.flash = "The habit tracker is off: it's a beta feature, switched on in Settings (" + note(m.keyFor(inMain, actHelp), "?") + " then tab)"
 		return
 	}
 	s := obsidian.LoadSettings(m.vault.Root)

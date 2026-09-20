@@ -48,6 +48,9 @@ type Config struct {
 	Templates struct {
 		Folder string `toml:"folder,omitempty"` // unset: Obsidian's own Templates folder
 	} `toml:"templates,omitempty"`
+	Beta struct {
+		Enabled *bool `toml:"enabled,omitempty"` // unset means off: experiments are asked for, never assumed
+	} `toml:"beta,omitempty"`
 	Habits struct {
 		Enabled *bool `toml:"enabled,omitempty"` // unset means off: the habits view is asked for, never assumed
 	} `toml:"habits,omitempty"`
@@ -96,6 +99,13 @@ func (c Config) RestoreLastNote() bool {
 // last otherwise.
 func (c Config) InstantOpen() bool {
 	return c.General.InstantOpen == nil || *c.General.InstantOpen
+}
+
+// BetaEnabled reports whether Settings shows its beta block, where the
+// experiments live. Off unless asked for, and ignored altogether in a
+// build with version.Beta false.
+func (c Config) BetaEnabled() bool {
+	return c.Beta.Enabled != nil && *c.Beta.Enabled
 }
 
 // HabitsEnabled reports whether the habits view is switched on. It is off unless

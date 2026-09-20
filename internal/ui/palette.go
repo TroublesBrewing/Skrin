@@ -196,7 +196,7 @@ func (m *Model) ran(name string) {
 func (m *Model) mainPaletteItems() []choice {
 	var items []choice
 	for _, e := range mainCommands {
-		if !m.opts.Habits && e.act == actHabits {
+		if !m.habitsOn() && e.act == actHabits {
 			continue
 		}
 		if !m.opts.Assistant.Enabled && (e.act == actClaude || e.act == actClaudeInput) {
@@ -334,7 +334,7 @@ func (m *Model) teach(where string, a action) {
 // palette: the commands that have no key at all.
 func (m *Model) settingsPaletteItems() []choice {
 	var items []choice
-	for _, it := range settingsItems() {
+	for _, it := range m.settingsItems() {
 		name := "Setting: " + it.label
 		if it.pick != nil {
 			items = append(items, choice{label: name, detail: it.value(m), also: "settings preferences option config folder", run: m.paletteRun(name, func() tea.Cmd {

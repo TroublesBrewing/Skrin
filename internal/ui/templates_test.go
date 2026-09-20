@@ -92,7 +92,7 @@ func TestInsertTemplateWithoutAFolderSaysWhere(t *testing.T) {
 func TestChoosingTheTemplatesFolderInSettings(t *testing.T) {
 	m := newTestModel(t)
 	press(m, "?", "tab")
-	for m.manual.setCur < len(settingsItems()) && settingsItems()[m.manual.setCur].label != "Templates folder" {
+	for m.manual.setCur < len(m.settingsItems()) && m.settingsItems()[m.manual.setCur].label != "Templates folder" {
 		press(m, "j")
 	}
 	if frame := ansi.Strip(m.render()); !strings.Contains(frame, "Templates folder: none yet") {
@@ -104,7 +104,7 @@ func TestChoosingTheTemplatesFolderInSettings(t *testing.T) {
 	}
 	typeText(m, "Filosofi/Antik")
 	press(m, "enter")
-	if m.manual == nil || m.manual.tab != manualTabSettings || settingsItems()[m.manual.setCur].label != "Templates folder" {
+	if m.manual == nil || m.manual.tab != manualTabSettings || m.settingsItems()[m.manual.setCur].label != "Templates folder" {
 		t.Fatal("choosing should come back to the Settings tab, on the same row")
 	}
 	if m.opts.Config.Templates.Folder != "Filosofi/Antik" || m.flash != "Templates folder: Filosofi/Antik" {

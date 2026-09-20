@@ -2,6 +2,16 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.41.0 — 2026-09-20
+
+**New: a BETA block in Settings, and one line that leaves every experiment out of a release.** The user's idea, on deciding the habit tracker should be built out rather than cut: "kan vi typ skapa ett Beta-läge … Och så kan man enkelt utesluta alla beta-saker från 1.0?"
+
+- **Settings ends in a BETA block**, set apart and labelled "experiments, which a release can leave out". It takes two switches: *Beta features* opens the block, and each experiment has its own row inside it. Both are off by default and both are saved to `config.toml` (`[beta] enabled`, and the feature's own key).
+- **`version.Beta` is the release switch.** With it false, the beta block disappears from Settings and every experiment reads as off whatever `config.toml` says. v1.0 ships with it false, so leaving the experiments out is one line rather than a judgement call per feature.
+- **The habit tracker is the first experiment**, moved into the block. `T` now says it's a beta feature and where to switch it on. Its checkboxes are plain markdown and unaffected, including the rule that keeps them out of tomorrow's todos.
+- This gives an impulse a home: something can be built, switched on and lived with for a month without becoming part of what Skrin promises. It is the mechanism the steering document's locked period was reaching for.
+- Tests: an experiment hidden until beta mode is on; both switches turning it on and being written to the config; beta off taking every experiment with it whatever its own switch says; and the shape that makes the release switch work. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux, ending with the habits view open again through both switches.
+
 ## v0.40.0 — 2026-09-20
 
 **Changed: the habit tracker is off until you switch it on.** The user, looking at whether it belongs in Skrin at all: "vanor känns som något jag ville ha i stunden … Men det måste vara något man slår på i settings." It ships off, as the north star says a feature should — invisible until asked for, like the Claude drawer when it's switched off.

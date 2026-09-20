@@ -107,7 +107,7 @@ func TestManualSettingsTabTogglesAndSaves(t *testing.T) {
 			t.Errorf("the Settings tab lacks %q:\n%s", s, text)
 		}
 	}
-	items := settingsItems()
+	items := m.settingsItems()
 	var imagesRow int
 	for i, it := range items {
 		if it.label == "Image previews" {

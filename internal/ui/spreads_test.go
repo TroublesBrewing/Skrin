@@ -84,7 +84,7 @@ func TestSpreadsOffShowTheQuery(t *testing.T) {
 
 func TestShowSpreadsSetting(t *testing.T) {
 	m := withSpread(t, Options{Spreads: true}, `LIST FROM "Daily"`)
-	for _, it := range settingsItems() {
+	for _, it := range m.settingsItems() {
 		if it.label == "Show spreads" {
 			it.set(m, false)
 		}

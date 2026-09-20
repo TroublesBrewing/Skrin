@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -18,13 +19,22 @@ func writeTemplate(t *testing.T, m *Model, tmpl string) {
 	}
 }
 
+// habitModel is a model with the habit tracker switched on, as Settings
+// switches it on: it ships off.
+func habitModel(t *testing.T) *Model {
+	t.Helper()
+	m := newTestModel(t)
+	m.opts.Habits = true
+	return m
+}
+
 const habitsTemplate = "# {{date:dddd D MMMM}}\n### Habits\n- [ ] Meditera 10 min\n- [ ] Läsa 30 min\n- [ ] Stretching\n\n### Todo's\n\n### Notes\n"
 
 // withHabits makes today's daily note with the habits block, and returns
 // the model with the overlay open on it.
 func withHabits(t *testing.T) *Model {
 	t.Helper()
-	m := newTestModel(t)
+	m := habitModel(t)
 	writeTemplate(t, m, habitsTemplate)
 	press(m, "t") // create today's note from the template
 	return m
@@ -163,7 +173,7 @@ func TestWeekGridRefusesUnrecordedDay(t *testing.T) {
 }
 
 func TestEmptyTemplatePointsAtTheTemplate(t *testing.T) {
-	m := newTestModel(t)
+	m := habitModel(t)
 	press(m, "t") // today's note from the fixture template: no Habits
 	press(m, "1", "T")
 	if m.habits != nil {
@@ -175,7 +185,7 @@ func TestEmptyTemplatePointsAtTheTemplate(t *testing.T) {
 }
 
 func TestOfferInsertWhenTemplateHasHabits(t *testing.T) {
-	m := newTestModel(t)
+	m := habitModel(t)
 	press(m, "t") // today's note without a block
 	writeTemplate(t, m, habitsTemplate)
 	press(m, "1", "T")
@@ -227,4 +237,89 @@ func itoa(n int) string {
 		n /= 10
 	}
 	return string(b)
+}
+
+// The habit tracker ships off. Until it is switched on in Settings it
+// stays out of the way entirely — no palette row, no tip — and the key
+// says where to turn it on rather than doing nothing.
+func TestTheHabitTrackerIsOffUntilAskedFor(t *testing.T) {
+	m := newTestModel(t)
+	writeTemplate(t, m, habitsTemplate)
+	press(m, "t") // today's note, habits and all
+	press(m, "1", "T")
+	if m.habits != nil {
+		t.Fatal("T must not open the view while the tracker is off")
+	}
+	if !strings.Contains(m.flash, "off") || !strings.Contains(m.flash, "Settings") {
+		t.Errorf("the key should say where to turn it on: %q", m.flash)
+	}
+	press(m, "ctrl+p")
+	for _, it := range m.chooser.items {
+		if strings.Contains(it.label, "Habits") {
+			t.Error("the palette shouldn't offer what's switched off")
+		}
+	}
+	press(m, "esc")
+	for i := 0; i < 40; i++ { // every day's tip, over a cycle of them
+		m.opts.Now = func() time.Time { return today.AddDate(0, 0, i) }
+		if _, what, ok := m.tipOfTheDay(); ok && strings.Contains(what, "habits") {
+			t.Errorf("nor should the tip of the day: %q", what)
+		}
+	}
+}
+
+func TestSwitchingTheTrackerOnBringsItBack(t *testing.T) {
+	m := habitModel(t)
+	writeTemplate(t, m, habitsTemplate)
+	press(m, "t")
+	press(m, "1", "T")
+	if m.habits == nil {
+		t.Fatalf("with it on, T opens the view; flash %q", m.flash)
+	}
+}
+
+// The checkboxes are plain markdown: off or on, they must never roll over
+// into tomorrow's todos.
+func TestHabitsNeverRollOverWhicheverWayTheSwitchIs(t *testing.T) {
+	for _, on := range []bool{false, true} {
+		m := newTestModel(t)
+		m.opts.Habits = on
+		writeTemplate(t, m, habitsTemplate)
+		press(m, "t")
+		got := read(m, "Daily/2026-09-15.md")
+		if strings.Count(got, "Meditera 10 min") != 1 {
+			t.Errorf("habits on = %v: the block should be there once, not rolled over: %q", on, got)
+		}
+	}
+}
+
+func TestTheSettingsRowTurnsTheTrackerOn(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "?", "tab")
+	for i := 0; i < 20 && !strings.Contains(settingLabel(m), "Habit"); i++ {
+		press(m, "j")
+	}
+	if !strings.Contains(settingLabel(m), "Habit") {
+		t.Fatal("no Habit tracker row in Settings")
+	}
+	press(m, "enter")
+	if !m.opts.Habits {
+		t.Error("the row should switch it on")
+	}
+	if m.opts.Config.Habits.Enabled == nil || !*m.opts.Config.Habits.Enabled {
+		t.Error("and write it to config.toml, so it holds after a restart")
+	}
+	press(m, "enter")
+	if m.opts.Habits {
+		t.Error("and off again")
+	}
+}
+
+// settingLabel is the Settings row under the cursor.
+func settingLabel(m *Model) string {
+	rows := settingsItems()
+	if m.manual == nil || m.manual.setCur >= len(rows) {
+		return ""
+	}
+	return rows[m.manual.setCur].label
 }

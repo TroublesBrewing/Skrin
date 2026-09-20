@@ -203,6 +203,9 @@ var tips = []tip{
 func (m *Model) tipOfTheDay() (k, what string, ok bool) {
 	var live []tip
 	for _, t := range tips {
+		if t.act == actHabits && !m.opts.Habits {
+			continue
+		}
 		if t.act == actClaudeInput && !m.opts.Assistant.Enabled {
 			continue
 		}

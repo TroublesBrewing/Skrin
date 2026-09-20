@@ -120,6 +120,11 @@ type Options struct {
 	// placeholder frame always, everywhere. Either way a found embed's
 	// name, dimensions and size still show.
 	Images bool
+	// Habits turns on the habits view (T). Off — the default — keeps it
+	// out of the way entirely: no key, no palette row, no tip, as the
+	// Claude drawer does when it is switched off. The "### Habits" block
+	// in a daily note is plain markdown and behaves the same either way.
+	Habits bool
 	// LineNumbers turns on line numbers along the left edge of notes and
 	// the built-in editor.
 	LineNumbers bool

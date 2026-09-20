@@ -196,6 +196,9 @@ func (m *Model) ran(name string) {
 func (m *Model) mainPaletteItems() []choice {
 	var items []choice
 	for _, e := range mainCommands {
+		if !m.opts.Habits && e.act == actHabits {
+			continue
+		}
 		if !m.opts.Assistant.Enabled && (e.act == actClaude || e.act == actClaudeInput) {
 			continue
 		}

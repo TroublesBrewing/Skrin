@@ -48,6 +48,9 @@ type Config struct {
 	Templates struct {
 		Folder string `toml:"folder,omitempty"` // unset: Obsidian's own Templates folder
 	} `toml:"templates,omitempty"`
+	Habits struct {
+		Enabled *bool `toml:"enabled,omitempty"` // unset means off: the habits view is asked for, never assumed
+	} `toml:"habits,omitempty"`
 	Library struct {
 		Folder        string `toml:"folder,omitempty"`         // default: "Books"
 		CoversFolder  string `toml:"covers_folder,omitempty"`  // default: "Assets/Covers"
@@ -93,6 +96,16 @@ func (c Config) RestoreLastNote() bool {
 // last otherwise.
 func (c Config) InstantOpen() bool {
 	return c.General.InstantOpen == nil || *c.General.InstantOpen
+}
+
+// HabitsEnabled reports whether the habits view is switched on. It is off unless
+// asked for: habit tracking isn't what a vault is for, so it stays out of
+// the way — no key, no palette row, no tip — until someone wants it. The
+// checkboxes under "### Habits" in a daily note are plain markdown and go
+// on working either way, including the rule that keeps them out of
+// tomorrow's todos.
+func (c Config) HabitsEnabled() bool {
+	return c.Habits.Enabled != nil && *c.Habits.Enabled
 }
 
 // LibraryFolder is where new book notes are created: Books, unless set.

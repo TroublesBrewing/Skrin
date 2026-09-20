@@ -77,11 +77,20 @@ func settingsItems() []settingsItem {
 		},
 		{
 			label: "Claude drawer",
-			help:  "c and C open the drawer; off hides it entirely, including from the manual and the status line.",
+			help:  "c and C open the drawer; off hides it from the palette, the tips and the status line, and the keys say it is off.",
 			get:   func(m *Model) bool { return m.opts.Assistant.Enabled },
 			set: func(m *Model, v bool) {
 				m.opts.Assistant.Enabled = v
 				m.opts.Config.Assistant.Enabled = boolPtr(v)
+			},
+		},
+		{
+			label: "Habit tracker",
+			help:  "T opens today's habits, the week and the month, read from the ### Habits block of your daily note. Off hides it entirely. Your checkboxes are plain markdown and stay as they are either way.",
+			get:   func(m *Model) bool { return m.opts.Habits },
+			set: func(m *Model, v bool) {
+				m.opts.Habits = v
+				m.opts.Config.Habits.Enabled = boolPtr(v)
 			},
 		},
 		{

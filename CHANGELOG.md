@@ -2,6 +2,19 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.40.0 — 2026-09-20
+
+**Changed: the habit tracker is off until you switch it on.** The user, looking at whether it belongs in Skrin at all: "vanor känns som något jag ville ha i stunden … Men det måste vara något man slår på i settings." It ships off, as the north star says a feature should — invisible until asked for, like the Claude drawer when it's switched off.
+
+- **Settings has a "Habit tracker" row**, off by default, saved to `config.toml` as `[habits] enabled`.
+- **Off, it's out of the way entirely:** no palette row, no tip of the day, and `T` says where to turn it on rather than doing nothing. On, `T` is exactly what it was.
+- **Your checkboxes are untouched either way.** `### Habits` in a daily note is plain markdown, and the rule that keeps those boxes out of tomorrow's todos is data behaviour, not part of the view — it holds whether the tracker is on or off, and there's a test for both.
+- **Note for the upgrade:** `T` will say the tracker is off the first time. One trip to Settings (`?`, then Tab) brings it back, and it stays on from then on.
+- The Claude drawer's Settings text claimed "off hides it entirely, including from the manual". It doesn't hide from the Keys tab, and never did; the text now says what actually happens.
+- Tests: off by default with `T`, the palette and every day's tip staying quiet; on, `T` opens as before; the Settings row switching it and writing the config; and habits not rolling over with the switch either way. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux.
+
+Whether it stays at all is the open question on the board card *Vanor som ett riktigt plugin*: built out properly, or taken out. It won't ship half-done.
+
 ## v0.39.1 — 2026-09-20
 
 **Fix: the selection count said something untrue, and then got cut in half.** Both found by the user asking whether the editor showed a selection count at all — it did, but not correctly.

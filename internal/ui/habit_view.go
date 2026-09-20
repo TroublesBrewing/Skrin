@@ -41,6 +41,10 @@ type habitDay struct {
 // openHabits opens the habits overlay on today. The empty-template case
 // points at the template instead of showing a blank box (catch 4).
 func (m *Model) openHabits() {
+	if !m.opts.Habits {
+		m.flash = "The habit tracker is off: turn it on in Settings (" + note(m.keyFor(inMain, actHelp), "?") + " then tab)"
+		return
+	}
 	s := obsidian.LoadSettings(m.vault.Root)
 	rel := daily.Path(s.Daily, m.opts.Now())
 	src, err := m.vault.Read(rel)

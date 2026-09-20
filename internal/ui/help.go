@@ -305,6 +305,7 @@ func (m *Model) guideText(w int) []manualLine {
 	para("p pins the note you're on, and P lists the pinned ones — Obsidian's bookmarks. g answers \"where was I\"; pins answer \"where do I live\". The list is kept per vault, survives a restart, and a note that has gone falls out of it.")
 	para("In Files, keys act on the row under the cursor; in the note, on the open note. When anything is marked, m and d act on the marks.")
 	para("n and N create things in the current folder: the folder under the cursor, or the folder of the file under it. In the note it's the open note's folder.")
+	para("The habit tracker is off until you switch it on in Settings. On, T shows today's habits, the week and the month, read from a ### Habits block in your daily note; off, it stays out of the way entirely. The checkboxes are plain markdown either way, and never roll over into tomorrow's todos.")
 	para("Footnotes render as numbers: [^why] in the text and [^why]: at the bottom both show as [1], counted in the order the labels first appear, as Obsidian numbers them.")
 	para("t opens today's daily note, made from Obsidian's daily-notes settings, with the unfinished todos of the last one carried over.")
 

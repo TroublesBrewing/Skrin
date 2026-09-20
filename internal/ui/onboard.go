@@ -74,11 +74,15 @@ func (m *Model) hintsHere() []statusHint {
 
 	switch {
 	case m.noteSel != nil:
-		add("ctrl+c", "copy", 1)
-		if claude {
-			act(actClaudeInput, "ask Claude", 2)
+		if d, u := m.keyFor(inMain, actSelDown), m.keyFor(inMain, actSelUp); d != "" && u != "" {
+			add(d+"/"+u, "select", 1)
 		}
-		act(actEscape, "clear", 3)
+		act(actExtract, "pull out", 2)
+		add("ctrl+c", "copy", 3)
+		if claude {
+			act(actClaudeInput, "ask Claude", 4)
+		}
+		act(actEscape, "clear", 5)
 	case len(m.marks) > 0 || m.visual != nil:
 		act(actMove, "move", 1)
 		act(actDelete, "delete", 2)

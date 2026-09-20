@@ -32,7 +32,7 @@ func countWords(src string) int {
 // wordCount is what the status line says about the note you have open: the
 // whole note, or the selection when there is one, as Obsidian does.
 func (m *Model) wordCount() string {
-	if m.selectionText() != "" {
+	if _, ok := m.selectedLineCount(); ok {
 		return "" // the selection's own count says it, in one measure
 	}
 	switch {

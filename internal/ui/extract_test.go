@@ -23,7 +23,9 @@ func extractModel(t *testing.T) *Model {
 // back — the note that was made and the hole it left.
 func TestPullingLinesIntoTheirOwnNote(t *testing.T) {
 	m := extractModel(t)
-	press(m, "v", "j", "j") // from the top of the view: the title and what follows
+	press(m, "v")
+	selTo(m, 0)        // the cursor to the title
+	press(m, "J", "J") // and grow down over what follows
 	press(m, "x")
 	if m.prompt != nil {
 		t.Fatalf("the first line names it, so nothing should be asked: %+v", m.prompt)

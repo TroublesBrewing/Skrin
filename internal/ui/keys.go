@@ -41,6 +41,8 @@ const (
 	actPin
 	actPins
 	actExtract
+	actSelDown
+	actSelUp
 	actTags
 	actBacklinks
 	actOutline
@@ -188,7 +190,7 @@ var defaultBindings = []binding{
 	{actMove, []string{"m"}, "move (the marked items, if any)", groupFiles, inMain},
 	{actDelete, []string{"d"}, "delete to the trash (the marked items, if any)", groupFiles, inMain},
 	{actMark, []string{"space", " "}, "mark / unmark", groupFiles, inMain},
-	{actVisual, []string{"v"}, "Files: mark a range · note: select whole lines", groupFiles, inMain},
+	{actVisual, []string{"v"}, "Files: mark a range · note: cursor on, then J/K select", groupFiles, inMain},
 	{actMarkAll, []string{"ctrl+a"}, "mark everything in the cursor's folder", groupFiles, inMain},
 	{actEscape, []string{"esc"}, "clear marks · split: close the pane you're in · zen: leave it", groupFiles, inMain},
 	{actUndoOp, []string{"U"}, "undo the last file operation", groupFiles, inMain},
@@ -206,6 +208,8 @@ var defaultBindings = []binding{
 	{actUndoEdit, []string{"u"}, "undo the note's last edit", groupNote, inMain},
 	{actRedoEdit, []string{"ctrl+r"}, "redo it", groupNote, inMain},
 	{actPin, []string{"p"}, "pin this note, or take it off the list", groupNote, inMain},
+	{actSelDown, []string{"J"}, "note: grow the selection down a line", groupNote, inMain},
+	{actSelUp, []string{"K"}, "note: grow the selection up a line", groupNote, inMain},
 	{actExtract, []string{"x"}, "pull the selected lines out into a note of their own", groupNote, inMain},
 	{actHints, []string{"f"}, "follow a link; one in view goes straight there", groupNote, inMain},
 	{actHintsSplit, []string{"alt+f"}, "follow a link into a split beside the note", groupNote, inMain},
@@ -389,7 +393,7 @@ var actionName = map[action]string{
 	actEscape: "escape", actUndoOp: "undo-op", actDaily: "daily",
 	actEdit: "edit", actEditExternal: "edit-external",
 	actUndoEdit: "undo-edit", actRedoEdit: "redo-edit",
-	actHints: "hints", actHintsSplit: "hints-split", actPin: "pin", actPins: "pins", actExtract: "extract", actTags: "tags", actLineNumbers: "line-numbers", actBacklinks: "backlinks", actOutline: "outline",
+	actHints: "hints", actHintsSplit: "hints-split", actPin: "pin", actPins: "pins", actExtract: "extract", actSelDown: "select-down", actSelUp: "select-up", actTags: "tags", actLineNumbers: "line-numbers", actBacklinks: "backlinks", actOutline: "outline",
 	actNextHeading: "next-heading", actPrevHeading: "prev-heading",
 	actBack: "back", actForward: "forward",
 	actSearch: "search", actSwitcher: "switcher",

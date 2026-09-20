@@ -99,7 +99,9 @@ func TestDrawerTalksToClaude(t *testing.T) {
 
 func TestDrawerTakesHighlightedText(t *testing.T) {
 	m, _ := newClaudeModel(t, Options{})
-	press(m, "G", "l", "v", "C")
+	press(m, "G", "l", "v")
+	selTo(m, 0)
+	press(m, "C")
 	if got := m.drawer.input.Text(); got != "# Welcome\n" {
 		t.Errorf("from the reading view: %q", got)
 	}

@@ -48,7 +48,8 @@ func TestASelectionIsCountedInstead(t *testing.T) {
 		t.Fatal(err)
 	}
 	m.reload()
-	press(m, "G", "l", "v") // one line selected: the heading, one word
+	press(m, "G", "l", "v")
+	selTo(m, 0) // the heading: one word
 	if s := ansi.Strip(m.statusLine()); !strings.Contains(s, "1 word selected") {
 		t.Errorf("status = %q", s)
 	}

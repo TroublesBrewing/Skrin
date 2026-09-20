@@ -81,6 +81,7 @@ var notInPalette = map[action]bool{
 	actHalfDown: true, actHalfUp: true, actLeft: true, actRight: true,
 	actOpen: true, actParent: true, actNextPane: true, actPrevPane: true,
 	actPaneLeft: true, actPaneRight: true, actEscape: true, actPalette: true,
+	actSelDown: true, actSelUp: true,
 }
 
 // editorCommand is one command in the palette while editing. Most of the

@@ -2,6 +2,17 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.45.0 — 2026-09-20
+
+**Fix: you can pick lines out of the middle of a note.** The user, on the selection in the reading view: "Buggen med att inte kunna markera ordentligt i läsvyn har irriterat mig. Jag trodde att det var så det skulle vara och att det bara var helt värdelöst." It wasn't meant to be: the reading view has no cursor, only a scroll position, so `v` had nothing to anchor to and took the top line of the view. In a note that fits on the screen there is nothing to scroll, so a selection could only ever start at the first line.
+
+- **`v` now lights a cursor** where your eye already is: the middle of what you are looking at, or the line you last left it on in this note. Reading itself is unchanged — `j` and `k` scroll, and nothing is picked out until you ask.
+- **`j`/`k` move the cursor** and take the selection back to that one line, as an arrow key drops a selection anywhere else. **`J`/`K` stretch it** down and up — the bigger version of the same keys, which is what the case grammar says uppercase means.
+- **The status line says what to do**: `J/K select · x pull out · ctrl+c copy · esc clear`.
+- **Two more silent keys answered:** `shift+up`/`shift+down` (your own order) did nothing at all with the note focused, and now say where that lives, like marking and folders already did.
+- **And one small lie fixed:** with a blank line selected the status line showed the whole note's word count, because an empty selection read as no selection. It now says `0 words selected`, which is what is true.
+- Tests: the cursor landing in the middle rather than at the top; plain motions moving it while J/K stretch; a block in the middle of a note that fits on screen — the case that was impossible — coming out right; the cursor returning where it was left; and the order keys answering. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux.
+
 ## v0.44.0 — 2026-09-20
 
 **New: pull the selected lines into a note of their own.** The idea behind Obsidian's Note Refactor plugin, which the user pointed at — the part of it that earns its place. This is the other half of capture: what was caught quickly, in a daily note, becomes something that can be found.

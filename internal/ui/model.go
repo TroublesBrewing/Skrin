@@ -204,6 +204,9 @@ type Model struct {
 	copied  string
 	pasting bool
 
+	// noteAt is the line the reading view's cursor was last on, so v
+	// brings it back where you left it. -1 when there is none.
+	noteAt int
 	// pulling is the block of lines waiting to become a note of its own,
 	// held while Skrin asks what to call it.
 	pulling *pull
@@ -282,7 +285,7 @@ func New(v *vault.Vault, pal theme.Palette, opts Options) (*Model, error) {
 	}
 	m := &Model{
 		vault: v, idx: index.New(), snaps: snapshot.Open(v.Root), files: newFiles(),
-		opts: opts, marks: map[string]bool{}, jumpSrc: -1, splitJumpSrc: -1, events: make(chan tea.Msg, 256),
+		opts: opts, marks: map[string]bool{}, jumpSrc: -1, splitJumpSrc: -1, noteAt: -1, events: make(chan tea.Msg, 256),
 		thumbCache: map[string]thumbEntry{}, keys: newKeymap(opts.Config.Keys),
 	}
 	m.journal.Keep = m.snaps.Save // U keeps what's on disk before it restores
@@ -825,6 +828,9 @@ func (m *Model) noteAction(a action) {
 	case actMark, actMarkAll:
 		m.flash = "Marking is for Files · " + m.backToFiles() + " goes back there"
 		return
+	case actOrderUp, actOrderDown:
+		m.flash = "Your own order is for Files · " + m.backToFiles() + " goes back there"
+		return
 	case actCollapseAll:
 		m.flash = "Folders are in Files · " + m.backToFiles() + " goes back there"
 		return
@@ -939,7 +945,7 @@ func (m *Model) reload() error {
 
 // showNote puts note rel in the note pane, scrolled to the top.
 func (m *Model) showNote(rel string) {
-	m.notePath, m.noteOff, m.hints, m.noteSel = rel, 0, nil, nil
+	m.notePath, m.noteOff, m.hints, m.noteSel, m.noteAt = rel, 0, nil, nil, -1
 	m.loadNote()
 }
 

@@ -272,8 +272,8 @@ func TestStatusHintsFollowWhereYouAre(t *testing.T) {
 		t.Errorf("in the note: %q", h)
 	}
 	press(m, "v")
-	if h := hint(); !strings.HasPrefix(h, "ctrl+c copy") {
-		t.Errorf("with lines selected: %q", h)
+	if h := hint(); !strings.HasPrefix(h, "J/K select · x pull out · ctrl+c copy") {
+		t.Errorf("with the cursor lit: %q", h)
 	}
 	press(m, "esc", "1", "space")
 	if h := hint(); !strings.HasPrefix(h, "m move · d delete") {
@@ -390,10 +390,11 @@ func TestTheStatusLineCountsWhatIsSelected(t *testing.T) {
 	inFilosofi(m)
 	press(m, "j", "l") // Stoic, reading
 	press(m, "v")
+	selTo(m, 0) // the cursor to the first line
 	if s := ansi.Strip(m.statusLine()); !strings.Contains(s, "2 words selected") {
 		t.Errorf("one line selected: count its words, since \"1 line\" says nothing: %q", s)
 	}
-	press(m, "j")
+	press(m, "J") // grow, rather than move
 	if s := ansi.Strip(m.statusLine()); !strings.Contains(s, "2 lines selected") {
 		t.Errorf("reading view, two lines: %q", s)
 	}

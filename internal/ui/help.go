@@ -355,6 +355,11 @@ func (m *Model) guideText(w int) []manualLine {
 	para("# lists every tag in the vault with how many notes use it, and picking one searches for it. Each spelling stands on its own row, so \"Filosofi\" and \"filosofi\" show side by side rather than hiding one another.")
 	para("With Alt-r it becomes search & replace: every change is listed first, ⚠ marks matches inside [[links]], a note that changed on disk meanwhile is skipped, and one U undoes the whole replace.")
 
+	head("Picking lines out of a note")
+	para("Reading has no cursor: j and k scroll, and nothing is picked out. v asks for a cursor, and it lights where your eye already is — the middle of what you are looking at, or the line you last left it on in this note. That way a block in the middle of a note can be picked out, which it couldn't when the selection always began at the top.")
+	para("With the cursor lit, j and k move it and take the selection back to that one line, as an arrow key drops a selection anywhere else. J and K stretch it instead, down and up: the bigger version of the same keys. Esc puts the cursor out.")
+	blank()
+
 	head("Pulling text out")
 	para("x pulls the lines you have selected into a note of their own and leaves a link where they were — the other half of capture: what you caught quickly becomes something you can find. Alt+X does it from the editor. Select with v and j/k in the note, or Shift and the arrows while writing.")
 	para("The new note is named after the first line of what you picked, with its markup taken off, and lands beside the note it came from. When that first line gives nothing to go on, Skrin asks rather than inventing a name — a note called \"2026-09-20 1423\" is one you never find again. It never writes over a note that already exists; it asks for another name.")

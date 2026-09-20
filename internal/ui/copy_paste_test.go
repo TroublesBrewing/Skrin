@@ -25,7 +25,8 @@ func quits(cmd tea.Cmd) bool {
 
 func TestCtrlCCopiesTheReadingViewSelection(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "G", "l", "v") // Welcome.md, one line selected
+	press(m, "G", "l", "v") // Welcome.md, the cursor on
+	selTo(m, 0)             // up to the first line
 	if m.noteSel == nil {
 		t.Fatal("v should start a selection")
 	}
@@ -155,7 +156,9 @@ func TestCtrlVPastesWhatTheTerminalHandsBack(t *testing.T) {
 
 func TestASilentTerminalGetsWhatYouCopiedHere(t *testing.T) {
 	m := newTestModel(t)
-	press(m, "G", "l", "v", "ctrl+c") // copy a line of Welcome.md
+	press(m, "G", "l", "v")
+	selTo(m, 0)
+	press(m, "ctrl+c") // copy the first line of Welcome.md
 	press(m, "e")
 	m.editor.MoveTo(1, 0)
 	press(m, "ctrl+v")
@@ -213,5 +216,16 @@ func TestPasteReachesEveryFieldThatTakesTyping(t *testing.T) {
 	m.Update(tea.PasteMsg{Content: "Wel\ncome"})
 	if got := m.noteFind.in.value(); got != "Wel come" {
 		t.Errorf("find field = %q, want the newline as a space", got)
+	}
+}
+
+// selTo moves the reading view's cursor to line n with plain motions,
+// the way a hand would.
+func selTo(m *Model, n int) {
+	for i := 0; i < 200 && m.noteSel != nil && m.noteSel.cur > n; i++ {
+		press(m, "k")
+	}
+	for i := 0; i < 200 && m.noteSel != nil && m.noteSel.cur < n; i++ {
+		press(m, "j")
 	}
 }

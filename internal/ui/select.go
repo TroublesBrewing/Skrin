@@ -67,14 +67,28 @@ func (m *Model) selectionText() string {
 	return strings.Join(src[min(a, b):max(a, b)+1], "\n")
 }
 
-// selectedNote says how much is selected, counted the way "Copied N lines"
-// counts it, for the status line; "" with nothing selected.
+// selectedNote is the one measure of a selection worth showing: lines
+// when it spans more than one, words when it sits inside a single line,
+// where "1 line" would say nothing. One measure, never two, because the
+// status line's room is finite and a truncated count is no count at all
+// (the user's call, 2026-09-20: "Kapad information riskerar ju att ändå
+// inte vara till någon nytta").
+//
+// A selection that ends at the start of a line covers the lines above it,
+// not that one: Shift+Down once, from the start of a line, is one line.
 func (m *Model) selectedNote() string {
 	t := m.selectionText()
 	if t == "" {
 		return ""
 	}
-	return plural(strings.Count(t, "\n")+1, "line") + " selected"
+	n := strings.Count(t, "\n") + 1
+	if strings.HasSuffix(t, "\n") {
+		n--
+	}
+	if n > 1 {
+		return plural(n, "line") + " selected"
+	}
+	return plural(countWords(t), "word") + " selected"
 }
 
 func (m *Model) clearSelection() {

@@ -2,6 +2,15 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.39.1 — 2026-09-20
+
+**Fix: the selection count said something untrue, and then got cut in half.** Both found by the user asking whether the editor showed a selection count at all — it did, but not correctly.
+
+- **Shift+Down once, from the start of a line, said "2 lines selected".** The selection ends at the start of the next line, so it covers one line; the count added the empty tail. A selection ending at column 0 no longer counts that line.
+- **One measure, never two.** v0.39.0 put a word count beside the line count, and in the editor the pair ran out of room and was truncated. The status line now shows the lines when the selection spans more than one, and the words when it sits inside a single line, where "1 line selected" says nothing anyway. The user's call: "Antingen visas ord ELLER så visas rad … Kapad information riskerar ju att ändå inte vara till någon nytta."
+- With nothing selected the whole note's word count is unchanged.
+- Tests: the existing selection test was rewritten to the decided rule — its old expectations of "1 line selected" for one line and "3 lines selected" for two Shift+Downs were what the fix changed, so they are gone rather than adjusted around. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux: one Shift+Down reads "1 word selected", two read "2 lines selected".
+
 ## v0.39.0 — 2026-09-20
 
 **New: five core features Obsidian has and Skrin didn't.** From the comparison the user asked for, built in one pass on their instruction: "Bygg allt ihop, gör kort av dem, se till att allt går rätt till." Each has its own card on the board.

@@ -308,7 +308,7 @@ func (m *Model) guideText(w int) []manualLine {
 	para("Footnotes render as numbers: [^why] in the text and [^why]: at the bottom both show as [1], counted in the order the labels first appear, as Obsidian numbers them.")
 	para("t opens today's daily note, made from Obsidian's daily-notes settings, with the unfinished todos of the last one carried over.")
 
-	para("The status line counts the words of the open note, as you read and as you write, and counts the selection instead when there is one.")
+	para("The status line counts the words of the open note, as you read and as you write. With something selected it counts that instead, in one measure: the lines when the selection spans more than one, the words when it sits inside a single line, where \"1 line\" would say nothing. One measure, never two, so nothing has to be cut short.")
 
 	head("The size of things")
 	para("Notes keep a readable line length: at most 80 characters wide, centred in their pane, the way they read in zen, whatever the size of the window. Long lines tire the eye, and a wide column makes short lines, like headings, list items and the end of a paragraph, sit far from full ones. Settings can turn it off, so a note fills its pane, as Obsidian's setting of the same name does. The editor follows it too.")

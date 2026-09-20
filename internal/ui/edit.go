@@ -436,6 +436,9 @@ func (m *Model) editLine() string {
 	if sel := m.selectedNote(); sel != "" {
 		left += m.st.marked.Render("  " + sel)
 	}
+	if w := m.wordCount(); w != "" {
+		left += m.st.muted.Render("  " + w)
+	}
 	right := m.st.muted.Render(hint)
 	if m.flash != "" {
 		right = m.st.flash.Render(m.flash)

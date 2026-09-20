@@ -302,9 +302,13 @@ func (m *Model) guideText(w int) []manualLine {
 	para("Files holds the vault's folders and files. The note under the cursor opens at once, so j and k skim through your notes; on a folder, the last note stays open. l or → moves over to it for reading; Enter goes straight to editing it. Settings can turn instant-open off — Obsidian's way — so the note pane only changes on an explicit l/→ or Enter, keeping whatever was open until then.")
 	para("Following a link, a search hit, Go to note, t and going back all move the Files cursor to the note they open.")
 	para("g with nothing typed lists the notes you opened lately, newest first, before the rest of the vault: coming back to what you were reading takes no searching. Only opening a note counts, not the cursor passing over it in Files. The list keeps the last ten, per vault, and is still there after a restart.")
+	para("p pins the note you're on, and P lists the pinned ones — Obsidian's bookmarks. g answers \"where was I\"; pins answer \"where do I live\". The list is kept per vault, survives a restart, and a note that has gone falls out of it.")
 	para("In Files, keys act on the row under the cursor; in the note, on the open note. When anything is marked, m and d act on the marks.")
 	para("n and N create things in the current folder: the folder under the cursor, or the folder of the file under it. In the note it's the open note's folder.")
+	para("Footnotes render as numbers: [^why] in the text and [^why]: at the bottom both show as [1], counted in the order the labels first appear, as Obsidian numbers them.")
 	para("t opens today's daily note, made from Obsidian's daily-notes settings, with the unfinished todos of the last one carried over.")
+
+	para("The status line counts the words of the open note, as you read and as you write, and counts the selection instead when there is one.")
 
 	head("The size of things")
 	para("Notes keep a readable line length: at most 80 characters wide, centred in their pane, the way they read in zen, whatever the size of the window. Long lines tire the eye, and a wide column makes short lines, like headings, list items and the end of a paragraph, sit far from full ones. Settings can turn it off, so a note fills its pane, as Obsidian's setting of the same name does. The editor follows it too.")
@@ -339,8 +343,10 @@ func (m *Model) guideText(w int) []manualLine {
 	key("[key] [key:value]", "a frontmatter property")
 	key("path:Daily", "notes in that folder")
 	key("file:stoic", "notes by name")
+	key("/regex/", "a regular expression, spaces and all")
 	para("Ctrl+F finds text in the note you have open, without leaving it. Each letter you type jumps to the next match from where you started, and the match is highlighted. Enter or ↓ goes to the next one and Shift+Enter or ↑ to the one before, round the note. The status line says which match of how many. Case doesn't matter, and when nothing matches the note stays where it was.")
 	para("Reading, the note scrolls to each match and Esc closes it where you are. In the editor the match shows selected, so Esc leaves it selected and typing replaces it; a second Esc clears the selection.")
+	para("# lists every tag in the vault with how many notes use it, and picking one searches for it. Each spelling stands on its own row, so \"Filosofi\" and \"filosofi\" show side by side rather than hiding one another.")
 	para("With Alt-r it becomes search & replace: every change is listed first, ⚠ marks matches inside [[links]], a note that changed on disk meanwhile is skipped, and one U undoes the whole replace.")
 
 	head("Links")

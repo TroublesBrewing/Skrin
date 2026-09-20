@@ -40,11 +40,23 @@ type term struct {
 	value string // lower-case for everything but text
 	key   string // kProp
 	re    *regexp.Regexp
+	bad   string // why this term couldn't be read, for Query.Problem
 }
 
 // Query is an OR of groups whose terms must all hold.
 type Query struct {
 	groups [][]term
+	bad    []string // terms that couldn't be read, e.g. a broken /regex/
+}
+
+// Problem is what went wrong in the query, or "" when nothing did. A term
+// that can't be read is left out rather than matching nothing, so the rest
+// of the query still works while this says what was dropped.
+func (q Query) Problem() string {
+	if len(q.bad) == 0 {
+		return ""
+	}
+	return q.bad[0]
 }
 
 // Empty reports a query with nothing to look for.
@@ -61,6 +73,7 @@ func (q Query) Empty() bool { return len(q.groups) == 0 }
 //	[key], [key:value]  has the property, or one containing value
 //	path:text           the note's path contains text
 //	file:text           the note's file name contains text
+//	/regex/             a regular expression, as in Obsidian
 func Parse(s string, matchCase bool) Query {
 	var q Query
 	var group []term
@@ -72,7 +85,11 @@ func Parse(s string, matchCase bool) Query {
 			}
 			continue
 		}
-		if tm, ok := parseTerm(t, matchCase); ok {
+		tm, ok := parseTerm(t, matchCase)
+		switch {
+		case tm.bad != "":
+			q.bad = append(q.bad, tm.bad)
+		case ok:
 			group = append(group, tm)
 		}
 	}
@@ -83,8 +100,19 @@ func Parse(s string, matchCase bool) Query {
 }
 
 type token struct {
-	raw                  string
-	neg, quoted, bracket bool
+	raw                         string
+	neg, quoted, bracket, regex bool
+}
+
+// hasClosingSlash says whether a / at i closes again later on, so a lone
+// slash in a query is still ordinary text.
+func hasClosingSlash(rs []rune, i int) bool {
+	for j := i + 1; j < len(rs); j++ {
+		if rs[j] == '/' {
+			return j > i+1
+		}
+	}
+	return false
 }
 
 func tokenize(s string) []token {
@@ -100,15 +128,24 @@ func tokenize(s string) []token {
 			t.neg = true
 			i++
 		}
-		switch rs[i] {
-		case '"':
+		switch {
+		case rs[i] == '/' && hasClosingSlash(rs, i):
+			// /a regex/ holds together across spaces, the way a "phrase"
+			// does: the slashes are the quotes.
+			j := i + 1
+			for rs[j] != '/' {
+				j++
+			}
+			t.raw, t.regex = string(rs[i+1:j]), true
+			i = j + 1
+		case rs[i] == '"':
 			j := i + 1
 			for j < len(rs) && rs[j] != '"' {
 				j++
 			}
 			t.raw, t.quoted = string(rs[i+1:j]), true
 			i = j + 1
-		case '[':
+		case rs[i] == '[':
 			j := i + 1
 			for j < len(rs) && rs[j] != ']' {
 				j++
@@ -140,6 +177,8 @@ func parseTerm(t token, matchCase bool) (term, bool) {
 	tm := term{neg: t.neg}
 	raw := t.raw
 	switch {
+	case t.regex:
+		return regexTerm(tm, raw, matchCase)
 	case t.bracket:
 		k, v, _ := strings.Cut(raw, ":")
 		tm.kind, tm.key, tm.value = kProp, strings.ToLower(strings.TrimSpace(k)), strings.ToLower(strings.TrimSpace(v))
@@ -164,6 +203,33 @@ func parseTerm(t token, matchCase bool) (term, bool) {
 		}
 	}
 	return textTerm(tm, raw, matchCase)
+}
+
+// regexTerm reads /pattern/, as Obsidian's search does. A pattern that
+// won't compile says so through Query.Problem instead of quietly matching
+// nothing — a search that lies is worse than one that refuses.
+func regexTerm(tm term, pat string, matchCase bool) (term, bool) {
+	p := pat
+	if !matchCase {
+		p = "(?i)" + p
+	}
+	re, err := regexp.Compile(p)
+	if err != nil {
+		tm.bad = "/" + pat + "/ isn't a regular expression: " + cleanRegexErr(err)
+		return tm, false
+	}
+	tm.kind, tm.value, tm.re = kText, pat, re
+	return tm, true
+}
+
+// cleanRegexErr drops Go's "error parsing regexp: " prefix and the echo of
+// the pattern, leaving what is actually wrong.
+func cleanRegexErr(err error) string {
+	s := strings.TrimPrefix(err.Error(), "error parsing regexp: ")
+	if i := strings.LastIndex(s, ": `"); i > 0 {
+		s = s[:i]
+	}
+	return s
 }
 
 func textTerm(tm term, raw string, matchCase bool) (term, bool) {

@@ -38,6 +38,9 @@ const (
 	actRedoEdit
 	actHints
 	actHintsSplit
+	actPin
+	actPins
+	actTags
 	actBacklinks
 	actOutline
 	actNextHeading
@@ -201,6 +204,7 @@ var defaultBindings = []binding{
 	{actEditExternal, []string{"E"}, "edit the note in $EDITOR", groupNote, inMain},
 	{actUndoEdit, []string{"u"}, "undo the note's last edit", groupNote, inMain},
 	{actRedoEdit, []string{"ctrl+r"}, "redo it", groupNote, inMain},
+	{actPin, []string{"p"}, "pin this note, or take it off the list", groupNote, inMain},
 	{actHints, []string{"f"}, "follow a link; one in view goes straight there", groupNote, inMain},
 	{actHintsSplit, []string{"alt+f"}, "follow a link into a split beside the note", groupNote, inMain},
 	{actLineNumbers, []string{"L"}, "toggle line numbers in notes", groupNote, inMain},
@@ -211,6 +215,8 @@ var defaultBindings = []binding{
 	{actSearch, []string{"/"}, "search (Alt-r in there: search & replace)", groupSearch, inMain},
 	{actFindNote, []string{"ctrl+f"}, "find text in the open note", groupSearch, inMain},
 	{actSwitcher, []string{"g"}, "go to a note by name (Alt+←/→ there: split)", groupSearch, inMain},
+	{actPins, []string{"P"}, "the notes you have pinned", groupSearch, inMain},
+	{actTags, []string{"#"}, "every tag in the vault, with how often it is used", groupSearch, inMain},
 	{actClaude, []string{"c"}, "open or hide the Claude drawer", groupClaude, inMain},
 	{actClaudeInput, []string{"C"}, "type to Claude, with the highlighted text if any", groupClaude, inMain},
 	{actZen, []string{"z"}, "zen mode: just the note, centred", groupSkrin, inMain},
@@ -380,7 +386,7 @@ var actionName = map[action]string{
 	actEscape: "escape", actUndoOp: "undo-op", actDaily: "daily",
 	actEdit: "edit", actEditExternal: "edit-external",
 	actUndoEdit: "undo-edit", actRedoEdit: "redo-edit",
-	actHints: "hints", actHintsSplit: "hints-split", actLineNumbers: "line-numbers", actBacklinks: "backlinks", actOutline: "outline",
+	actHints: "hints", actHintsSplit: "hints-split", actPin: "pin", actPins: "pins", actTags: "tags", actLineNumbers: "line-numbers", actBacklinks: "backlinks", actOutline: "outline",
 	actNextHeading: "next-heading", actPrevHeading: "prev-heading",
 	actBack: "back", actForward: "forward",
 	actSearch: "search", actSwitcher: "switcher",

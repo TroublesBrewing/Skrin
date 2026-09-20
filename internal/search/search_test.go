@@ -2,6 +2,7 @@ package search
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -87,5 +88,38 @@ func TestFindAndReplace(t *testing.T) {
 	}
 	if Find("abc", "", false, false) != nil {
 		t.Error("an empty needle should find nothing")
+	}
+}
+
+// /regex/ is Obsidian's, and a broken one says what's wrong instead of
+// quietly matching nothing.
+func TestRegexTerm(t *testing.T) {
+	d := Doc{Rel: "Books/Bilbo.md", Lines: []string{"# Bilbo", "The year 1937 and the year 2002."}}
+	for _, c := range []struct {
+		q    string
+		want bool
+	}{
+		{`/year \d{4}/`, true},
+		{`/YEAR \d{4}/`, true},  // case doesn't matter by default
+		{`/year \d{5}/`, false}, // a real regex, not a substring
+		{`/^The year/`, true},   // anchors work, per line
+	} {
+		if ok, _ := Parse(c.q, false).Match(d); ok != c.want {
+			t.Errorf("%s matched %v, want %v", c.q, ok, c.want)
+		}
+	}
+	if ok, _ := Parse(`/YEAR \d{4}/`, true).Match(d); ok {
+		t.Error("with match-case on, the regex should be case-sensitive too")
+	}
+}
+
+func TestABrokenRegexSaysWhatIsWrong(t *testing.T) {
+	q := Parse(`/year (/ stoic`, false)
+	if p := q.Problem(); !strings.Contains(p, "isn't a regular expression") {
+		t.Errorf("problem = %q", p)
+	}
+	d := Doc{Rel: "Filosofi/Stoic.md", Lines: []string{"# Stoic", "the stoic year"}}
+	if ok, _ := q.Match(d); !ok {
+		t.Error("the rest of the query should still work")
 	}
 }

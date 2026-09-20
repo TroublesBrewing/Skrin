@@ -12,6 +12,7 @@ import (
 	"image/color"
 	"math"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -243,6 +244,7 @@ type renderer struct {
 	spreads SpreadOptions
 	st      styles
 	callout *lipgloss.Style // colour of the callout we're inside, if any
+	fnotes  map[string]int  // footnote label → its number, in order of first appearance
 	links   []Link          // every link seen, referenced by span.link
 	out     []Line
 }
@@ -254,6 +256,8 @@ var (
 	listRE     = regexp.MustCompile(`^(\s*)([-*+]|\d{1,9}[.)])[ \t]+(\[(.)\](?:[ \t]+|$))?(.*)$`)
 	calloutRE  = regexp.MustCompile(`^\[!([A-Za-z]+)\][+-]?\s*(.*)$`)
 	tableSepRE = regexp.MustCompile(`^\|?[\s:|-]+\|?$`)
+	// A footnote's definition line: "[^1]: the note itself".
+	footDefRE = regexp.MustCompile(`^\[\^([^\]\s]+)\]:[ \t]*(.*)$`)
 	// An image embed alone on its own line: ![[photo.png]] (any alias or
 	// size hint after a "|" is ignored) or ![alt](Assets/photo.png).
 	// Mixed with other text on the line, an embed stays an inline link,
@@ -264,6 +268,7 @@ var (
 	inlineRE     = regexp.MustCompile(strings.Join([]string{
 		"`[^`]+`",                    // code
 		`!?\[\[[^\[\]]+\]\]`,         // wikilink or embed
+		`\[\^[^\[\]\s]+\]`,           // footnote reference
 		`\[[^\[\]]+\]\([^()\s]+\)`,   // markdown link
 		`\*\*[^*]+\*\*`, `__[^_]+__`, // bold
 		`~~[^~]+~~`,                           // strikethrough
@@ -291,6 +296,10 @@ func (r *renderer) block(i int, l string) {
 		r.emit(i, "", "", []span{plain(strings.Repeat("─", r.width), r.st.rule)}, 0, clip)
 	case isQuote:
 		r.quote(i, l)
+	case footDefRE.MatchString(t):
+		m := footDefRE.FindStringSubmatch(t)
+		mark := plain(r.footMark(m[1]), r.st.bullet)
+		r.emit(i, "", "  ", append([]span{mark, plain(" ", r.st.text)}, r.inline(m[2], r.st.text)...), 0, wrapWords)
 	case listRE.MatchString(l):
 		r.listItem(i, listRE.FindStringSubmatch(l))
 	default:
@@ -794,10 +803,27 @@ func (r *renderer) inline(s string, base lipgloss.Style) []span {
 	return out
 }
 
+// footMark is a footnote's number in square brackets, counted in the order
+// the labels first appear in the note, as Obsidian numbers them. The label
+// itself is never shown: [^why-stoicism] reads as [3].
+func (r *renderer) footMark(label string) string {
+	if r.fnotes == nil {
+		r.fnotes = map[string]int{}
+	}
+	n, ok := r.fnotes[label]
+	if !ok {
+		n = len(r.fnotes) + 1
+		r.fnotes[label] = n
+	}
+	return "[" + strconv.Itoa(n) + "]"
+}
+
 func (r *renderer) token(tok string, base lipgloss.Style) []span {
 	switch {
 	case strings.HasPrefix(tok, "`"):
 		return []span{plain(strings.Trim(tok, "`"), r.st.code)}
+	case strings.HasPrefix(tok, "[^"):
+		return []span{plain(r.footMark(tok[2:len(tok)-1]), r.st.bullet)}
 	case strings.HasPrefix(tok, "![[") || strings.HasPrefix(tok, "[["):
 		return []span{r.wikilink(tok, base)}
 	case strings.HasPrefix(tok, "["):

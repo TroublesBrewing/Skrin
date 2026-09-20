@@ -258,3 +258,44 @@ func TestTableRowsAreStriped(t *testing.T) {
 		}
 	}
 }
+
+// Footnotes: Obsidian numbers them in the order the labels first appear,
+// and shows the number, never the label.
+func TestFootnotesAreNumberedInOrder(t *testing.T) {
+	src := "Stoicism[^why] och ödet[^fate].\n\n[^fate]: Om kausalitet.\n[^why]: Därför.\n"
+	got := allText(render(t, src, 60))
+	for _, want := range []string{"Stoicism[1] och ödet[2].", "[2] Om kausalitet.", "[1] Därför."} {
+		if !strings.Contains(got, want) {
+			t.Errorf("want %q in:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "why") || strings.Contains(got, "fate") {
+		t.Errorf("the label is markup, not text:\n%s", got)
+	}
+}
+
+func TestTheSameFootnoteTwiceKeepsItsNumber(t *testing.T) {
+	src := "Ett[^a] två[^b] ett igen[^a].\n"
+	got := allText(render(t, src, 60))
+	if !strings.Contains(got, "Ett[1] två[2] ett igen[1].") {
+		t.Errorf("got:\n%s", got)
+	}
+}
+
+func TestAFootnoteWithoutItsPairStillRenders(t *testing.T) {
+	src := "En referens utan definition[^lost].\n\n[^orphan]: en definition utan referens.\n"
+	got := allText(render(t, src, 60))
+	if !strings.Contains(got, "En referens utan definition[1].") ||
+		!strings.Contains(got, "[2] en definition utan referens.") {
+		t.Errorf("neither half should vanish:\n%s", got)
+	}
+}
+
+// allText is every display line, stripped, one per row.
+func allText(lines []Line) string {
+	var parts []string
+	for _, l := range lines {
+		parts = append(parts, ansi.Strip(l.Text))
+	}
+	return strings.Join(parts, "\n")
+}

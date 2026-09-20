@@ -288,6 +288,9 @@ func (m *Model) statusLine() string {
 	if m.notePath != "" && len(m.lines) > 0 {
 		left += m.st.muted.Render("  " + m.scrollInfo())
 	}
+	if w := m.wordCount(); w != "" {
+		left += m.st.muted.Render("  " + w)
+	}
 	right := m.st.muted.Render(m.hintLine(m.width - min(ansi.StringWidth(left), m.width/2) - 3))
 	if m.flash != "" {
 		right = m.st.flash.Render(m.flash)

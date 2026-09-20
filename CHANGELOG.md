@@ -2,6 +2,17 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.39.0 — 2026-09-20
+
+**New: five core features Obsidian has and Skrin didn't.** From the comparison the user asked for, built in one pass on their instruction: "Bygg allt ihop, gör kort av dem, se till att allt går rätt till." Each has its own card on the board.
+
+- **Footnotes render.** `[^why]` in the text and `[^why]: …` at the bottom both show as `[1]`, numbered in the order the labels first appear, as Obsidian numbers them. The label is markup and never shown. A reference with no definition, or a definition with no reference, still renders rather than vanishing. Until now they were raw text: a note with footnotes looked broken.
+- **Pinned notes — Obsidian's bookmarks.** `p` pins the note you're on or takes it off; `P` lists them. Recents answer "where was I", pins answer "where do I live". Kept per vault, survives a restart, and a pin whose note has gone falls out of the list on the next reload rather than pointing at nothing.
+- **A tag panel.** `#` lists every tag in the vault with how many notes use it, and picking one searches for it — the same `#tag` query you'd type, not a second way to search. Each spelling stands on its own row, as in the tag suggestions, so "Filosofi" and "filosofi" show side by side instead of hiding one another.
+- **`/regex/` in search**, as in Obsidian. The slashes hold the pattern together across spaces the way quotes hold a phrase, and match-case applies to the regex too. A pattern that won't compile says so in the panel — `/ar (/ isn't a regular expression: missing closing )` — and is left out so the rest of the query still works, rather than quietly matching nothing.
+- **A word count** in the status line, reading and writing, counting the selection instead when there is one. Frontmatter doesn't count, and neither do a heading's hashes or a bullet.
+- Tests: three for footnote numbering and orphans; five for pinning, the list, the empty case, the restart and a vanished note; three for the tag panel; regex matching, case, and a broken pattern leaving the query working; and word counting with frontmatter, markup and a selection. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux: footnotes as `[1]`/`[2]`, `p` pinning, `#` listing both spellings with counts, `/ar \d{4}/` finding the line and `/ar (/` explaining itself.
+
 ## v0.38.1 — 2026-09-20
 
 **Fix: three keys in the note did nothing and said nothing**, against the charter's flow rule that no key is silent. Found by a sweep for gaps between the UX charter and the code, after Enter's own gap had sat unbuilt for ten releases.

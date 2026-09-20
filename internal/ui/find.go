@@ -39,6 +39,7 @@ type searchPanel struct {
 	rows    []resultRow
 	cur     int
 	hits    int
+	problem string // what the query couldn't read, e.g. a broken /regex/
 }
 
 func (m *Model) openSearch() {
@@ -71,12 +72,13 @@ func (m *Model) scope(p *searchPanel) []string {
 
 func (m *Model) runSearch() {
 	p := m.search
-	p.results, p.notes, p.rows, p.cur, p.hits = nil, nil, nil, 0, 0
+	p.results, p.notes, p.rows, p.cur, p.hits, p.problem = nil, nil, nil, 0, 0, ""
 	if p.replacing {
 		m.findForReplace(p)
 		return
 	}
 	q := search.Parse(p.in.value(), p.matchCase)
+	p.problem = q.Problem()
 	p.query = !q.Empty()
 	if !p.query {
 		return
@@ -322,8 +324,10 @@ func (m *Model) searchSummary(p *searchPanel) string {
 	case p.replacing:
 		n, notes := p.active()
 		return plural2(n, "match", "matches") + " in " + plural(notes, "note")
+	case p.problem != "":
+		return p.problem
 	case !p.query:
-		return `#tag [prop:value] path: file: "phrase" -not OR`
+		return `#tag [prop:value] path: file: "phrase" /regex/ -not OR`
 	}
 	return plural2(p.hits, "match", "matches") + " in " + plural(len(p.results), "note")
 }

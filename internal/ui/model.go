@@ -198,6 +198,7 @@ type Model struct {
 
 	recentCmds  []string // the palette's commands run lately, newest first
 	recentNotes []string // notes opened lately, newest first, for Go to note
+	pinned      []string // the notes you pinned, by path, in name order
 
 	journal vault.Journal
 	marks   map[string]bool // marked items by vault path; may span folders
@@ -289,6 +290,8 @@ func New(v *vault.Vault, pal theme.Palette, opts Options) (*Model, error) {
 	}
 	m.lastPeekCur = m.files.cur
 	m.lastPeekRel = m.files.selected().Rel
+	m.pinned = append(m.pinned, opts.Session.Pinned...)
+	m.keepPins()
 	for _, rel := range opts.Session.Recent {
 		if vault.IsNote(rel) && v.Exists(rel) && len(m.recentNotes) < recentNotes {
 			m.recentNotes = append(m.recentNotes, rel)
@@ -306,6 +309,7 @@ func (m *Model) Session() session.State {
 		Open:     m.notePath,
 		Offset:   m.noteOff,
 		Recent:   m.recentNotes,
+		Pinned:   m.pinned,
 		Claude:   m.drawer.id,
 		Drawer:   m.drawerSide(),
 	}
@@ -595,6 +599,12 @@ func (m *Model) do(a action) tea.Cmd {
 		m.openSwitcher()
 	case actFindNote:
 		m.openNoteFind()
+	case actPin:
+		m.togglePin()
+	case actPins:
+		m.openPins()
+	case actTags:
+		m.openTags()
 	case actPalette:
 		m.openPalette()
 	default:
@@ -892,6 +902,7 @@ func (m *Model) reload() error {
 			delete(m.marks, p)
 		}
 	}
+	m.keepPins()
 	m.loadNote()
 	m.loadSplit()
 	m.lastPeekCur = m.files.cur

@@ -122,7 +122,6 @@ func run(vaultArg string) error {
 		Images:        cfg.RenderImages(),
 		Habits:        cfg.HabitsEnabled(),
 		Beta:          cfg.BetaEnabled(),
-		Paper:         cfg.PaperEnabled(),
 		LineNumbers:   cfg.RenderLineNumbers(),
 		ReadableWidth: cfg.RenderReadableWidth(),
 		Spreads:       cfg.RenderSpreads(),

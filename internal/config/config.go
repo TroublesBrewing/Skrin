@@ -54,10 +54,6 @@ type Config struct {
 	Beta struct {
 		Enabled *bool `toml:"enabled,omitempty"` // unset means off: experiments are asked for, never assumed
 	} `toml:"beta,omitempty"`
-	Paper struct {
-		Enabled  *bool `toml:"enabled,omitempty"`  // unset means off
-		Strength int   `toml:"strength,omitempty"` // how far the grain moves from the background, 1-20; unset means 6
-	} `toml:"paper,omitempty"`
 	Habits struct {
 		Enabled *bool `toml:"enabled,omitempty"` // unset means off: the habits view is asked for, never assumed
 	} `toml:"habits,omitempty"`
@@ -122,23 +118,6 @@ func (c Config) ThemeBuiltin() string {
 // build with version.Beta false.
 func (c Config) BetaEnabled() bool {
 	return c.Beta.Enabled != nil && *c.Beta.Enabled
-}
-
-// PaperEnabled reports whether the note gets its paper grain.
-func (c Config) PaperEnabled() bool {
-	return c.Paper.Enabled != nil && *c.Paper.Enabled
-}
-
-// PaperStrength is how far the grain's shades sit from the background, in
-// steps of 0-255. Below about four nothing is visible on a light theme:
-// three steps out of 255 is roughly one per cent, which a screen doesn't
-// show. Out-of-range values are clamped rather than refused, since a
-// number in a config file should never stop Skrin starting.
-func (c Config) PaperStrength() int {
-	if c.Paper.Strength == 0 {
-		return 6
-	}
-	return min(max(c.Paper.Strength, 1), 20)
 }
 
 // HabitsEnabled reports whether the habits view is switched on. It is off unless

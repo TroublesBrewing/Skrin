@@ -124,9 +124,6 @@ type Options struct {
 	// feature needs this and its own switch, and a build with
 	// version.Beta false ignores both.
 	Beta bool
-	// Paper lays a faint grain under the note, so reading feels a little
-	// more like paper. A beta feature, like Habits.
-	Paper bool
 	// Habits turns on the habits view (T). Off — the default — keeps it
 	// out of the way entirely: no key, no palette row, no tip, as the
 	// Claude drawer does when it is switched off. The "### Habits" block

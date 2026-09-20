@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -62,13 +61,6 @@ func (m *Model) settingsItems() []settingsItem {
 // here, and off regardless in a build with version.Beta false.
 func betaSettings() []settingsItem {
 	return []settingsItem{
-		{
-			label: "Paper grain under the note",
-			help:  "A texture behind the note, so reading feels a little more like a page. How far the shades sit from the background decides whether you see it at all: three steps of 255 is one per cent, which no screen shows. The grain goes darker on a light theme and lighter on a dark one, since that is where the room is. It paints the note pane's background, so a transparent terminal turns solid there.",
-			value: func(m *Model) string { return grainName(m) },
-			pick:  (*Model).pickGrain,
-			beta:  true,
-		},
 		{
 			label: "Habit tracker",
 			help:  "T shows today's habits, the week and the month, read from the ### Habits block of your daily note. An experiment: either it grows into something that stands on its own, or it goes. Your checkboxes are plain markdown and stay as they are either way.",
@@ -305,72 +297,4 @@ func builtinNote(name string) string {
 		return "dark"
 	}
 	return "light"
-}
-
-// grainStrengths are the paper grain's settings, as Settings offers them:
-// a name, and how far its shades sit from the background. Off is nothing
-// at all rather than a strength of zero, so the note is drawn plainly.
-var grainStrengths = []struct {
-	name     string
-	strength int
-}{
-	{"off", 0},
-	{"faint", 4},
-	{"medium", 8},
-	{"strong", 14},
-}
-
-func grainName(m *Model) string {
-	if !m.opts.Paper {
-		return "off"
-	}
-	at := m.opts.Config.PaperStrength()
-	for _, g := range grainStrengths {
-		if g.strength == at {
-			return g.name
-		}
-	}
-	return fmt.Sprintf("%d steps", at)
-}
-
-// pickGrain is the Settings row for the paper grain: off, or how much of
-// it. One row rather than a switch and a number, since the number is what
-// decides whether the switch does anything you can see.
-func (m *Model) pickGrain() {
-	setCur := 0
-	if m.manual != nil {
-		setCur = m.manual.setCur
-	}
-	back := func() {
-		m.openManual()
-		m.manualGoTab(manualTabSettings)
-		m.manual.setCur = setCur
-	}
-	var items []choice
-	for _, g := range grainStrengths {
-		detail := fmt.Sprintf("%d steps of 255 away from the background", g.strength)
-		if g.strength == 0 {
-			detail = "the note drawn plainly"
-		}
-		items = append(items, choice{label: g.name, detail: detail, do: func() {
-			m.opts.Paper = g.strength > 0
-			m.opts.Config.Paper.Enabled = boolPtr(m.opts.Paper)
-			m.opts.Config.Paper.Strength = g.strength
-			back()
-			if err := config.Save(m.opts.Config); err != nil {
-				m.flash = "couldn't save settings: " + err.Error()
-				return
-			}
-			m.flash = "Paper grain: " + g.name
-		}})
-	}
-	m.manual = nil
-	m.openChooser(&chooser{
-		title:  "Paper grain",
-		prompt: "How much",
-		empty:  "No such setting",
-		verb:   "choose",
-		items:  items,
-		cancel: back,
-	})
 }

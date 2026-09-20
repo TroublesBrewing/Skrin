@@ -2,6 +2,14 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.46.0 — 2026-09-21
+
+**Removed: the paper grain.** The user, after trying every strength: "Jag ser ingen skillnad i faint, medium och strong. Men vet du vad? Vi struntar i det och slopar den featuren." Out it goes — `internal/ui/paper.go`, its tests, its Settings row, its config keys and its paragraph in the Guide.
+
+- **This is what the beta block is for.** An experiment was built, lived with, judged and deleted, without ever being part of what Skrin promises. Nothing about the removal touches a note, a key or a default.
+- **Worth recording, since it wasn't settled:** at *strong* the shades differ by twenty-eight steps of 255, which is not subtle. That no difference at all was visible suggests the grain was never drawn — most likely a running Skrin older than v0.43.0, the same thing that hid Insert template in September. The idea is in the git history if it is ever worth another look, and the honest verdict is that a terminal has only cell backgrounds to work with, which is a thin way to make paper.
+- `[paper]` in `config.toml` is ignored from here, and can be deleted. Full suite green (`-count=1`), `go vet` and `gofmt` clean.
+
 ## v0.45.2 — 2026-09-21
 
 **Fix: the paper grain was invisible.** The user: "Papperstexturen syns inte eller gör väldigt minimal skillnad som inte går att uppfatta på min skärm." It was being painted — it just couldn't be seen, for two reasons, both arithmetic rather than opinion.

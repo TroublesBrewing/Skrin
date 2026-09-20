@@ -192,7 +192,7 @@ func (m *Model) notePane(w, h int) []string {
 			body[i] = margin + body[i]
 		}
 	}
-	return m.onPaper(m.box(title, body, w, h, m.focus == paneNote || (m.editor != nil && m.focus != paneClaude)), w)
+	return m.box(title, body, w, h, m.focus == paneNote || (m.editor != nil && m.focus != paneClaude))
 }
 
 // noteBody is what the note pane shows, in w cells by at most vis rows,

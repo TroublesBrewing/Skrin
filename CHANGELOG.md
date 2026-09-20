@@ -2,6 +2,18 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.37.0 — 2026-09-20
+
+**New: the editor saves by itself.** Data integrity, on the user's call: "Autosave är en viktig del i data integrity så jag ser det som både en nödvändighet och en av Obsidians basfunktioner." Obsidian has no save command at all, and until now the one way to lose text in Skrin was for the process to die with the editor open — a closed terminal, a dropped ssh session, a crash.
+
+- **A second and a half after you type, it's on disk.** It's a ceiling, not a pause: typing on doesn't put it off. Nothing is said and nothing moves; the ● by the note's name goes out, which is the whole of it.
+- **Ctrl+S stays** as "save now", for the habit and for forcing a write before switching away. Leaving the editor still saves, as it always did.
+- **A save by itself never decides anything for you.** If the note changed on disk meanwhile (Obsidian, Sync, another editor), writing yours would throw theirs away, so it doesn't write: that choice belongs to Ctrl+S or leaving the editor, where it has always been asked.
+- **And it never goes quiet about it.** The status line turns to `HELD  <note>  changed on disk · nothing of yours is written until ctrl+s or esc` and stays that way while you type, because from that moment until you answer, what you write is only in the editor. Answering the conflict ends the hold.
+- **What belongs to leaving the note stays there:** `due::` dates and the offer to bring a heading's links along still happen when you leave, not while you write.
+- **One snapshot per editing session, as before**, so `u` reaches past every save by itself to the note as it was when you opened it.
+- Tests: the clock starting on typing and the tick writing silently; the clock re-arming while there's more to write; a changed file holding the write, showing HELD, and Ctrl+S then raising the conflict and `m` ending the hold; `u` reaching past three saves; dates resolving only on leaving; the heading question only on leaving; a late tick after the editor closed doing nothing. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux: typed text was on disk three seconds later without Ctrl+S, an outside write turned the status line to HELD, and Ctrl+S then `m` kept the user's version.
+
 ## v0.36.0 — 2026-09-20
 
 **Fix: Ctrl+V pastes.** Copying with Ctrl+C worked, pasting didn't: Skrin only ever took text from a bracketed paste (Ctrl+Shift+V), and a plain Ctrl+V fell through to nothing. Reported by the user: "vi har ctrl+c för att kopiera men ctrl+v fungerar inte för att klistra in."

@@ -381,6 +381,13 @@ func (m *Model) guideText(w int) []manualLine {
 	para("In the editor, a spread shows its answer too, under a dim \"" + foldHint + "\" line. Move onto it and it opens into its query; move off and it folds back, run again if you changed it. It answers from the notes as saved, so the note you're editing counts as it was at its last save.")
 	para("Every note in the answer is a link: f and Enter follow it, and a task's ↗ opens its note at that task, where Ctrl-l ticks it. A spread only reads, never writes. Without LIMIT it stops at 200 rows and says how many more there are; a mistake, or Dataview syntax Skrin doesn't do yet, shows as a ⚠ line naming it.")
 
+	head("Saving")
+	para("Skrin saves by itself. A second and a half after you type something it's on disk, and leaving the editor writes it too. Ctrl+S writes it now, and stays for the habit. The ● by the note's name means what you typed isn't on disk yet, which should be a moment rather than a state.")
+	para("A save by itself never interrupts, and never decides anything for you. If the note changed on disk meanwhile — Obsidian, Sync, another editor — writing yours would throw theirs away, so it doesn't write: whose version wins is a question for a moment you chose, Ctrl+S or leaving the editor, which is where it has always been asked.")
+	para("It doesn't go quiet about it either. The status line turns to HELD with the note's name and stays that way while you type, because from that moment until you answer, what you write is only in the editor. Ctrl+S brings up the usual choice: keep yours, take theirs, or see the difference first.")
+	para("Due dates and the offer to bring a heading's links along belong to leaving the note, not to writing it out, so they stay there.")
+	blank()
+
 	head("Undo")
 	para("u puts the note back as it was before its last edit, whether you made it here, in $EDITOR, with a replace, or through Claude. Ctrl-r takes that back.")
 	para("U undoes the last file operation: a create, rename, move, delete (back from the trash) or replace.")

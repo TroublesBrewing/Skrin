@@ -192,6 +192,10 @@ type Model struct {
 	copied  string
 	pasting bool
 
+	// autosaving says the editor's clock is running: text that isn't on
+	// disk yet, and a tick on its way to write it.
+	autosaving bool
+
 	recentCmds  []string // the palette's commands run lately, newest first
 	recentNotes []string // notes opened lately, newest first, for Go to note
 
@@ -383,6 +387,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.pasting = false
 			m.pasteFrom(msg.String(), true)
 		}
+	case autosaveMsg:
+		m.autosaving = false
+		m.autosave()
 	case pasteTimeoutMsg:
 		if m.pasting {
 			m.pasting = false
@@ -464,7 +471,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	m.settle()
-	return m, tea.Batch(cmd, m.startThumbnails())
+	return m, tea.Batch(cmd, m.startThumbnails(), m.armAutosave())
 }
 
 // setPalette recolours everything, the logo included.

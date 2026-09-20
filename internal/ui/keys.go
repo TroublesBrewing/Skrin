@@ -216,7 +216,7 @@ var defaultBindings = []binding{
 	{actHelp, []string{"?"}, "this manual", groupSkrin, inMain},
 	{actQuit, []string{"q", "ctrl+c"}, "quit", groupSkrin, inMain},
 
-	{actNone, []string{"ctrl+s"}, "save", groupEditor, inEditor},
+	{actNone, []string{"ctrl+s"}, "save now; Skrin also saves by itself", groupEditor, inEditor},
 	{actNone, []string{"esc"}, "clear a selection, then leave the editor, saving", groupEditor, inEditor},
 	{actNone, []string{"ctrl+c"}, "copy the selection, or leave the editor", groupEditor, inEditor},
 	{actNone, []string{"ctrl+v"}, "paste from the clipboard", groupEditor, inEditor},

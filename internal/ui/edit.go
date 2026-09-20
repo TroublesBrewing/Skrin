@@ -25,6 +25,7 @@ type editSession struct {
 	base        string // the note as it was on disk when last loaded or saved
 	opened      string // the note as it was when the editor opened, whatever saves came since
 	snapshotted bool   // the version from before this session is in the snapshot store
+	held        bool   // saving by itself is waiting: the note changed on disk
 	linkFormat  string // Obsidian's newLinkFormat, for [[ completion
 }
 
@@ -315,7 +316,7 @@ func (m *Model) keepMine() {
 		}
 	}
 	m.conflict = nil
-	s.snapshotted = true
+	s.held, s.snapshotted = false, true
 	text := m.editor.Text()
 	if err := m.vault.Write(s.rel, text); err != nil {
 		m.flash = "Couldn't save: " + err.Error()
@@ -337,7 +338,7 @@ func (m *Model) takeTheirs() {
 		m.flash = "Couldn't keep a backup of your version, so nothing changed: " + err.Error()
 		return
 	}
-	m.conflict = nil
+	m.conflict, s.held = nil, false
 	if c.deleted {
 		m.closeEditor()
 		m.flash = "Left it deleted · your version is kept as a snapshot"
@@ -407,6 +408,12 @@ func (m *Model) diffLine(l string) string {
 func (m *Model) editLine() string {
 	if m.noteFind != nil {
 		return m.noteFindLine()
+	}
+	if m.edit.held {
+		// Never quietly: while this is up, what you have typed is only in
+		// the editor, and you are the one who decides how that ends.
+		return m.st.dangerPill.Render(" HELD ") + " " + m.st.text.Render(m.edit.rel) +
+			m.st.errText.Render("  changed on disk · nothing of yours is written until ctrl+s or esc")
 	}
 	mode, hint := " EDIT ", "ctrl+s save · ctrl+f find · ctrl+l to-do · esc done"
 	if m.editor.InTable() {

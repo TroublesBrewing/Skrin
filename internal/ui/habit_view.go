@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/lurioso/skrin/internal/daily"
 	"github.com/lurioso/skrin/internal/habit"
+	"github.com/lurioso/skrin/internal/habiton"
 	"github.com/lurioso/skrin/internal/obsidian"
 	"github.com/lurioso/skrin/internal/vault"
 	"github.com/lurioso/skrin/internal/version"
@@ -31,6 +33,13 @@ type habitView struct {
 	tab habitTab
 	cur int // row: today's list, or the grid's
 	col int // grid only: the day column
+	// frame alternates while the overlay is open: Habiton blinks, and
+	// that is the whole of the animation.
+	frame int
+	// month is the grid behind today — the streaks and Habiton's mood
+	// are read from it. Built when the overlay opens and after every
+	// tick, never per frame: it reads a month of notes from disk.
+	month habit.Grid
 }
 
 // habitDay is one column of the grid, assembled at open.
@@ -79,6 +88,7 @@ func (m *Model) openHabits() {
 		return
 	}
 	m.habits = &habitView{tab: habitsToday, cur: firstUnticked(src)}
+	m.readHabitMonth()
 }
 
 // dailyTemplate reads the daily-note template, expanded for today.
@@ -126,6 +136,7 @@ func (m *Model) insertHabitsBlock(rel, tmpl string) {
 		m.journal.Record(vault.Op{Desc: "create " + rel, Steps: append(createdSteps(dirs), vault.Step{Kind: vault.StepCreated, Rel: rel, Content: content})})
 		m.refresh()
 		m.habits = &habitView{tab: habitsToday, cur: 0}
+		m.readHabitMonth()
 		m.flash = "Created " + rel + " · U undoes"
 		return
 	}
@@ -141,6 +152,7 @@ func (m *Model) insertHabitsBlock(rel, tmpl string) {
 	m.journal.Record(vault.Op{Desc: "add habits to " + rel, Steps: []vault.Step{{Kind: vault.StepModified, Rel: rel, Content: src}}})
 	m.refresh()
 	m.habits = &habitView{tab: habitsToday, cur: 0}
+	m.readHabitMonth()
 	m.flash = "Added " + habit.Heading + " to " + rel + " · U undoes"
 }
 
@@ -245,6 +257,7 @@ func (m *Model) writeHabitTick(rel, before, after, name, day string, ticked bool
 	}
 	m.journal.Record(vault.Op{Desc: "tick " + name + " in " + rel, Steps: []vault.Step{{Kind: vault.StepModified, Rel: rel, Content: before}}})
 	m.refresh()
+	m.readHabitMonth() // the tick changes a streak, and Habiton
 	verb := "Unticked"
 	if ticked {
 		verb = "Ticked"
@@ -283,6 +296,42 @@ func habitDays(m *Model, s obsidian.Settings, tab habitTab) []habitDay {
 		days = append(days, habitDay{rel: rel, name: name})
 	}
 	return days
+}
+
+// Habiton blinks: open eyes for habitBlinkGap, shut for habitBlinkShut,
+// and nothing else moves. A terminal is a quiet place and he is a guest
+// in it.
+const (
+	habitBlinkGap  = 3 * time.Second
+	habitBlinkShut = 140 * time.Millisecond
+)
+
+// habitBlinkMsg is the next frame of Habiton's blink.
+type habitBlinkMsg struct{}
+
+// armBlink keeps the blink going while the overlay is open, and stops of
+// its own accord when it closes. Called at the end of every update, like
+// the autosave clock.
+func (m *Model) armBlink() tea.Cmd {
+	if m.habits == nil || m.blinking {
+		return nil
+	}
+	m.blinking = true
+	d := habitBlinkGap
+	if m.habits.frame%2 == 1 {
+		d = habitBlinkShut
+	}
+	return tea.Tick(d, func(time.Time) tea.Msg { return habitBlinkMsg{} })
+}
+
+// readHabitMonth reads the month behind today into the open overlay, for
+// the streaks and Habiton's mood. Called when it opens and after a tick,
+// never while drawing.
+func (m *Model) readHabitMonth() {
+	if m.habits == nil {
+		return
+	}
+	m.habits.month = m.habitGrid(obsidian.LoadSettings(m.vault.Root), habitsMonth)
 }
 
 // habitGrid builds the whole grid for a tab: today's habit names as the
@@ -405,23 +454,61 @@ func (m *Model) habitsTodayBox(s obsidian.Settings, inner int) []string {
 	if !ok {
 		return []string{m.st.muted.Render("  No habits in today's note.")}
 	}
+	g := m.habits.month
+	art, artW := habiton.Draw(habiton.Read(g, m.todayRel()), m.habits.frame, m.pal)
+	listW := max(inner-artW-4, 20)
+
 	var body []string
 	for i, it := range b.Items {
 		mark := "  "
 		if it.Done {
 			mark = "  ✓"
 		}
-		line := mark + " " + it.Text
-		if i == m.habits.cur {
-			body = append(body, "  "+m.st.selFocus.Render(fit(line, inner-2)))
-		} else if it.Done {
-			body = append(body, "  "+m.st.muted.Render(fit(line, inner-2)))
-		} else {
-			body = append(body, "  "+fit(line, inner-2))
+		line := fit(mark+" "+it.Text, listW-streakW)
+		line += strings.Repeat(" ", max(listW-streakW-ansi.StringWidth(line), 0))
+		switch {
+		case i == m.habits.cur:
+			line = m.st.selFocus.Render(line)
+		case it.Done:
+			line = m.st.muted.Render(line)
 		}
+		body = append(body, "  "+line+m.streakMark(habit.Streak(g, it.Text)))
 	}
+	body = beside(body, art, listW+2)
 	body = append(body, "", " "+m.st.muted.Render("H week/month · space tick · U undo · esc close"))
 	return body
+}
+
+// streakW is the room the streak column takes: "  12d".
+const streakW = 5
+
+// streakMark is how many days in a row this habit has been ticked, ending
+// today. Nothing is shown for a streak of one: a single day is a tick, not
+// a streak, and saying "1d" would make every start look like a failure.
+func (m *Model) streakMark(n int) string {
+	if n < 2 {
+		return strings.Repeat(" ", streakW)
+	}
+	s := fmt.Sprintf("%dd", n)
+	return strings.Repeat(" ", max(streakW-ansi.StringWidth(s), 0)) + m.st.marked.Render(s)
+}
+
+// beside puts art to the right of body, padding whichever is shorter so
+// Habiton sits beside the list rather than under it.
+func beside(body, art []string, at int) []string {
+	n := max(len(body), len(art))
+	out := make([]string, n)
+	for i := range out {
+		left := ""
+		if i < len(body) {
+			left = body[i]
+		}
+		out[i] = left + strings.Repeat(" ", max(at-ansi.StringWidth(left), 0))
+		if i < len(art) {
+			out[i] += art[i]
+		}
+	}
+	return out
 }
 
 func (m *Model) habitsGridBox(s obsidian.Settings, inner int, tab habitTab) []string {

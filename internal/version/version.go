@@ -3,7 +3,7 @@
 package version
 
 // Version is the current release, without the leading "v".
-const Version = "0.41.0"
+const Version = "0.42.0"
 
 // Beta says whether this build offers beta features: experiments that are
 // built, switched on by hand and tried, without being part of what Skrin

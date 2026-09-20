@@ -201,6 +201,9 @@ type Model struct {
 	copied  string
 	pasting bool
 
+	// blinking says a blink is already on its way, so the overlay's
+	// updates don't pile ticks on top of each other.
+	blinking bool
 	// autosaving says the editor's clock is running: text that isn't on
 	// disk yet, and a tick on its way to write it.
 	autosaving bool
@@ -400,6 +403,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.pasting = false
 			m.pasteFrom(msg.String(), true)
 		}
+	case habitBlinkMsg:
+		m.blinking = false
+		if m.habits != nil {
+			m.habits.frame++
+		}
 	case autosaveMsg:
 		m.autosaving = false
 		m.autosave()
@@ -484,7 +492,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	m.settle()
-	return m, tea.Batch(cmd, m.startThumbnails(), m.armAutosave())
+	return m, tea.Batch(cmd, m.startThumbnails(), m.armAutosave(), m.armBlink())
 }
 
 // setPalette recolours everything, the logo included.

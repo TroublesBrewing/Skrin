@@ -2,6 +2,20 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.42.0 — 2026-09-20
+
+**New (beta): Habiton, and streaks.** Step one of building the habit tracker out rather than cutting it, named and shaped by the user: "Karaktären heter Habiton och han jobbar inte med skam eller med ord. Han är ordlös men uttrycksfull på sitt sätt. Kroppsspråk är kommunikationsvägen."
+
+- **Habiton stands beside today's list**, pixel art in half-blocks in the theme's own colours, the same technique as the logo. Four states, all body language: **asleep** until something is ticked, **awake** once it is, **arms up** when the day is done, and **sleepy** when little has been ticked over the last few recorded days.
+- **No shame, no words.** The worst he does is look short of sleep. A day with no note at all is not counted against you — unrecorded is not the same as undone.
+- **He blinks**, three seconds open and 140 ms shut, and nothing else moves. The moods drawn with his eyes already closed don't blink at all.
+- **Streaks per habit**, counted back from today through the daily notes, shown in their own column. A single day isn't a streak and doesn't show: every start would otherwise look like a failure.
+- **Nothing is stored.** His mood and every streak are read from your checkboxes each time. There is no score file, nothing to sync, nothing to corrupt, and deleting Skrin leaves exactly the markdown you wrote.
+- The month behind today is read when the view opens and after each tick, never while drawing.
+- Tests: the moods from the habits themselves, including unrecorded days not making him tired and a good day after a bad stretch still reading as bright; that he is drawn and blinks; that the same notes always give the same mood; the streak column in the box, with a single day not showing; and the blink starting with the overlay and stopping with it. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux at four days' running and at none.
+
+**Step two, when there's history to do it on:** what a missed day costs, what a long break does, where any levels sit. Those are numbers that should come from real use rather than be invented now.
+
 ## v0.41.0 — 2026-09-20
 
 **New: a BETA block in Settings, and one line that leaves every experiment out of a release.** The user's idea, on deciding the habit tracker should be built out rather than cut: "kan vi typ skapa ett Beta-läge … Och så kan man enkelt utesluta alla beta-saker från 1.0?"

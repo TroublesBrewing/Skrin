@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"github.com/charmbracelet/x/ansi"
 	"github.com/lurioso/skrin/internal/version"
 	"os"
 	"strings"
@@ -384,5 +385,57 @@ func TestOneLineLeavesEveryExperimentOut(t *testing.T) {
 		if m.habitsOn() {
 			t.Error("and no experiment can be on")
 		}
+	}
+}
+
+// Habiton stands beside today's list, and the streak column counts the
+// days behind each habit.
+func TestHabitonAndStreaksInTodaysBox(t *testing.T) {
+	m := habitModel(t)
+	writeTemplate(t, m, habitsTemplate)
+	// Three days running for the first habit, one gap for the second.
+	for _, d := range []struct{ rel, body string }{
+		{"Daily/2026-09-13.md", "### Habits\n- [x] Meditera 10 min\n- [x] Läsa 30 min\n"},
+		{"Daily/2026-09-14.md", "### Habits\n- [x] Meditera 10 min\n- [ ] Läsa 30 min\n"},
+		{"Daily/2026-09-15.md", "### Habits\n- [x] Meditera 10 min\n- [ ] Läsa 30 min\n- [ ] Stretching\n"},
+	} {
+		if err := os.WriteFile(m.vault.Abs(d.rel), []byte(d.body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	m.reload()
+	press(m, "1", "T")
+	if m.habits == nil {
+		t.Fatalf("no overlay; flash %q", m.flash)
+	}
+	box := ansi.Strip(strings.Join(m.habitsBox(), "\n"))
+	if !strings.Contains(box, "3d") {
+		t.Errorf("three days running should show as a streak:\n%s", box)
+	}
+	if strings.Contains(box, "1d") {
+		t.Errorf("a single day isn't a streak:\n%s", box)
+	}
+	if !strings.Contains(box, "▀") && !strings.Contains(box, "▄") {
+		t.Errorf("Habiton should be drawn beside the list:\n%s", box)
+	}
+}
+
+func TestHabitonBlinksWhileTheOverlayIsOpenAndStopsAfter(t *testing.T) {
+	m := habitModel(t)
+	writeTemplate(t, m, habitsTemplate)
+	press(m, "t")
+	press(m, "1", "T")
+	if !m.blinking {
+		t.Fatal("the blink should start with the overlay")
+	}
+	before := m.habits.frame
+	m.Update(habitBlinkMsg{})
+	if m.habits.frame == before {
+		t.Error("the frame should move on")
+	}
+	press(m, "esc")
+	m.Update(habitBlinkMsg{}) // a tick still on its way when it closed
+	if m.habits != nil || m.blinking {
+		t.Error("and stop of its own accord once the overlay is gone")
 	}
 }

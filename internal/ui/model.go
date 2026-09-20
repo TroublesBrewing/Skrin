@@ -732,6 +732,15 @@ func (m *Model) peek() {
 	}
 }
 
+// backToFiles names the key that leaves the note pane, for the refusals
+// that point back there.
+func (m *Model) backToFiles() string {
+	if k := m.keyFor(inMain, actLeft); k != "" {
+		return k
+	}
+	return "h"
+}
+
 func (m *Model) noteAction(a action) {
 	vis := m.layout().bodyH - 2
 	if a == actVisual {
@@ -775,6 +784,12 @@ func (m *Model) noteAction(a action) {
 		return
 	case actHintsSplit:
 		m.startHints(true)
+		return
+	case actMark, actMarkAll:
+		m.flash = "Marking is for Files · " + m.backToFiles() + " goes back there"
+		return
+	case actCollapseAll:
+		m.flash = "Folders are in Files · " + m.backToFiles() + " goes back there"
 		return
 	case actParent:
 		if !m.goBack(false) {

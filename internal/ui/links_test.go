@@ -303,3 +303,17 @@ func TestAltHintToAHeadingScrollsTheSplit(t *testing.T) {
 		t.Errorf("the split should scroll to #Morning, not sit at the top")
 	}
 }
+
+// The charter's flow rule: no silent anything. Files keys pressed while
+// the note has focus used to do nothing at all; now they say where the
+// thing they act on lives.
+func TestNoFilesKeyIsSilentInTheNote(t *testing.T) {
+	for _, k := range []string{"space", "ctrl+a", "H"} {
+		m := newTestModel(t)
+		press(m, "G", "l") // reading Welcome.md
+		press(m, k)
+		if !strings.Contains(m.flash, "Files") || !strings.Contains(m.flash, "goes back there") {
+			t.Errorf("%q in the note: %q", k, m.flash)
+		}
+	}
+}

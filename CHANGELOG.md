@@ -2,6 +2,14 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.38.1 — 2026-09-20
+
+**Fix: three keys in the note did nothing and said nothing**, against the charter's flow rule that no key is silent. Found by a sweep for gaps between the UX charter and the code, after Enter's own gap had sat unbuilt for ten releases.
+
+- **`space`, `Ctrl+A` (marking) and `H` (close all folders)** pressed while the note has focus now say where the thing they act on lives: "Marking is for Files · h goes back there". The key named is whatever `h` has been overridden to.
+- **The one-key-one-meaning test now exists.** A hand-off from 2026-09-15 claimed the keymap constitution's rule 4 was covered by a test; the UX audit that September found it wasn't, and it still wasn't. `TestOneKeyMeansOneThingInAContext` checks every binding, with vim mode as the one documented exception, since its rows sit in the editor's context but only apply when `editor.vim` is on. The registry passes as it stands.
+- Also checked in the same sweep and found already in order: the "Select a note to <action>" wording across every refusal, and Esc stepping back one level in the search panel with replace on. Full suite green (`-count=1`), `go vet` and `gofmt` clean.
+
 ## v0.38.0 — 2026-09-20
 
 **Changed: Enter edits. Links are followed with f, and only f.** The opening model was decided and frozen in the UX charter on 2026-09-19, but the code still had Enter follow a lone link. The user hit it daily: "Enter måste leda till 'edit note' … Jag bygger ju upp en vana (och gör fel vilket skickar mig bort från mina anteckningar redan innan jag börjat skriva på dem)." This makes the code say what the charter says.

@@ -200,3 +200,29 @@ func TestResetAllDropsEveryOverride(t *testing.T) {
 		t.Error("nothing should be left to save")
 	}
 }
+
+// The keymap constitution, rule 4: one key, one meaning per context. An
+// override names a context and a key, so two rows claiming the same key in
+// one context would make the manual — and the override — ambiguous.
+//
+// The one exception is vim mode: its rows sit in the editor's context but
+// only apply when editor.vim is on, so a key may mean one thing there and
+// another in the ordinary editor.
+func TestOneKeyMeansOneThingInAContext(t *testing.T) {
+	type row struct{ group, help string }
+	seen := map[string]row{}
+	for _, b := range defaultBindings {
+		for _, k := range b.keys {
+			id := b.where + " " + k
+			first, ok := seen[id]
+			switch {
+			case !ok:
+				seen[id] = row{b.group, b.help}
+			case (first.group == groupVim) != (b.group == groupVim):
+				// vim mode and the ordinary editor: different modes.
+			default:
+				t.Errorf("%q means two things in %s: %q and %q", k, b.where, first.help, b.help)
+			}
+		}
+	}
+}

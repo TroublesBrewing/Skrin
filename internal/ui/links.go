@@ -41,9 +41,12 @@ type hintState struct {
 
 const hintKeys = "asdfghjklqwertyuiopzxcvbnm"
 
-// startHints labels the links in view with letters. With direct (Enter)
-// and only one link in view, it follows that link straight away.
-func (m *Model) startHints(direct bool) {
+// startHints labels the links in view with letters, and with only one in
+// view follows it straight away — f is the one way in, so it shouldn't
+// make you type a letter to say what there's no choice about. With split,
+// the link opens beside the note instead of in place, which is what Alt+F
+// and Alt+letter mean everywhere a note can open.
+func (m *Model) startHints(split bool) {
 	if m.notePath == "" {
 		m.flash = "Select a note to follow its links"
 		return
@@ -59,14 +62,14 @@ func (m *Model) startHints(direct bool) {
 	case len(hs) == 0:
 		m.flash = "No links in view"
 		return
-	case len(hs) == 1 && direct:
-		m.follow(hs[0].link, false)
+	case len(hs) == 1:
+		m.follow(hs[0].link, split)
 		return
 	}
 	for i, l := range hintLabels(len(hs)) {
 		hs[i].label = l
 	}
-	m.hints = &hintState{hints: hs}
+	m.hints = &hintState{hints: hs, split: split}
 	m.focus = paneNote
 }
 

@@ -345,7 +345,8 @@ func (m *Model) guideText(w int) []manualLine {
 
 	head("Links")
 	para("[[Note]], [[Note|alias]], [[Note#Heading]], [[Note#^block]], ![[embeds]] and markdown [text](path) links all work, and resolve the way Obsidian resolves them.")
-	para("f puts a letter on each link in view; type it to follow. Alt+ on the letter opens it in a split beside the note instead. Enter follows the link when there's only one in view.")
+	para("f follows links, and only f does. With one link in view it goes straight there; with several it puts a letter on each, and you type the letter. Alt+F does the same into a split beside the note, as does Alt+ on a letter — Alt means \"into a split\" wherever a note can open.")
+	para("Enter never follows a link. Enter enters, to write: on a note it opens the editor, on a folder it opens or closes it, on any other file it opens the file in its own app. That way the habit you build with Enter can't take you away from the note you meant to write in.")
 	para("A link to a note that doesn't exist yet is dimmed; following it offers to create the note.")
 	para("Backspace or Ctrl-o goes back, Ctrl-i goes forward, and b lists the notes linking here.")
 	para("In the editor, Alt-z, Alt-b and Alt-o reach zen, backlinks and the outline without leaving it — the outline moves the editor's own cursor, and picking a backlink saves first, since that leaves the note. Alt is how a view-mode action reaches you while you're still typing.")

@@ -2,6 +2,17 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.38.0 — 2026-09-20
+
+**Changed: Enter edits. Links are followed with f, and only f.** The opening model was decided and frozen in the UX charter on 2026-09-19, but the code still had Enter follow a lone link. The user hit it daily: "Enter måste leda till 'edit note' … Jag bygger ju upp en vana (och gör fel vilket skickar mig bort från mina anteckningar redan innan jag börjat skriva på dem)." This makes the code say what the charter says.
+
+- **Enter enters, to write.** On a note being read it opens the editor; on a note under the Files cursor it does what it already did; on a folder it opens or closes it; on any other file it opens the file in its own app. It never follows a link any more, so a habit built on Enter can't take you away from the note you meant to write in.
+- **f follows links, and only f.** With one link in view it goes straight there — what Enter used to do. With several it puts a letter on each, as before.
+- **Alt+F is f into a split:** one link in view opens beside the note at once; several put letters up, where any letter now opens beside without needing Alt as well. Alt means "into a split" wherever a note can open.
+- **`l` in the note isn't silent any more:** "Already here · enter edits this note · f follows a link". No key in the note is silent, per the charter.
+- The manual, the Guide, the tip of the day and the plan note now all say the same thing; the plan note points at the charter rather than repeating it.
+- Tests: Enter on a note with exactly one link in view opens the editor rather than following it; f follows that lone link; Alt+F takes it into a split, scrolled to the heading it names; `l` in the note answers. The old test for Enter-follows-a-link is gone, replaced by these. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux on the real vault and a scratch one.
+
 ## v0.37.0 — 2026-09-20
 
 **New: the editor saves by itself.** Data integrity, on the user's call: "Autosave är en viktig del i data integrity så jag ser det som både en nödvändighet och en av Obsidians basfunktioner." Obsidian has no save command at all, and until now the one way to lose text in Skrin was for the process to die with the editor open — a closed terminal, a dropped ssh session, a crash.

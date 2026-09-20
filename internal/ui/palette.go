@@ -28,6 +28,7 @@ var mainCommands = []paletteEntry{
 	{actSearch, "Search the vault", "find grep text look for replace"},
 	{actSwitcher, "Go to a note by name", "open file jump quick switcher"},
 	{actHints, "Follow a link", "jump open wikilink"},
+	{actHintsSplit, "Follow a link into a split", "beside wikilink open"},
 	{actBacklinks, "Backlinks: notes linking here", "references mentions incoming"},
 	{actOutline, "Outline: jump to a heading", "headings toc table of contents sections"},
 	{actQuickNote, "Quick note: capture a thought", "inbox jot capture scratch"},

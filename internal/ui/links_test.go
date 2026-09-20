@@ -58,12 +58,38 @@ func TestAltLeftRightToggleFoldersWhenFilesFocused(t *testing.T) {
 	}
 }
 
-func TestEnterFollowsTheOnlyLinkInView(t *testing.T) {
+// The frozen opening model: Enter enters, to write. Following a link is
+// f's job, and only f's — building the habit of Enter must never take you
+// away from the note you meant to write in.
+func TestEnterEditsTheNoteItIsOn(t *testing.T) {
 	m := newTestModel(t)
 	inFilosofi(m)
-	press(m, "l", "j", "l", "enter") // open Antik/, onto Zeno, open it (reading), follow its one link
+	press(m, "l", "j", "l") // open Antik/, onto Zeno, read it
+	if m.notePath != "Filosofi/Antik/Zeno.md" {
+		t.Fatalf("reading %q", m.notePath)
+	}
+	press(m, "enter") // Zeno has one link in view: [[Stoic|the Stoics]]
+	if m.editor == nil || m.edit.rel != "Filosofi/Antik/Zeno.md" {
+		t.Fatalf("enter should edit the note, not follow its link: editor %v, note %q", m.editor != nil, m.notePath)
+	}
+}
+
+func TestFFollowsTheOnlyLinkInView(t *testing.T) {
+	m := newTestModel(t)
+	inFilosofi(m)
+	press(m, "l", "j", "l", "f") // Zeno, then follow its one link straight there
 	if m.notePath != "Filosofi/Stoic.md" {
-		t.Errorf("enter followed to %q", m.notePath)
+		t.Errorf("f followed to %q", m.notePath)
+	}
+}
+
+func TestLInTheNoteSaysWhereToGo(t *testing.T) {
+	m := newTestModel(t)
+	onWelcome(m)
+	press(m, "l") // over to the note
+	press(m, "l") // already there
+	if !strings.Contains(m.flash, "enter edits") || !strings.Contains(m.flash, "f follows") {
+		t.Errorf("no key in the note is silent: %q", m.flash)
 	}
 }
 
@@ -269,7 +295,7 @@ func TestAltHintToAHeadingScrollsTheSplit(t *testing.T) {
 	}
 	m.Update(VaultChangedMsg{})
 	onWelcome(m)
-	press(m, "f", "alt+a")
+	press(m, "alt+f") // one link in view: alt+f takes it straight into a split
 	if m.split == nil || m.split.path != "Filosofi/Stoic.md" {
 		t.Fatalf("split = %+v", m.split)
 	}

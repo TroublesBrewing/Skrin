@@ -37,6 +37,7 @@ const (
 	actUndoEdit
 	actRedoEdit
 	actHints
+	actHintsSplit
 	actBacklinks
 	actOutline
 	actNextHeading
@@ -166,7 +167,7 @@ var defaultBindings = []binding{
 	{actRight, []string{"l", "right"}, "Files: opens the folder; a note reads · note: over to the note", groupMove, inMain},
 	{actFolderJumpUp, []string{"ctrl+up"}, "Files: jump to the previous folder row", groupMove, inMain},
 	{actFolderJumpDown, []string{"ctrl+down"}, "Files: jump to the next folder row", groupMove, inMain},
-	{actOpen, []string{"enter"}, "Files: toggle folder / edit note / open file · note: follow link", groupMove, inMain},
+	{actOpen, []string{"enter"}, "toggle a folder · edit a note · open any other file", groupMove, inMain},
 	{actParent, []string{"backspace"}, "Files: up to the parent folder · note: go back", groupMove, inMain},
 	{actCollapseAll, []string{"H"}, "close all folders", groupMove, inMain},
 	{actNextPane, []string{"tab"}, "switch between Files and the note", groupMove, inMain},
@@ -200,7 +201,8 @@ var defaultBindings = []binding{
 	{actEditExternal, []string{"E"}, "edit the note in $EDITOR", groupNote, inMain},
 	{actUndoEdit, []string{"u"}, "undo the note's last edit", groupNote, inMain},
 	{actRedoEdit, []string{"ctrl+r"}, "redo it", groupNote, inMain},
-	{actHints, []string{"f"}, "follow a link: letters appear on each", groupNote, inMain},
+	{actHints, []string{"f"}, "follow a link; one in view goes straight there", groupNote, inMain},
+	{actHintsSplit, []string{"alt+f"}, "follow a link into a split beside the note", groupNote, inMain},
 	{actLineNumbers, []string{"L"}, "toggle line numbers in notes", groupNote, inMain},
 	{actBacklinks, []string{"b"}, "notes linking here", groupNote, inMain},
 	{actOutline, []string{"o"}, "outline: jump to a heading", groupNote, inMain},
@@ -378,7 +380,7 @@ var actionName = map[action]string{
 	actEscape: "escape", actUndoOp: "undo-op", actDaily: "daily",
 	actEdit: "edit", actEditExternal: "edit-external",
 	actUndoEdit: "undo-edit", actRedoEdit: "redo-edit",
-	actHints: "hints", actLineNumbers: "line-numbers", actBacklinks: "backlinks", actOutline: "outline",
+	actHints: "hints", actHintsSplit: "hints-split", actLineNumbers: "line-numbers", actBacklinks: "backlinks", actOutline: "outline",
 	actNextHeading: "next-heading", actPrevHeading: "prev-heading",
 	actBack: "back", actForward: "forward",
 	actSearch: "search", actSwitcher: "switcher",

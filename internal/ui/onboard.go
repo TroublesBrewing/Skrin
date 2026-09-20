@@ -183,7 +183,7 @@ type tip struct {
 // tips reach past the first few keys to the ones that make Skrin quick,
 // one a day on the welcome screen.
 var tips = []tip{
-	{actHints, "puts a letter on every link in view — type it to follow"},
+	{actHints, "follows a link: straight there if there's one, a letter on each if there are more"},
 	{actSkimDown, "moves down and opens that note beside the one you're reading"},
 	{actBacklinks, "lists every note that links to this one"},
 	{actOutline, "jumps to any heading in the note"},

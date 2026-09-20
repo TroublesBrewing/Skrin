@@ -561,6 +561,8 @@ func (m *Model) do(a action) tea.Cmd {
 		m.restoreVersion(true)
 	case actHints:
 		m.startHints(false)
+	case actHintsSplit:
+		m.startHints(true)
 	case actLineNumbers:
 		m.toggleLineNumbers()
 	case actBacklinks:
@@ -764,6 +766,14 @@ func (m *Model) noteAction(a action) {
 		m.focus = paneFiles
 		return
 	case actOpen:
+		// Enter enters, to write: the frozen opening model. Following a
+		// link is f's job, and only f's.
+		m.startEdit()
+		return
+	case actRight:
+		m.flash = "Already here · enter edits this note · f follows a link"
+		return
+	case actHintsSplit:
 		m.startHints(true)
 		return
 	case actParent:

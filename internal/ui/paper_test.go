@@ -78,3 +78,39 @@ func TestTheGrainStaysInsideTheBorders(t *testing.T) {
 		}
 	}
 }
+
+// The grain is only worth painting if the shades differ enough to see.
+// Three steps of 255 is about one per cent, which is why the first try
+// was invisible on a light theme.
+func TestTheShadesActuallyDiffer(t *testing.T) {
+	light := theme.Builtin("flexoki-light")
+	for _, step := range []int{4, 8, 14} {
+		sh := shades(light, step)
+		if len(sh) < 2 {
+			t.Fatal("a grain needs shades")
+		}
+		seen := map[string]bool{}
+		for _, s := range sh {
+			seen[s] = true
+		}
+		if len(seen) != len(sh) {
+			t.Errorf("step %d: shades repeat, so there is no grain: %q", step, sh)
+		}
+	}
+}
+
+// A near-white background has nowhere to lighten to, so the grain goes
+// darker there — and lighter on a dark theme. Every shade must be its own
+// colour either way, or part of the grain is invisible.
+func TestTheGrainGoesWhereThereIsRoom(t *testing.T) {
+	for _, name := range []string{"flexoki-light", "gruvbox"} {
+		p := theme.Builtin(name)
+		seen := map[string]bool{}
+		for _, s := range shades(p, 8) {
+			seen[s] = true
+		}
+		if len(seen) != grainShades {
+			t.Errorf("%s: %d shades of %d are distinct", name, len(seen), grainShades)
+		}
+	}
+}

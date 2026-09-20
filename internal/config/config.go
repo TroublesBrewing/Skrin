@@ -56,7 +56,7 @@ type Config struct {
 	} `toml:"beta,omitempty"`
 	Paper struct {
 		Enabled  *bool `toml:"enabled,omitempty"`  // unset means off
-		Strength int   `toml:"strength,omitempty"` // how far the grain moves from the background, 1-10; unset means 3
+		Strength int   `toml:"strength,omitempty"` // how far the grain moves from the background, 1-20; unset means 6
 	} `toml:"paper,omitempty"`
 	Habits struct {
 		Enabled *bool `toml:"enabled,omitempty"` // unset means off: the habits view is asked for, never assumed
@@ -130,14 +130,15 @@ func (c Config) PaperEnabled() bool {
 }
 
 // PaperStrength is how far the grain's shades sit from the background, in
-// steps of 0-255. Three is a hair; ten is visible texture. Out-of-range
-// values are clamped rather than refused: a number in a config file
-// should never stop Skrin starting.
+// steps of 0-255. Below about four nothing is visible on a light theme:
+// three steps out of 255 is roughly one per cent, which a screen doesn't
+// show. Out-of-range values are clamped rather than refused, since a
+// number in a config file should never stop Skrin starting.
 func (c Config) PaperStrength() int {
 	if c.Paper.Strength == 0 {
-		return 3
+		return 6
 	}
-	return min(max(c.Paper.Strength, 1), 10)
+	return min(max(c.Paper.Strength, 1), 20)
 }
 
 // HabitsEnabled reports whether the habits view is switched on. It is off unless

@@ -2,6 +2,14 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.45.2 — 2026-09-21
+
+**Fix: the paper grain was invisible.** The user: "Papperstexturen syns inte eller gör väldigt minimal skillnad som inte går att uppfatta på min skärm." It was being painted — it just couldn't be seen, for two reasons, both arithmetic rather than opinion.
+
+- **The default was three steps of 255**, about one per cent. On flexoki-light that gave 252,249,237 against 255,252,240, which no screen shows. The default is now six, and Settings offers **off, faint (4), medium (8) or strong (14)** on one row, so the number that decides everything isn't hidden in a config file.
+- **Half the grain was clipping.** The shades were spread either side of the background, but a near-white background has nowhere to lighten to: 255,252,240 plus three is still 255. The grain now goes the way there is room — darker on a light theme, lighter on a dark one — so every shade is its own colour. On flexoki-light at medium that is 255,252,240 → 247,244,232 → 239,236,224, a range of sixteen steps instead of six.
+- Tests: the shades being distinct at each strength, and on both a light and a dark palette, so a clipped one can't come back unnoticed. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux that the row and its chooser work; how it looks is still yours to judge in foot.
+
 ## v0.45.1 — 2026-09-21
 
 **Fix: Shift+↑ and Shift+↓ select in the reading view too.** The user: "upp- och nerpilar måste kunna markera i view mode också. En del användare är vana vid det och pilarna fungerar på alla andra ställen." Quite right — Shift+arrow already selected in the editor and in every text field, so the reading view was the odd one out.

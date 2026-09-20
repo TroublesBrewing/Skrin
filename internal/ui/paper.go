@@ -33,14 +33,19 @@ func (m *Model) paperOn() bool {
 	return version.Beta && m.opts.Beta && m.opts.Paper
 }
 
-// shades are the grain's colours, darker and lighter than the theme's own
-// background by a hair. Worked out once per palette, not per frame.
+// shades are the grain's colours: the background itself and a step or two
+// away from it. They go the way there is room to go — darker on a light
+// theme, lighter on a dark one — because a near-white background has
+// nowhere to lighten to, and a shade that clips is a shade you can't see.
+// Worked out once per palette, not per frame.
 func shades(p theme.Palette, step int) []string {
+	dir := -1.0 // a light background: the room is downward
+	if p.Dark {
+		dir = 1.0
+	}
 	out := make([]string, grainShades)
 	for i := range out {
-		// -1, 0, +1 steps around the background, in even spacing.
-		d := (float64(i) - float64(grainShades-1)/2) * float64(step)
-		out[i] = bgSeq(nudge(p.Background, d))
+		out[i] = bgSeq(nudge(p.Background, dir*float64(i*step)))
 	}
 	return out
 }

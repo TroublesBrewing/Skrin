@@ -2,6 +2,13 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.46.1 — 2026-09-21
+
+**Fix: closed folders kept reopening after quit.** The user: "Om jag stänger alla mappar och sedan avslutar programmet ... så är vissa mappar alltid öppna igen när jag sedan öppnar programmet." The everyday way to close a folder — `Enter` on it, `toggle()` in `internal/ui/files.go` — set its `expanded` entry to `false` rather than deleting it. `openFolders()`, which feeds the saved session, only checked whether the key existed, not its value, so any folder ever opened and closed during a run came back open next launch.
+
+- `openFolders()` now includes a folder only when its value is `true`. `collapseAll()` and `out()` were already correct — they delete the key outright — which is why the bug only showed on folders closed with `Enter`.
+- Test added: open with `toggle()`, close again the same way, assert `openFolders()` is empty. Fails without the fix, passes with it. Full suite green, `go vet` clean.
+
 ## v0.46.0 — 2026-09-21
 
 **Removed: the paper grain.** The user, after trying every strength: "Jag ser ingen skillnad i faint, medium och strong. Men vet du vad? Vi struntar i det och slopar den featuren." Out it goes — `internal/ui/paper.go`, its tests, its Settings row, its config keys and its paragraph in the Guide.

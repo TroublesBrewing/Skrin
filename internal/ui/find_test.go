@@ -101,12 +101,8 @@ func TestQuickSwitcher(t *testing.T) {
 	press(m, "g")
 	typeText(m, "Brand new idea")
 	press(m, "enter")
-	if m.confirm == nil {
-		t.Fatal("an unknown name should offer to create the note")
-	}
-	press(m, "y")
 	if !m.vault.Exists("Brand new idea.md") || m.editor == nil {
-		t.Error("note not created")
+		t.Error("an unknown name should create the note at once")
 	}
 }
 

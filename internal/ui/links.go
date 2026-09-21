@@ -307,8 +307,12 @@ func (m *Model) goBack(forward bool) bool {
 	return true
 }
 
-// offerCreate asks to create the note a dangling link points to, where
-// Obsidian would put it.
+// offerCreate makes the note a dangling link points to, where Obsidian
+// would put it. Obsidian never asks — a click on a missing note makes
+// the note — so Skrin doesn't either: the note is created at once and
+// named in the flash, and U takes it away again. A declared new-note
+// folder that doesn't exist is treated as unset, because making a
+// folder is a write the user never asked for.
 func (m *Model) offerCreate(target string) {
 	rel := strings.Trim(target, "/")
 	if rel == "" {
@@ -323,7 +327,9 @@ func (m *Model) offerCreate(target string) {
 		case "current":
 			rel = path.Join(parentOf(m.notePath), rel)
 		case "folder":
-			rel = path.Join(s.NewFileFolderPath, rel)
+			if m.vault.IsDir(s.NewFileFolderPath) {
+				rel = path.Join(s.NewFileFolderPath, rel)
+			}
 		}
 	}
 	for _, part := range strings.Split(rel, "/") {
@@ -332,14 +338,8 @@ func (m *Model) offerCreate(target string) {
 			return
 		}
 	}
-	m.confirm = &confirm{
-		pill: " NEW NOTE ", question: fmt.Sprintf("%q doesn't exist yet. Create %s?", target, rel),
-		keys: "y/n", cancel: "Nothing created",
-		yes: func() {
-			if err := m.createNoteAt(rel); err != nil {
-				m.flash = err.Error()
-			}
-		},
+	if err := m.createNoteAt(rel); err != nil {
+		m.flash = err.Error()
 	}
 }
 
@@ -452,12 +452,25 @@ type completion struct {
 const maxSuggestions = 8
 
 // updateCompletion opens, refreshes or closes the [[ popup after an editor
-// key.
+// key. It only answers the key that changed the text: one whose edit
+// count moved since the popup last looked. A key that only moved the
+// cursor — skimming across an existing [[link]] — leaves the popup
+// alone, open or closed as it was, so movement never summons it.
 func (m *Model) updateCompletion() {
 	if m.editor == nil {
 		m.complete, m.noComplete = nil, false
+		m.editEdits = 0
 		return
 	}
+	// Only a key that changed the text moves the popup: one whose edit
+	// count moved since the popup last looked. A key that only moved
+	// the cursor — skimming across an existing [[link]] — leaves the
+	// popup exactly as it was, closed or open, so movement never
+	// summons it.
+	if m.editor.Edits() == m.editEdits {
+		return
+	}
+	m.editEdits = m.editor.Edits()
 	kind, q, items := completeLink, "", []suggestion(nil)
 	if lq, ok := m.editor.LinkQuery(); ok {
 		q = lq

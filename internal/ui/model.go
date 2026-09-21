@@ -227,6 +227,7 @@ type Model struct {
 	conflict   *conflict
 	complete   *completion // the [[ popup
 	noComplete bool        // the popup was dismissed for this link
+	editEdits  int         // the editor's edit count the popup last looked at
 
 	// At most one of these is open; it takes all keys while it is.
 	hints     *hintState

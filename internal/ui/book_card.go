@@ -68,6 +68,10 @@ func (o LibraryOptions) fetchCover() func(context.Context, string) ([]byte, erro
 type textArea struct {
 	runes []rune
 	cur   int
+	// wrapWidth is the width the renderer wraps the text to, so the
+	// arrow keys can move through the rows the eye actually sees. Zero
+	// means unwrapped: the arrows move by raw lines.
+	wrapWidth int
 }
 
 func (t *textArea) value() string { return string(t.runes) }
@@ -97,12 +101,70 @@ func (t *textArea) lineEnd(at int) int {
 	return at
 }
 
-// moveVert moves the cursor a line up (dir<0) or down (dir>0), keeping its
-// column when the line it lands on is at least as long. It reports whether
-// the movement was handled within the text area. If dir<0 at the first line
-// or dir>0 at the last line, it returns false so the caller can navigate to
-// adjacent fields.
+// moveVert moves the cursor one visible row up (dir<0) or down (dir>0)
+// in the display, not one raw line: in a box that word-wraps, the arrow
+// keys follow what the eye sees — a long wrapped line is several rows
+// to move through, not one — and keep the column the eye is in, as
+// editors do. Beyond the text it returns false so the caller can
+// navigate to adjacent fields.
 func (t *textArea) moveVert(dir int) bool {
+	if t.wrapWidth < 1 {
+		// No wrap in force: arrows move by raw lines.
+		return t.moveRawLine(dir)
+	}
+	// cells maps every display row to the rune positions it shows and
+	// their columns — from the same wrap the renderer draws, so an
+	// arrow lands exactly where the cursor was drawn. Every position,
+	// line ends included, belongs to exactly one row.
+	type cell struct{ idx, col int }
+	var rows [][]cell
+	lines, _, _ := t.lines()
+	start := 0
+	for _, l := range lines {
+		_, rowAt, colAt := wrapPlain([]rune(l), t.wrapWidth)
+		for vr := 0; vr < countRows(rowAt); vr++ {
+			var cs []cell
+			for i := range rowAt {
+				if rowAt[i] == vr {
+					cs = append(cs, cell{start + i, colAt[i]})
+				}
+			}
+			rows = append(rows, cs)
+		}
+		start += len([]rune(l)) + 1
+	}
+	visRow, visCol := -1, 0
+	for r, cs := range rows {
+		for _, c := range cs {
+			if c.idx == t.cur {
+				visRow, visCol = r, c.col
+				break
+			}
+		}
+		if visRow >= 0 {
+			break
+		}
+	}
+	if visRow < 0 {
+		return false // unreachable: every position is in some row
+	}
+	visRow += dir
+	if visRow < 0 || visRow >= len(rows) {
+		return false
+	}
+	// The column the eye is in, or the row's end when it lies past it.
+	pos := rows[visRow][len(rows[visRow])-1].idx
+	for _, c := range rows[visRow] {
+		if c.col >= visCol {
+			pos = c.idx
+			break
+		}
+	}
+	t.cur = pos
+	return true
+}
+
+func (t *textArea) moveRawLine(dir int) bool {
 	col := t.cur - t.lineStart(t.cur)
 	if dir < 0 {
 		start := t.lineStart(t.cur)
@@ -120,6 +182,17 @@ func (t *textArea) moveVert(dir int) bool {
 	nextStart := end + 1
 	t.cur = min(nextStart+col, t.lineEnd(nextStart))
 	return true
+}
+
+// countRows is the number of display rows a wrap maps runes to.
+func countRows(rowAt []int) int {
+	rows := 0
+	for _, r := range rowAt {
+		if r+1 > rows {
+			rows = r + 1
+		}
+	}
+	return rows
 }
 
 // handle applies an editing key and reports whether it used it. Tab and
@@ -805,6 +878,7 @@ func (m *Model) bookCardBox() []string {
 	body = append(body, strings.Repeat("─", inner))
 
 	body = append(body, "  "+m.st.muted.Render("Notes & Reflections:"))
+	c.notes.wrapWidth = inner - 2 // the arrows move through the rows this wrap draws
 	lines, curRow, curCol := c.notes.wrapped(inner - 2)
 	for i, l := range lines {
 		text := l

@@ -67,6 +67,12 @@ type Editor struct {
 	lineNumbers bool
 	folds       []Fold
 	st          styles
+	// edits counts every change to the text, however small: each push —
+	// a typed rune, a delete, a paste, a completion — bumps it, and
+	// moving the cursor never does. It is how the UI tells a key that
+	// changed the text from a key that only moved, so suggestions are
+	// offered by typing within brackets, never by skimming over a link.
+	edits int
 }
 
 // New opens text for editing. With vim it starts in Normal mode.
@@ -535,6 +541,7 @@ func (e *Editor) clampNormal() {
 // push saves the state before an edit. Runs of typing (or of deleting)
 // form one undo step, broken at spaces.
 func (e *Editor) push(kind string) {
+	e.edits++ // every change counts; the UI reads this to tell typing from moving
 	if kind == e.lastKind && (kind == "type" || kind == "delete") {
 		return
 	}
@@ -1021,6 +1028,12 @@ func firstNonSpace(line []rune) int {
 func leadingSpace(line []rune) string {
 	return string(line[:firstNonSpace(line)])
 }
+
+// Edits counts every change ever made to the text — typing, deleting,
+// pasting, a completion — and stays put when the cursor only moves. The
+// UI uses it so suggestions follow what a key wrote, not where the
+// cursor came to stand.
+func (e *Editor) Edits() int { return e.edits }
 
 // LinkQuery reports what has been typed after an unclosed "[[" before the
 // cursor on the current line. Typing an alias (after "|") ends it.

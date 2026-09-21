@@ -93,20 +93,23 @@ func TestLInTheNoteSaysWhereToGo(t *testing.T) {
 	}
 }
 
-func TestMissingLinkOffersToCreate(t *testing.T) {
+func TestMissingLinkCreatesTheNoteAtOnce(t *testing.T) {
 	m := newTestModel(t)
 	onWelcome(m)
-	press(m, "f", "s")
-	if m.confirm == nil || !strings.Contains(m.confirm.question, "Missing.md") {
-		t.Fatalf("confirm = %+v", m.confirm)
-	}
-	press(m, "y")
+	press(m, "f", "s") // the s-labelled link points at [[Missing]]
 	if !m.vault.Exists("Missing.md") || m.editor == nil {
-		t.Fatal("note not created and opened")
+		t.Fatalf("following a missing link should create and open it at once: exists %v, editor %v", m.vault.Exists("Missing.md"), m.editor != nil)
+	}
+	if !strings.Contains(m.flash, "Missing.md") {
+		t.Errorf("the flash should name the created note: %q", m.flash)
 	}
 	press(m, "esc", "backspace")
 	if m.notePath != "Welcome.md" {
 		t.Errorf("back from the new note went to %q", m.notePath)
+	}
+	press(m, "esc", "U")
+	if m.vault.Exists("Missing.md") {
+		t.Error("U should undo the creation")
 	}
 }
 

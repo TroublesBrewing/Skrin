@@ -106,12 +106,32 @@ func (c *quickNote) next() {
 func (c *quickNote) prev() { c.next() } // only two stops: either direction toggles
 
 // quickNoteName derives a note's file name from the overlay's first typed
-// line: trimmed, leading #s stripped (heading syntax isn't content), cut
-// at 50 characters hard (a name, not a novella), then the same character
-// check every create uses.
+// line: trimmed, markup taken off the way extract's pulled-out lines are
+// named — a leading #, list dashes, task boxes, and wiki links open up
+// to what they say (an alias when there is one) — cut at 50 characters
+// hard (a name, not a novella), then the same character check every
+// create uses. A first line of nothing but markup gives no name, and
+// says so instead of inventing one.
 func quickNoteName(firstLine string) (string, error) {
 	name := strings.TrimSpace(firstLine)
-	name = strings.TrimSpace(strings.TrimLeft(name, "#"))
+	name = strings.TrimSpace(strings.TrimLeft(name, "#>-*+ 	"))
+	if i := strings.Index(name, "] "); i >= 0 && i <= 3 && strings.HasPrefix(name, "[") {
+		name = name[i+2:] // a task's "[ ] " or "[x] "
+	}
+	// A wiki link names its target — the alias when there is one, as a
+	// link is read: [[Note|alias]] says alias, [[Note#Heading]] says
+	// Note (an alias wins over the heading, as it does in Obsidian).
+	if strings.HasPrefix(name, "[[") {
+		if inner, ok := strings.CutPrefix(strings.TrimSuffix(name, "]]"), "[["); ok {
+			if _, alias, has := strings.Cut(inner, "|"); has {
+				name = alias
+			} else if note, _, has := strings.Cut(inner, "#"); has {
+				name = note
+			} else {
+				name = inner
+			}
+		}
+	}
 	if r := []rune(name); len(r) > 50 {
 		name = strings.TrimSpace(string(r[:50]))
 	}
@@ -248,6 +268,7 @@ func (m *Model) quickNoteBox() []string {
 	inner := w - 4
 
 	var body []string
+	c.text.wrapWidth = inner - 2 // the arrows move through the rows this wrap draws
 	lines, curRow, curCol := c.text.wrapped(inner - 2)
 	rows := clamp(len(lines), 3, 8)
 	// Once the text outgrows rows (the box has stopped growing), scroll

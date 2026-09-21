@@ -251,11 +251,13 @@ func (t *files) follow(moves [][2]string, cursor bool) {
 	}
 }
 
-// openFolders lists the open folders, sorted, for the session.
+// openFolders lists the open folders, sorted, for the session. toggle keeps
+// a closed folder's key in expanded (set to false) rather than deleting it,
+// so a value check is needed here, not just presence.
 func (t *files) openFolders() []string {
 	var out []string
-	for p := range t.expanded {
-		if p != "" {
+	for p, open := range t.expanded {
+		if p != "" && open {
 			out = append(out, p)
 		}
 	}

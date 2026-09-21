@@ -153,6 +153,16 @@ func TestFilesRevealAndCollapseAll(t *testing.T) {
 	}
 }
 
+func TestFilesToggleClosedNotOpen(t *testing.T) {
+	f := newSample()
+	f.selectPath("Filosofi")
+	f.toggle() // open
+	f.toggle() // close again, via Enter, the everyday way
+	if got := f.openFolders(); len(got) != 0 {
+		t.Errorf("closed with toggle but still counted open: %q", got)
+	}
+}
+
 func TestFilesKeepPlaceWhenThingsGo(t *testing.T) {
 	f := newSample()
 	f.reveal("Filosofi/Stoic.md")

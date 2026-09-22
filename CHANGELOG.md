@@ -2,6 +2,19 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.48.0 — 2026-09-22
+
+**Paste reached the Book Card's fields nowhere, and nowhere did a pasted paragraph stay a paragraph.** Found while checking the board; both are the user's own reports in effect. Bugfixes, so both land inside the locked period.
+
+- **The Book Card takes paste now.** The user: "It's not possible to paste information in to the Book card." A paste doesn't arrive as a key press — it comes in as `tea.PasteMsg`, which the model hands to `m.paste` in `internal/ui/edit.go`. That switch names every surface that takes typing (the editor, the search field, the prompt, Quick Note, the Claude drawer, the form) — but never `m.book`. Typed text landed in a card field fine, because card keys are handled in `bookCardKey`; pasted text went nowhere, because the card was simply not a case. The card now has its own `pasteInto`, and every stop that takes typing takes paste: the fetch bar, all sixteen bibliographic fields, each quote's text, page and speaker, and Notes & Reflections. A break becomes a space in a one-line field and a real newline in Notes, exactly as in the same fields elsewhere. `Ctrl+V` on the Save button or an area heading now refuses out loud ("Nothing to paste into here: Tab to a field first") instead of answering "open a note in the editor first" at a card that is open and focused. Verified live in tmux: the same payload pasted into Title, a quote row and Notes, then saved and read back from disk.
+
+- **A terminal paste that lands nowhere no longer goes silent.** `tea.PasteMsg` was passed to `m.paste` and its result discarded, so Ctrl+Shift+V anywhere it couldn't land — the reading view, the card's Save button — did nothing at all with no word about it. It now takes the same refusals as `Ctrl+V`.
+
+- **A pasted paragraph stays a paragraph.** The user's terminal sends CR for a line break in a bracketed paste — the Enter key — not LF. The editor normalised CRLF but not a bare CR, so a two-line paste collapsed onto one line; captured live as `ONE\rTWO` in a saved note. `editor.NormalizeNewlines` now treats CRLF, bare CR and LF each as one break, and the editor, the Book Card's `textArea` and the one-line `lineInput` all use it. This one predates the card fix — the editor had it all along — which is why it is fixed in the shared buffer rather than at the card. Tests paste with CR, as a terminal actually does; an LF-only test passes while the real thing is broken.
+
+- Manual and registry updated: the copy/paste paragraph now names the Book Card, and the card's key group has its own `Ctrl+V` row.
+- Keymap test and the full suite green (`-count=1`), `go vet` and `gofmt` clean.
+
 ## v0.47.0 — 2026-09-22
 
 **Fixed four weeds, each reproduced live before the fix and verified live after it.** The user's ruling that started it: "Jag bedömer dem som buggar eftersom det är ett helt oönskat beteende ... Det är som ogräs. Allt som växer där man inte vill ha saker är ogräs, oavsett om det är en ros eller maskros." Four behaviours none of which was asked for, in one release — with the change to link-following being the one that shows in the flow, hence the minor bump.

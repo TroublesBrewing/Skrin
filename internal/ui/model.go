@@ -404,7 +404,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		delete(m.pendingThumb, thumbKey(msg.abs, msg.cols, msg.rows))
 	case tea.PasteMsg:
-		m.paste(msg.Content)
+		// A terminal paste (Ctrl+Shift+V) takes the same refusals as
+		// Ctrl+V: when nothing here takes text, say so rather than
+		// swallowing the paste in silence.
+		if !m.paste(msg.Content) {
+			m.pasted("", "")
+		}
 	case tea.ClipboardMsg:
 		if m.pasting {
 			m.pasting = false

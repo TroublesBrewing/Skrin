@@ -47,6 +47,10 @@ func (m *Model) pasteFrom(clip string, answered bool) {
 
 func (m *Model) pasted(s, note string) {
 	if !m.paste(s) {
+		if m.book != nil {
+			m.flash = "Nothing to paste into here: Tab to a field first"
+			return
+		}
 		m.flash = "Nothing here takes text: open a note in the editor first"
 		return
 	}

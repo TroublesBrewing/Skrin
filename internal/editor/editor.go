@@ -638,8 +638,21 @@ func (e *Editor) redoEdit() {
 }
 
 // insertText inserts s at the cursor; newlines split the line.
+// NormalizeNewlines turns the line endings text arrives with into the \n
+// the buffer stores. CRLF counts as one, and a bare CR as one too: a
+// terminal paste sends CR — the Enter key — not LF, so without this a
+// pasted paragraph collapses onto a single line. Text copied from another
+// application can end its lines the same way.
+func NormalizeNewlines(s string) string {
+	if !strings.ContainsRune(s, '\r') {
+		return s
+	}
+	s = strings.ReplaceAll(s, "\r\n", "\n")
+	return strings.ReplaceAll(s, "\r", "\n")
+}
+
 func (e *Editor) insertText(s string) {
-	parts := strings.Split(strings.ReplaceAll(s, "\r\n", "\n"), "\n")
+	parts := strings.Split(NormalizeNewlines(s), "\n")
 	line := e.lines[e.row]
 	tail := append([]rune(nil), line[e.col:]...)
 	first := append(append([]rune(nil), line[:e.col]...), []rune(parts[0])...)

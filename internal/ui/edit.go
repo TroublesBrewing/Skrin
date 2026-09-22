@@ -174,6 +174,11 @@ func (m *Model) paste(s string) bool {
 		}
 	case m.focus == paneClaude:
 		m.drawer.input.Paste(s)
+	case m.book != nil:
+		// The card reports whether its focused stop takes text: on the
+		// Save button it doesn't, and the caller must hear that rather
+		// than be told the paste landed.
+		return m.book.pasteInto(s)
 	case m.editor != nil:
 		m.editor.Paste(s)
 		m.updateCompletion()

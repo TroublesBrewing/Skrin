@@ -332,7 +332,7 @@ func (m *Model) guideText(w int) []manualLine {
 
 	head("Claude")
 	para("c opens the Claude drawer and C puts you straight into typing; Ctrl-k does it from the editor. The drawer sits along the bottom, or on the right with Alt-p or assistant.position = \"right\".")
-	para("Selecting text in the editor (Shift and the arrows) or in a note (v, then j/k) and pressing Ctrl+C copies it, over the terminal's own clipboard, which works over ssh and in tmux too. Ctrl+V pastes wherever you're typing. Ctrl+Shift+V pastes as well, and always has: that one your terminal does by itself.")
+	para("Selecting text in the editor (Shift and the arrows) or in a note (v, then j/k) and pressing Ctrl+C copies it, over the terminal's own clipboard, which works over ssh and in tmux too. Ctrl+V pastes wherever you're typing — the editor, the search field, a form, the Book Card's fields and its Notes. Ctrl+Shift+V pastes as well, and always has: that one your terminal does by itself.")
 	para("A terminal program has to ask the terminal for the clipboard, and some terminals hand back nothing — reading the clipboard would let anything on the far end of an ssh session see what you copied. When that happens Ctrl+V puts in what you last copied in Skrin, and says so; Ctrl+Shift+V is the way to bring in text from elsewhere.")
 	para("Claude sees the open note (the focused one, in a split), sent along with your message whenever it has changed. Highlight text first (v and j/k in the note, Shift and the arrows in the editor) and it goes into your message.")
 	para("Claude can read the whole vault but can't change anything by itself. A change it wants shows as a diff in the note panel: y applies it, n rejects it. u undoes an applied edit, and U a create, move or delete.")

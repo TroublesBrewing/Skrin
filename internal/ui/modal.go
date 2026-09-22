@@ -24,9 +24,11 @@ func (in *lineInput) set(s string) {
 
 func (in *lineInput) value() string { return string(in.runes) }
 
-// insert types s at the cursor. Pasted newlines become spaces.
+// insert types s at the cursor. A one-line field has no lines, so every
+// kind of break becomes a space: LF, CRLF and the bare CR a terminal
+// paste sends.
 func (in *lineInput) insert(s string) {
-	r := []rune(strings.NewReplacer("\r\n", " ", "\n", " ").Replace(s))
+	r := []rune(strings.NewReplacer("\r\n", " ", "\r", " ", "\n", " ").Replace(s))
 	in.runes = append(in.runes[:in.cur], append(r, in.runes[in.cur:]...)...)
 	in.cur += len(r)
 }

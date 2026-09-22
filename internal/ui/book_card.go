@@ -10,6 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/lurioso/skrin/internal/book"
+	"github.com/lurioso/skrin/internal/editor"
 	"github.com/lurioso/skrin/internal/vault"
 )
 
@@ -77,12 +78,12 @@ type textArea struct {
 func (t *textArea) value() string { return string(t.runes) }
 
 func (t *textArea) set(s string) {
-	t.runes = []rune(strings.ReplaceAll(s, "\r\n", "\n"))
+	t.runes = []rune(editor.NormalizeNewlines(s))
 	t.cur = len(t.runes)
 }
 
 func (t *textArea) insert(s string) {
-	r := []rune(strings.ReplaceAll(s, "\r\n", "\n"))
+	r := []rune(editor.NormalizeNewlines(s))
 	t.runes = append(t.runes[:t.cur], append(r, t.runes[t.cur:]...)...)
 	t.cur += len(r)
 }
@@ -434,6 +435,31 @@ func (c *bookCard) focusedInput() *lineInput {
 		}
 	}
 	return nil
+}
+
+// pasteInto puts pasted text in whichever field the card has focused, and
+// reports whether anything took it: the Save button and the area headings
+// take no text, so there the card refuses rather than swallowing it.
+//
+// It exists because a paste doesn't arrive as a key press — it comes in as
+// its own message, tea.PasteMsg, which the model hands to m.paste. Every
+// other surface that takes typing is named in that one switch; the card
+// used to handle its keys in bookCardKey alone, so text pasted into a card
+// field went nowhere while typed text landed fine.
+//
+// A newline behaves as it does in the same field elsewhere: a one-line
+// field gets a space, the Notes area gets a real line break.
+func (c *bookCard) pasteInto(s string) bool {
+	c.err = ""
+	if c.area == bookAreaNotes {
+		c.notes.insert(s)
+		return true
+	}
+	if in := c.focusedInput(); in != nil {
+		in.insert(s)
+		return true
+	}
+	return false
 }
 
 // addQuote appends a blank quote row and focuses its text field.

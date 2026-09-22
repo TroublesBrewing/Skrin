@@ -324,6 +324,7 @@ var defaultBindings = []binding{
 	{actAddQuote, []string{"alt+q"}, "add another quote", groupBookCard, inBookCard},
 	{actSaveBook, []string{"ctrl+s"}, "save the book note and download its cover", groupBookCard, inBookCard},
 	{actCancel, []string{"esc"}, "step back: close a result list, then the card", groupBookCard, inBookCard},
+	{actNone, []string{"ctrl+v"}, "paste into the focused field (Notes takes whole lines)", groupBookCard, inBookCard},
 
 	{actNone, []string{"tab", "shift+tab"}, "Keys → Settings → Guide, and back", groupManual, inManual},
 	{actNone, []string{"j", "k"}, "move between keys", groupManual, inManual},

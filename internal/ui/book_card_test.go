@@ -487,3 +487,66 @@ func TestBookCardFrameFillsTerminalExactly(t *testing.T) {
 		checkFrame(t, m, "Book Card open")
 	}
 }
+
+func TestBookCardCursorBlinksWhileOpen(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "B")
+	if m.book == nil || !m.book.cursorOn {
+		t.Fatal("a fresh card should draw its cursor")
+	}
+	// The blink message toggles the focused cursor off, then on again.
+	m.Update(bookBlinkMsg{})
+	if m.book.cursorOn {
+		t.Error("first blink should turn the cursor off")
+	}
+	m.Update(bookBlinkMsg{})
+	if !m.book.cursorOn {
+		t.Error("second blink should turn the cursor back on")
+	}
+	// Once the card is closed, a stray blink must not reopen anything.
+	m.book = nil
+	m.Update(bookBlinkMsg{})
+	if m.book != nil {
+		t.Error("a blink after closing must not resurrect the card")
+	}
+}
+
+func TestBookCardDotLeadersAlignTheValues(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "B")
+	body := m.bookCardBox()
+	strip := func(s string) string { return ansi.Strip(s) }
+
+	// The value column is where the dot leader ends: after the label and
+	// its colon, a run of dots, then a space. Every static field's value
+	// must start at that same column so they read as one form.
+	valueCol := -1
+	for _, line := range body {
+		s := strip(line)
+		for _, l := range staticLabels {
+			i := strings.Index(s, l+":")
+			if i < 0 {
+				continue
+			}
+			rest := s[i+len(l)+1:] // after "Label:"
+			if !strings.HasPrefix(rest, ".") {
+				t.Errorf("label %q should be followed by dot leaders, got %q", l, rest)
+				continue
+			}
+			// The value begins right after the dot run and the space.
+			col := i + len(l) + 1
+			for col < len(s) && s[col] == '.' {
+				col++
+			}
+			col++ // the single space after the leader
+			if valueCol < 0 {
+				valueCol = col
+			} else if col != valueCol {
+				t.Errorf("label %q value starts at col %d, want %d", l, col, valueCol)
+			}
+		}
+	}
+	if valueCol < 0 {
+		t.Fatal("no static label rendered with dot leaders")
+	}
+}

@@ -220,6 +220,9 @@ type Model struct {
 	// blinking says a blink is already on its way, so the overlay's
 	// updates don't pile ticks on top of each other.
 	blinking bool
+	// bookBlinking says the Book Card cursor's blink is already on its
+	// way, so its updates don't pile ticks either.
+	bookBlinking bool
 	// autosaving says the editor's clock is running: text that isn't on
 	// disk yet, and a tick on its way to write it.
 	autosaving bool
@@ -434,6 +437,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.habits != nil {
 			m.habits.frame++
 		}
+	case bookBlinkMsg:
+		m.bookBlinking = false
+		if m.book != nil {
+			m.book.cursorOn = !m.book.cursorOn
+		}
 	case autosaveMsg:
 		m.autosaving = false
 		m.autosave()
@@ -520,7 +528,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	m.settle()
-	return m, tea.Batch(cmd, m.startThumbnails(), m.armAutosave(), m.armBlink())
+	return m, tea.Batch(cmd, m.startThumbnails(), m.armAutosave(), m.armBlink(), m.armBookBlink())
 }
 
 // setPalette recolours everything, the logo included.

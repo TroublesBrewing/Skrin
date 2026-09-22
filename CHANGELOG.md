@@ -2,6 +2,15 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.53.0 — 2026-09-22
+
+**The Book Card is easier to read: one cursor, and fields lined up.** Two observations from the user about the card's clarity, both in service of "begripligt före kraftfullt":
+
+- *"a blinking cursor could help in the Book Card where every row shows a cursor at once but only one is active."* The deeper problem was bigger than the blink: every one-line field drew its cursor at its own end, so the card showed a dozen cursors at once. Now **only the focused field draws a cursor**, and that cursor **blinks** (about half a second on, half off), so the active row is obvious at a glance. The editor is untouched — it already has a single unambiguous cursor.
+- *"add dots after every property so all input lines up … just to make the view more structured."* Each label now gets a **dot leader** that pulls every value to the same column, so the card reads as a form rather than a ragged list. The longest label (Translator(s)) sets the column; shorter labels fill the gap with dots, and the colon sits right after the label.
+
+No new key, no new concept, no new settings. The blink stops itself when the card closes, the way the habit overlay's does. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Built under the locked period on the user's instruction ("börja bygga").
+
 ## v0.52.0 — 2026-09-22
 
 **Settings are divided into Global Settings and Vault Settings.** The idea, from the user's own note ("Separate vaults" in the Idélådan, written right after the vault picker landed): *"Vaults should be separate. They should not share vault specific settings. Keybindings and other global skrin settings are fine, necessary even. A hard demand. But vault specific settings like what template goes with what folder is NOT something to share between vaults. Each vault or skrin … is a blank slate. We should divide settings into Global Settings and Vault Settings."*

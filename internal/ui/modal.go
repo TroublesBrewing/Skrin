@@ -83,6 +83,10 @@ func (in *lineInput) view(text, cursor lipgloss.Style) string {
 	return text.Render(string(in.runes[:in.cur])) + cursor.Render(at) + text.Render(after)
 }
 
+// plain renders the field's text with no cursor, for a field that is not
+// focused: a card shows its cursor on the active field alone.
+func (in *lineInput) plain() string { return string(in.runes) }
+
 type promptKind int
 
 const (

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/lurioso/skrin/internal/book"
 	"github.com/lurioso/skrin/internal/editor"
@@ -336,6 +337,7 @@ type bookCard struct {
 
 	search   lineInput
 	fetching bool
+	cursorOn bool // the focused field's cursor is drawn when true (it blinks)
 
 	title, subtitle, authors, translators lineInput
 	origYear, editionYear, pages          lineInput
@@ -518,10 +520,29 @@ func atoiOr(s string, fallback int) int {
 	return n
 }
 
+// bookBlinkMsg toggles the Book Card's focused cursor between drawn and
+// blank, so the one active field among many is easy to spot.
+type bookBlinkMsg struct{}
+
+// bookBlinkGap is how long the Book Card cursor stays in each state.
+const bookBlinkGap = 500 * time.Millisecond
+
+// armBookBlink keeps the Book Card's cursor blinking while the card is
+// open, and stops of its own accord once it closes. Like armBlink and
+// armAutosave, it's called at the end of every update; it arms one tick
+// only when the card is open and none is already on its way.
+func (m *Model) armBookBlink() tea.Cmd {
+	if m.book == nil || m.bookBlinking {
+		return nil
+	}
+	m.bookBlinking = true
+	return tea.Tick(bookBlinkGap, func(time.Time) tea.Msg { return bookBlinkMsg{} })
+}
+
 // openBookCard opens a blank Book Card, or — if the open note parses as a
 // book note — one pre-filled from it for editing.
 func (m *Model) openBookCard() {
-	c := &bookCard{}
+	c := &bookCard{cursorOn: true}
 	if m.notePath != "" {
 		if b, ok := book.Parse(m.noteSrc); ok {
 			c.editingRel, c.origSrc, c.origCover = m.notePath, m.noteSrc, b.Cover
@@ -839,12 +860,34 @@ func (m *Model) bookCardBox() []string {
 		}
 		return "  " + fit(s, inner-2)
 	}
-	field := func(label string, in *lineInput, focused bool) string {
-		text := m.st.muted.Render(label+": ") + in.view(m.st.text, m.st.cursor)
-		if focused {
-			text = m.st.titleFocus.Render(label+": ") + in.view(m.st.text, m.st.cursor)
+
+	// value renders a single-line field's text, with the cursor drawn at
+	// the field's end only when the field is focused (and the cursor is on).
+	val := func(in *lineInput, focused bool) string {
+		if focused && c.cursorOn {
+			return in.view(m.st.text, m.st.cursor)
 		}
-		return text
+		return m.st.text.Render(in.plain())
+	}
+
+	// labelW is the width the static labels reserve: the longest label plus
+	// a colon and a leading space, so every field's value starts in line.
+	labelW := 0
+	for _, l := range staticLabels {
+		labelW = max(labelW, ansi.StringWidth(l)+2)
+	}
+
+	// field renders one static field: its label, a dot leader filling the
+	// gap to the common column, then the value — focused label accent and
+	// a cursor on the focused field, muted label and no cursor otherwise.
+	field := func(label string, in *lineInput, focused bool) string {
+		pad := max(labelW-ansi.StringWidth(label), 0)
+		leader := strings.Repeat(".", pad)
+		labelStyle := m.st.muted
+		if focused {
+			labelStyle = m.st.titleFocus
+		}
+		return labelStyle.Render(label+":") + m.st.muted.Render(leader) + " " + val(in, focused)
 	}
 
 	searchFocused := c.area == bookAreaSearch
@@ -852,7 +895,7 @@ func (m *Model) bookCardBox() []string {
 	if c.fetching {
 		fetchLabel = "Fetching… "
 	}
-	body = append(body, row(searchFocused, fetchLabel+c.search.view(m.st.text, m.st.cursor)))
+	body = append(body, row(searchFocused, fetchLabel+val(&c.search, searchFocused)))
 	body = append(body, strings.Repeat("─", inner))
 
 	labels := staticLabels
@@ -876,11 +919,7 @@ func (m *Model) bookCardBox() []string {
 		pf := c.area == bookAreaQuote && c.quoteIdx == qi && c.quoteField == 1
 		sf := c.area == bookAreaQuote && c.quoteIdx == qi && c.quoteField == 2
 
-		tCur := m.st.text
-		if tf {
-			tCur = m.st.cursor
-		}
-		body = append(body, row(tf, "\" "+q.text.view(m.st.text, tCur)+" \""))
+		body = append(body, row(tf, "\" "+val(&q.text, tf)+" \""))
 
 		pageCur := m.st.text
 		pageLabel := m.st.muted.Render("Page: ")
@@ -908,7 +947,7 @@ func (m *Model) bookCardBox() []string {
 	lines, curRow, curCol := c.notes.wrapped(inner - 2)
 	for i, l := range lines {
 		text := l
-		if c.area == bookAreaNotes && i == curRow {
+		if c.area == bookAreaNotes && i == curRow && c.cursorOn {
 			r := []rune(l)
 			at := " "
 			if curCol < len(r) {

@@ -101,6 +101,7 @@ func run(vaultArg string) error {
 		RolloverTodos:   cfg.RolloverTodos(),
 		RestoreLastNote: cfg.RestoreLastNote(),
 		InstantOpen:     cfg.InstantOpen(),
+		CursorBlink:     cfg.CursorBlink(),
 		Vim:             cfg.Editor.Vim,
 		ExternalEditor:  cfg.Editor.External,
 		Config:          cfg,

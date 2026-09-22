@@ -337,7 +337,6 @@ type bookCard struct {
 
 	search   lineInput
 	fetching bool
-	cursorOn bool // the focused field's cursor is drawn when true (it blinks)
 
 	title, subtitle, authors, translators lineInput
 	origYear, editionYear, pages          lineInput
@@ -520,29 +519,10 @@ func atoiOr(s string, fallback int) int {
 	return n
 }
 
-// bookBlinkMsg toggles the Book Card's focused cursor between drawn and
-// blank, so the one active field among many is easy to spot.
-type bookBlinkMsg struct{}
-
-// bookBlinkGap is how long the Book Card cursor stays in each state.
-const bookBlinkGap = 500 * time.Millisecond
-
-// armBookBlink keeps the Book Card's cursor blinking while the card is
-// open, and stops of its own accord once it closes. Like armBlink and
-// armAutosave, it's called at the end of every update; it arms one tick
-// only when the card is open and none is already on its way.
-func (m *Model) armBookBlink() tea.Cmd {
-	if m.book == nil || m.bookBlinking {
-		return nil
-	}
-	m.bookBlinking = true
-	return tea.Tick(bookBlinkGap, func(time.Time) tea.Msg { return bookBlinkMsg{} })
-}
-
 // openBookCard opens a blank Book Card, or — if the open note parses as a
 // book note — one pre-filled from it for editing.
 func (m *Model) openBookCard() {
-	c := &bookCard{cursorOn: true}
+	c := &bookCard{}
 	if m.notePath != "" {
 		if b, ok := book.Parse(m.noteSrc); ok {
 			c.editingRel, c.origSrc, c.origCover = m.notePath, m.noteSrc, b.Cover
@@ -864,8 +844,8 @@ func (m *Model) bookCardBox() []string {
 	// value renders a single-line field's text, with the cursor drawn at
 	// the field's end only when the field is focused (and the cursor is on).
 	val := func(in *lineInput, focused bool) string {
-		if focused && c.cursorOn {
-			return in.view(m.st.text, m.st.cursor)
+		if focused {
+			return in.view(m.st.text, m.cursorStyle())
 		}
 		return m.st.text.Render(in.plain())
 	}
@@ -924,7 +904,7 @@ func (m *Model) bookCardBox() []string {
 		pageCur := m.st.text
 		pageLabel := m.st.muted.Render("Page: ")
 		if pf {
-			pageCur = m.st.cursor
+			pageCur = m.cursorStyle()
 			pageLabel = m.st.titleFocus.Render("Page: ")
 		}
 		pagePart := pageLabel + q.page.view(m.st.text, pageCur)
@@ -932,7 +912,7 @@ func (m *Model) bookCardBox() []string {
 		speakerCur := m.st.text
 		speakerLabel := m.st.muted.Render("Speaker: ")
 		if sf {
-			speakerCur = m.st.cursor
+			speakerCur = m.cursorStyle()
 			speakerLabel = m.st.titleFocus.Render("Speaker: ")
 		}
 		speakerPart := speakerLabel + q.speaker.view(m.st.text, speakerCur)
@@ -947,7 +927,7 @@ func (m *Model) bookCardBox() []string {
 	lines, curRow, curCol := c.notes.wrapped(inner - 2)
 	for i, l := range lines {
 		text := l
-		if c.area == bookAreaNotes && i == curRow && c.cursorOn {
+		if c.area == bookAreaNotes && i == curRow && m.cursorOn {
 			r := []rune(l)
 			at := " "
 			if curCol < len(r) {

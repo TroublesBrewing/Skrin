@@ -67,6 +67,10 @@ type Editor struct {
 	lineNumbers bool
 	folds       []Fold
 	st          styles
+	// cursorOn says the cursor is drawn in this frame; the UI toggles it
+	// to make the cursor blink. False renders the cell under the cursor
+	// as plain text instead of a block.
+	cursorOn bool
 	// edits counts every change to the text, however small: each push —
 	// a typed rune, a delete, a paste, a completion — bumps it, and
 	// moving the cursor never does. It is how the UI tells a key that
@@ -77,7 +81,7 @@ type Editor struct {
 
 // New opens text for editing. With vim it starts in Normal mode.
 func New(text string, vim bool, pal theme.Palette) *Editor {
-	e := &Editor{goal: -1, w: 40, h: 10, vim: vim}
+	e := &Editor{goal: -1, w: 40, h: 10, vim: vim, cursorOn: true}
 	e.SetPalette(pal)
 	e.load(text)
 	e.saved = e.Text()
@@ -137,6 +141,14 @@ func (e *Editor) SetLineNumbers(on bool) {
 	e.lineNumbers = on
 	e.scroll()
 }
+
+// SetCursorOn turns the blinking cursor's drawing on or off for this
+// frame; the UI calls it as the shared blink toggles, so the editor's
+// cursor blinks in step with every other field's.
+func (e *Editor) SetCursorOn(on bool) { e.cursorOn = on }
+
+// CursorOn reports whether the cursor is drawn this frame.
+func (e *Editor) CursorOn() bool { return e.cursorOn }
 
 // LineNumbers reports whether line numbers are enabled.
 func (e *Editor) LineNumbers() bool { return e.lineNumbers }

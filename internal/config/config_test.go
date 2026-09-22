@@ -352,6 +352,36 @@ func TestInstantOpenReadsOverride(t *testing.T) {
 	}
 }
 
+func TestCursorBlinkDefaultsToMedium(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.CursorBlink() != "medium" {
+		t.Errorf("CursorBlink() = %q, want medium", c.CursorBlink())
+	}
+}
+
+func TestCursorBlinkReadsOverride(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", home)
+	dir := filepath.Join(home, "skrin")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte("[general]\ncursor_blink = \"fast\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.CursorBlink() != "fast" {
+		t.Errorf("CursorBlink() = %q, want fast", c.CursorBlink())
+	}
+}
+
 func TestObsidiansVaultListPerSystem(t *testing.T) {
 	cases := []struct{ goos, xdg, appData, want string }{
 		{"linux", "", "", "/home/u/.config/obsidian/obsidian.json"},

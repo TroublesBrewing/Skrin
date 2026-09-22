@@ -300,7 +300,7 @@ func (m *Model) quickNoteBox() []string {
 			if curCol < len(r) {
 				post = string(r[curCol+1:])
 			}
-			body = append(body, "  "+m.st.text.Render(pre)+m.st.cursor.Render(at)+m.st.text.Render(post))
+			body = append(body, "  "+m.st.text.Render(pre)+m.cursorStyle().Render(at)+m.st.text.Render(post))
 			continue
 		}
 		body = append(body, "  "+m.st.text.Render(l))
@@ -314,7 +314,7 @@ func (m *Model) quickNoteBox() []string {
 		cur := m.st.text
 		if folderFocused {
 			label = m.st.titleFocus.Render("Folder: ")
-			cur = m.st.cursor
+			cur = m.cursorStyle()
 		}
 		valueView = c.folder.view(m.st.text, cur)
 	}

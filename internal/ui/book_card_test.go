@@ -491,21 +491,21 @@ func TestBookCardFrameFillsTerminalExactly(t *testing.T) {
 func TestBookCardCursorBlinksWhileOpen(t *testing.T) {
 	m := newTestModel(t)
 	press(m, "B")
-	if m.book == nil || !m.book.cursorOn {
+	if m.book == nil || !m.cursorOn {
 		t.Fatal("a fresh card should draw its cursor")
 	}
 	// The blink message toggles the focused cursor off, then on again.
-	m.Update(bookBlinkMsg{})
-	if m.book.cursorOn {
+	m.Update(cursorBlinkMsg{})
+	if m.cursorOn {
 		t.Error("first blink should turn the cursor off")
 	}
-	m.Update(bookBlinkMsg{})
-	if !m.book.cursorOn {
+	m.Update(cursorBlinkMsg{})
+	if !m.cursorOn {
 		t.Error("second blink should turn the cursor back on")
 	}
-	// Once the card is closed, a stray blink must not reopen anything.
+	// Once the card is closed, a stray blink must not resurrect anything.
 	m.book = nil
-	m.Update(bookBlinkMsg{})
+	m.Update(cursorBlinkMsg{})
 	if m.book != nil {
 		t.Error("a blink after closing must not resurrect the card")
 	}

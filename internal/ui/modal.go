@@ -123,7 +123,7 @@ func (m *Model) promptKey(k tea.KeyPressMsg) tea.Cmd {
 func (m *Model) promptLine() string {
 	p := m.prompt
 	names := map[promptKind]string{promptNewNote: " NEW NOTE ", promptNewFolder: " NEW FOLDER ", promptRename: " RENAME ", promptOpenFolder: " OPEN FOLDER "}
-	left := m.st.pill.Render(names[p.kind]) + " " + m.st.text.Render(p.label+" ▸ ") + p.in.view(m.st.text, m.st.cursor)
+	left := m.st.pill.Render(names[p.kind]) + " " + m.st.text.Render(p.label+" ▸ ") + p.in.view(m.st.text, m.cursorStyle())
 	right := m.st.muted.Render("enter ok · esc cancel")
 	if p.err != "" {
 		right = m.st.errText.Render(p.err)
@@ -355,7 +355,7 @@ func (m *Model) chooserBox() []string {
 	w := min(clamp(m.width*3/5, 40, 80), m.width-4)
 	inner := w - 2
 	rows := clamp(m.height-12, 3, 14)
-	body := []string{" " + m.st.muted.Render(c.prompt+" ▸ ") + c.in.view(m.st.text, m.st.cursor), ""}
+	body := []string{" " + m.st.muted.Render(c.prompt+" ▸ ") + c.in.view(m.st.text, m.cursorStyle()), ""}
 	off := max(0, c.cur-rows+1)
 	for i := off; i < min(len(c.matches), off+rows); i++ {
 		it := c.items[c.matches[i]]

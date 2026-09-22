@@ -111,6 +111,9 @@ type Options struct {
 	// open (l/→ to read, Enter to edit), and otherwise keeps showing
 	// whatever was open last. Editable from the Settings tab of `?`.
 	InstantOpen bool
+	// CursorBlink is how the input cursor blinks everywhere there is a
+	// field to type in: "off", "slow", "medium" (the default) or "fast".
+	CursorBlink string
 	// Assistant sets up the Claude drawer.
 	Assistant AssistantOptions
 	// Library sets up the Book Card (B): folders, default status and the
@@ -220,9 +223,12 @@ type Model struct {
 	// blinking says a blink is already on its way, so the overlay's
 	// updates don't pile ticks on top of each other.
 	blinking bool
-	// bookBlinking says the Book Card cursor's blink is already on its
-	// way, so its updates don't pile ticks either.
-	bookBlinking bool
+	// cursorOn says the input cursor is drawn in this frame; false blanks
+	// it. It is toggled by cursorBlinkMsg while CursorBlink is not "off".
+	cursorOn bool
+	// cursorBlinking says a cursor-blink tick is already on its way, so
+	// updates don't pile ticks either.
+	cursorBlinking bool
 	// autosaving says the editor's clock is running: text that isn't on
 	// disk yet, and a tick on its way to write it.
 	autosaving bool
@@ -301,7 +307,7 @@ func New(v *vault.Vault, pal theme.Palette, opts Options) (*Model, error) {
 	m := &Model{
 		vault: v, idx: index.New(), snaps: snapshot.Open(v.Root), files: newFiles(),
 		opts: opts, marks: map[string]bool{}, jumpSrc: -1, splitJumpSrc: -1, noteAt: -1, events: make(chan tea.Msg, 256),
-		thumbCache: map[string]thumbEntry{}, keys: newKeymap(opts.Config.Keys),
+		thumbCache: map[string]thumbEntry{}, keys: newKeymap(opts.Config.Keys), cursorOn: true,
 	}
 	m.journal.Keep = m.snaps.Save // U keeps what's on disk before it restores
 	m.drawer.input = editor.New("", false, pal)
@@ -437,11 +443,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.habits != nil {
 			m.habits.frame++
 		}
-	case bookBlinkMsg:
-		m.bookBlinking = false
-		if m.book != nil {
-			m.book.cursorOn = !m.book.cursorOn
+	case cursorBlinkMsg:
+		m.cursorBlinking = false
+		m.cursorOn = !m.cursorOn
+		if m.editor != nil {
+			m.editor.SetCursorOn(m.cursorOn)
 		}
+		m.drawer.input.SetCursorOn(m.cursorOn)
 	case autosaveMsg:
 		m.autosaving = false
 		m.autosave()
@@ -528,7 +536,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	m.settle()
-	return m, tea.Batch(cmd, m.startThumbnails(), m.armAutosave(), m.armBlink(), m.armBookBlink())
+	return m, tea.Batch(cmd, m.startThumbnails(), m.armAutosave(), m.armBlink(), m.armCursorBlink())
 }
 
 // setPalette recolours everything, the logo included.

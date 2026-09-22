@@ -395,7 +395,7 @@ func (m *Model) keysStatus() string {
 	case h.mode == keysAsking:
 		return spread(m.st.dangerPill.Render(" KEYS ")+" "+m.st.text.Render(h.ask.text), m.st.bold.Render("y / n"), m.width)
 	case h.filtering:
-		return spread(m.st.pill.Render(" FILTER ")+" "+h.in.view(m.st.text, m.st.cursor), m.st.muted.Render("enter keep · esc clear"), m.width)
+		return spread(m.st.pill.Render(" FILTER ")+" "+h.in.view(m.st.text, m.cursorStyle()), m.st.muted.Render("enter keep · esc clear"), m.width)
 	}
 	left := m.st.pill.Render(" KEYS ")
 	switch q := h.in.value(); {

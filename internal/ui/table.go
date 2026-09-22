@@ -234,7 +234,7 @@ func (m *Model) tableBox() []string {
 	}
 	heads := m.st.muted.Render("optional: Name, Rating, Date")
 	if f.field == tableHeads || f.heads.value() != "" {
-		heads = f.heads.view(m.st.text, m.st.cursor)
+		heads = f.heads.view(m.st.text, m.cursorStyle())
 		if f.field != tableHeads {
 			heads = m.st.text.Render(f.heads.value())
 		}

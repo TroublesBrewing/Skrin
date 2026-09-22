@@ -2,6 +2,16 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.54.0 — 2026-09-22
+
+**The input cursor blinks everywhere, and how fast is a setting.** The user's original idea, built in full: the blink is no longer confined to the Book Card, and its speed is now a choice in Settings and the palette — off, slow, medium or fast.
+
+- **One cursor, blinking, everywhere there is a field.** The editor, quick note, go-to-a-note, the search and find fields, every prompt and chooser filter, the Book Card — the focused cursor blinks in step everywhere. The editor's cursor, which sits on a real character rather than at a field's end, blinks too.
+- **Cursor blink in Settings** (and the palette as "Setting: Cursor blink"): off (steady), slow (~1 s), medium (~500 ms, the default), fast (~250 ms). It saves to `[general] cursor_blink` in config.toml and takes effect at once.
+- **It is one shared clock.** Where the Book Card had its own blink (v0.53.0), there is now a single `armCursorBlink` that drives every surface at once, so nothing collides and the setting is the only knob. The blink stops whenever nothing is focused, and a build with `cursor_blink = "off"` simply never arms a tick.
+
+Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux: the editor's cursor blinks, and switching the setting off leaves it steady.
+
 ## v0.53.0 — 2026-09-22
 
 **The Book Card is easier to read: one cursor, and fields lined up.** Two observations from the user about the card's clarity, both in service of "begripligt före kraftfullt":

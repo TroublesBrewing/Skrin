@@ -150,10 +150,16 @@ func (e *Editor) renderSegment(row int, starts []int, s int, slots []int) string
 	if e.vim && e.mode == Normal {
 		cursor = e.st.normalCursor
 	}
+	if !e.cursorOn {
+		cursor = e.st.slot[sText]
+	}
 	switch {
 	case row != e.row || segOf(starts, e.col) != s:
 		return e.renderRange(line, a, b, slots)
 	case e.col >= b: // end of the line
+		if !e.cursorOn {
+			return e.renderRange(line, a, b, slots)
+		}
 		return e.renderRange(line, a, b, slots) + cursor.Render(" ")
 	}
 	return e.renderWithCursorAt(row, a, b, slots, e.col, cursor)

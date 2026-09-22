@@ -194,7 +194,7 @@ func (m *Model) manualStatus() string {
 	case h.tab == manualTabKeys:
 		return m.keysStatus()
 	case h.filtering:
-		return spread(m.st.pill.Render(" FILTER ")+" "+h.in.view(m.st.text, m.st.cursor), m.st.muted.Render("enter keep · esc clear"), m.width)
+		return spread(m.st.pill.Render(" FILTER ")+" "+h.in.view(m.st.text, m.cursorStyle()), m.st.muted.Render("enter keep · esc clear"), m.width)
 	case h.tab == manualTabSettings:
 		return spread(m.st.pill.Render(" SETTINGS ")+" "+m.st.text.Render("saved to config.toml as you go"), m.st.muted.Render("j/k move · enter toggle or choose · tab keys · esc close"), m.width)
 	default:

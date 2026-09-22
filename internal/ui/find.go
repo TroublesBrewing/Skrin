@@ -278,7 +278,7 @@ func (m *Model) searchBox() []string {
 	field := func(label string, in *lineInput, focused bool) string {
 		cursor := m.st.text
 		if focused {
-			cursor = m.st.cursor
+			cursor = m.cursorStyle()
 		}
 		return " " + m.st.muted.Render(label) + in.view(m.st.text, cursor)
 	}

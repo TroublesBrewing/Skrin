@@ -125,8 +125,9 @@ type Config struct {
 	rawVault    string `toml:"-"`
 	rawExternal string `toml:"-"`
 	General     struct {
-		RestoreLastNote *bool `toml:"restore_last_note,omitempty"` // unset means off: fresh runs start at the welcome screen
-		InstantOpen     *bool `toml:"instant_open,omitempty"`      // unset means on: moving the Files cursor opens the note under it
+		RestoreLastNote *bool  `toml:"restore_last_note,omitempty"` // unset means off: fresh runs start at the welcome screen
+		InstantOpen     *bool  `toml:"instant_open,omitempty"`      // unset means on: moving the Files cursor opens the note under it
+		CursorBlink     string `toml:"cursor_blink,omitempty"`      // "off", "slow", "medium" (unset default) or "fast": how the input cursor blinks
 	} `toml:"general,omitempty"`
 	Daily struct {
 		RolloverTodos *bool `toml:"rollover_todos,omitempty"` // unset means on
@@ -195,6 +196,17 @@ func (c Config) RestoreLastNote() bool {
 // last otherwise.
 func (c Config) InstantOpen() bool {
 	return c.General.InstantOpen == nil || *c.General.InstantOpen
+}
+
+// CursorBlink reports how fast the input cursor blinks, everywhere there
+// is a field to type in: "off" for a steady cursor, "slow", "medium" (the
+// unset default) or "fast". The speed itself lives in the ui package; this
+// only carries the word, so an unrecognised value falls back to medium.
+func (c Config) CursorBlink() string {
+	if c.General.CursorBlink == "" {
+		return "medium"
+	}
+	return c.General.CursorBlink
 }
 
 // ThemeBuiltin is the palette Skrin uses when there is no system theme to

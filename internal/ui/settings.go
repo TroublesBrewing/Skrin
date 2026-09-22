@@ -106,6 +106,12 @@ func ordinarySettings() []settingsItem {
 			pick:  (*Model).pickBuiltinTheme,
 		},
 		{
+			label: "Cursor blink",
+			help:  "How fast the input cursor blinks, everywhere there is a field to type in — the editor, quick note, go-to-a-note, the Book Card. off leaves it steady; medium is the default. Enter chooses.",
+			value: func(m *Model) string { return m.opts.CursorBlink },
+			pick:  (*Model).pickCursorBlink,
+		},
+		{
 			label: "Carry over yesterday's todos",
 			help:  "t carries unfinished todos from the last daily note into a new one.",
 			get:   func(m *Model) bool { return m.opts.RolloverTodos },

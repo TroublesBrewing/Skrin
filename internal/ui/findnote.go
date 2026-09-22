@@ -146,7 +146,7 @@ func (m *Model) noteFindKey(k tea.KeyPressMsg) {
 // matches there are and which one is showing.
 func (m *Model) noteFindLine() string {
 	f := m.noteFind
-	left := m.st.pill.Render(" FIND ") + " " + f.in.view(m.st.text, m.st.cursor)
+	left := m.st.pill.Render(" FIND ") + " " + f.in.view(m.st.text, m.cursorStyle())
 	var count string
 	switch {
 	case f.in.value() == "":

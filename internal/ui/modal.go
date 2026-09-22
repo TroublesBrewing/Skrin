@@ -196,6 +196,10 @@ type chooser struct {
 	// for lists searched by what a row means rather than its name: the
 	// palette, where "toc" means the outline, not "op-t-i-o-ns c-onfig".
 	byWords bool
+	// remove, when set, is what d does to the highlighted row — for
+	// lists the user built (folder templates), where removing is a
+	// thing. Lists without it never see the key.
+	remove func(choice)
 }
 
 func (c *chooser) filter() {
@@ -293,6 +297,12 @@ func (m *Model) openChooser(c *chooser) {
 // registry; the rest edit the filter.
 func (m *Model) chooserKey(k tea.KeyPressMsg) tea.Cmd {
 	c := m.chooser
+	if c.remove != nil && k.String() == "d" && len(c.matches) > 0 {
+		it := c.items[c.matches[c.cur]]
+		m.chooser = nil
+		c.remove(it)
+		return nil
+	}
 	switch a := m.actionIn(inList, k.String()); a {
 	case actCancel:
 		m.chooser = nil
@@ -364,7 +374,12 @@ func (m *Model) chooserBox() []string {
 	if len(c.matches) == 0 {
 		body = append(body, m.st.muted.Render("  "+c.empty))
 	}
-	body = append(body, "", " "+m.st.muted.Render("↑↓ choose · enter "+c.verb+" · esc cancel"))
+	hint := "↑↓ choose · enter " + c.verb
+	if c.remove != nil {
+		hint += " · d remove"
+	}
+	hint += " · esc cancel"
+	body = append(body, "", " "+m.st.muted.Render(hint))
 	return m.box(c.title, body, w, len(body)+2, true)
 }
 

@@ -2,6 +2,18 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.49.0 — 2026-09-22
+
+**Folder templates: a new note starts from the template paired with its folder.** The user, asked for explicitly over the locked period: "Det är en feature som jag saknar flera gånger om dagen … det enbart tjänar till att snabba upp anteckningstagandet och hjälper användaren hålla sig organiserad." A new feature, so it steps over the freeze on the user's word and bumps the minor number.
+
+- **The pairing is explicit, not name-matching.** The user chose it over the original idea of matching a template's name to its folder's. In Settings, a new "Folder templates" row opens the list of pairs; "+ Add a folder…" walks folder → template, Enter on a row changes its template, `d` removes it. A folder can pair with any template, and several folders can share one.
+- **A new note in a paired folder is created from the template**, filled in (`{{title}}`, `{{date}}`, `{{time}}` and offsets) exactly as Insert template fills one. No pairing, the note is created empty, as before. The template fills a brand-new, empty note — never overwrites anything — and `U` undoes the whole create in one step.
+- **A folder matches exactly — no inheritance.** Personer and Personer/Vänner can each have their own template; a note in a subfolder with no rule of its own is created empty, the parent's rule does not leak down.
+- **The pairing is stored as the template's full vault path**, under `[[templates.rules]]` in `config.toml`, so it survives a change of templates folder. An empty list means the feature is entirely off — no new key in the app itself, nothing in the way.
+- A template that has gone missing is read as no template: the note is still created, just empty, and nothing is lost.
+
+Manual and registry carry the new Settings row and the list's `d` key. Tests cover the templated create, the empty default, exact-match-only (no inheritance), and the add/remove flows saving to `config.toml`. Full suite green (`-count=1`), `go vet` and `gofmt` clean.
+
 ## v0.48.0 — 2026-09-22
 
 **Paste reached the Book Card's fields nowhere, and nowhere did a pasted paragraph stay a paragraph.** Found while checking the board; both are the user's own reports in effect. Bugfixes, so both land inside the locked period.

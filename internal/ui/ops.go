@@ -215,12 +215,14 @@ func (m *Model) createNote(input string) error {
 }
 
 // createNoteAt creates an empty note at rel, puts the Files cursor on it and
-// opens it in the editor.
+// opens it in the editor. A paired folder template fills the note instead of
+// leaving it empty.
 func (m *Model) createNoteAt(rel string) error {
 	if m.vault.Exists(rel) {
 		return fmt.Errorf("%s already exists", rel)
 	}
-	dirs, err := m.vault.CreateFile(rel, "")
+	content := m.newNoteContent(rel)
+	dirs, err := m.vault.CreateFile(rel, content)
 	steps := createdSteps(dirs)
 	if err == nil {
 		steps = append(steps, vault.Step{Kind: vault.StepCreated, Rel: rel})
@@ -233,8 +235,34 @@ func (m *Model) createNoteAt(rel string) error {
 	m.pushHistory()
 	m.showNote(rel)
 	m.openEditor(rel)
-	m.flash = "Created " + rel
+	if content != "" {
+		m.flash = "Created " + rel + " from its folder's template"
+	} else {
+		m.flash = "Created " + rel
+	}
 	return nil
+}
+
+// newNoteContent is what a new note at rel starts with: the template
+// paired with its folder, expanded and filled in, or "" when none is
+// paired. The match is exact — the folder itself, not any parent — so
+// Personer and Personer/Vänner can each have their own template.
+func (m *Model) newNoteContent(rel string) string {
+	folder := parentOf(rel)
+	for _, r := range m.opts.FolderTemplates {
+		if r.Folder != folder || r.Template == "" {
+			continue
+		}
+		src, err := m.vault.Read(r.Template)
+		if err != nil {
+			// A template that's gone reads as no template; the note is
+			// still created, just empty, and nothing goes missing.
+			return ""
+		}
+		s := obsidian.LoadSettings(m.vault.Root).Templates
+		return daily.ExpandTemplate(src, displayName(rel), s.DateFormat, s.TimeFormat, m.opts.Now())
+	}
+	return ""
 }
 
 func (m *Model) createFolder(input string) error {

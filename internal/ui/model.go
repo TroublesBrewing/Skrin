@@ -139,6 +139,10 @@ type Options struct {
 	// Spreads shows what ```spread and ```dataview blocks find; off shows
 	// the query as code.
 	Spreads bool
+	// FolderTemplates is the folder → template pairing for new notes: a
+	// note created in a paired folder starts from that folder's
+	// template. Empty means off. See Config.Templates.Rules.
+	FolderTemplates []config.TemplateRule
 	// Config is the config.toml Skrin loaded, kept so the Settings tab
 	// of `?` can show and persist toggles back to it. Its own bare
 	// fields (Vim, RolloverTodos, ...) above are what the rest of Skrin

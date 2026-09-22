@@ -222,3 +222,172 @@ func (m *Model) pickTemplatesFolder() {
 		cancel: back,
 	})
 }
+
+// folderTemplatesRule returns the pair for folder, and its place in the
+// list, so the pickers know whether they are adding or replacing.
+func (m *Model) folderTemplatesRule(folder string) (config.TemplateRule, int) {
+	for i, r := range m.opts.FolderTemplates {
+		if r.Folder == folder {
+			return r, i
+		}
+	}
+	return config.TemplateRule{}, -1
+}
+
+// setFolderTemplates saves the list to config.toml and mirrors it into
+// Options, the single source of truth the rest of Skrin reads.
+func (m *Model) setFolderTemplates(rules []config.TemplateRule) {
+	m.opts.FolderTemplates = rules
+	m.opts.Config.Templates.Rules = rules
+	if err := config.Save(m.opts.Config); err != nil {
+		m.flash = "couldn't save settings: " + err.Error()
+	}
+}
+
+// pickFolderTemplates opens the list of folder → template pairs, with
+// "+ Add a folder…" at the top. Enter on a pair changes its template; d
+// removes it; esc steps back to Settings, on the same row.
+func (m *Model) pickFolderTemplates() {
+	setCur := 0
+	if m.manual != nil {
+		setCur = m.manual.setCur
+	}
+	back := func() {
+		m.openManual()
+		m.manualGoTab(manualTabSettings)
+		m.manual.setCur = setCur
+	}
+	save := func(rules []config.TemplateRule) {
+		m.setFolderTemplates(rules)
+		back()
+	}
+
+	items := []choice{{
+		label: "+ Add a folder…",
+		do:    func() { m.addFolderTemplate(save) },
+	}}
+	for _, r := range m.opts.FolderTemplates {
+		r := r
+		name := displayName(r.Template)
+		items = append(items, choice{
+			label:  m.folderLabel(r.Folder) + name,
+			detail: r.Template,
+			do:     func() { m.changeFolderTemplate(r.Folder, save) },
+		})
+	}
+	m.manual = nil
+	m.openChooser(&chooser{
+		title:  "Folder templates",
+		prompt: "Folder",
+		empty:  "No folder by that name",
+		verb:   "pick its template",
+		remove: func(it choice) {
+			m.removeFolderTemplate(it, save)
+		},
+		items:  items,
+		cancel: back,
+	})
+}
+
+// removeFolderTemplate drops the pair the highlighted row stands for. The
+// row's label carries the folder (folderLabel(folder) + template name), so
+// the pair is found by matching the label against the current rules.
+func (m *Model) removeFolderTemplate(it choice, save func([]config.TemplateRule)) {
+	var kept []config.TemplateRule
+	for _, r := range m.opts.FolderTemplates {
+		if it.label != m.folderLabel(r.Folder)+displayName(r.Template) {
+			kept = append(kept, r)
+		}
+	}
+	save(kept)
+}
+
+// addFolderTemplate walks add-a-folder: pick a folder, then its template,
+// then save. A folder that already has a pair is offered first with its
+// current template shown, since the new pairing replaces the old one.
+func (m *Model) addFolderTemplate(save func([]config.TemplateRule)) {
+	dirs, err := m.vault.Dirs()
+	if err != nil {
+		m.flash = err.Error()
+		return
+	}
+	var items []choice
+	for _, d := range dirs {
+		if d == "" {
+			continue // the root has no name to pair; a root note is created empty
+		}
+		detail := ""
+		if r, _ := m.folderTemplatesRule(d); r.Folder != "" {
+			detail = "now " + r.Template
+		}
+		d := d
+		items = append(items, choice{
+			label:  m.folderLabel(d),
+			detail: detail,
+			do:     func() { m.pickFolderTemplateFor(d, save) },
+		})
+	}
+	m.openChooser(&chooser{
+		title:  "Template for new notes in…",
+		prompt: "Folder",
+		empty:  "No folder by that name",
+		verb:   "pick its template",
+		items:  items,
+		cancel: func() { m.pickFolderTemplates() },
+	})
+}
+
+// changeFolderTemplate is Enter on an existing pair: pick a new template
+// for the folder it names.
+func (m *Model) changeFolderTemplate(folder string, save func([]config.TemplateRule)) {
+	m.pickFolderTemplateFor(folder, save)
+}
+
+// pickFolderTemplateFor lists the templates and pairs the chosen one with
+// folder, replacing any pair already there. The new pairing is saved at
+// once, so nothing the user built is lost on a cancel.
+func (m *Model) pickFolderTemplateFor(folder string, save func([]config.TemplateRule)) {
+	tfolder, _ := m.templatesFolder()
+	if tfolder == "" {
+		m.flash = "No templates folder yet: choose one in Settings"
+		return
+	}
+	files, err := m.vault.Files()
+	if err != nil {
+		m.flash = err.Error()
+		return
+	}
+	var items []choice
+	for _, f := range files {
+		if !strings.HasPrefix(f, tfolder+"/") || !vault.IsNote(f) {
+			continue
+		}
+		rel := f
+		items = append(items, choice{
+			label: strings.TrimSuffix(strings.TrimPrefix(rel, tfolder+"/"), path.Ext(rel)),
+			do: func() {
+				rules := make([]config.TemplateRule, 0, len(m.opts.FolderTemplates)+1)
+				for _, r := range m.opts.FolderTemplates {
+					if r.Folder != folder {
+						rules = append(rules, r)
+					}
+				}
+				rules = append(rules, config.TemplateRule{Folder: folder, Template: rel})
+				save(rules)
+			},
+		})
+	}
+	if len(items) == 0 {
+		m.flash = "No templates in " + tfolder + "/ yet"
+		return
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].label < items[j].label })
+	m.openChooser(&chooser{
+		title:  "Template for " + m.folderLabel(folder),
+		prompt: "Template",
+		empty:  "No template by that name",
+		verb:   "pair it",
+		items:  items,
+		cancel: func() { m.pickFolderTemplates() },
+	})
+}

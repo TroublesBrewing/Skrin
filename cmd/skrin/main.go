@@ -119,12 +119,13 @@ func run(vaultArg string) error {
 			CoversFolder:  cfg.LibraryCoversFolder(),
 			DefaultStatus: cfg.LibraryDefaultStatus(),
 		},
-		Images:        cfg.RenderImages(),
-		Habits:        cfg.HabitsEnabled(),
-		Beta:          cfg.BetaEnabled(),
-		LineNumbers:   cfg.RenderLineNumbers(),
-		ReadableWidth: cfg.RenderReadableWidth(),
-		Spreads:       cfg.RenderSpreads(),
+		Images:          cfg.RenderImages(),
+		Habits:          cfg.HabitsEnabled(),
+		Beta:            cfg.BetaEnabled(),
+		LineNumbers:     cfg.RenderLineNumbers(),
+		ReadableWidth:   cfg.RenderReadableWidth(),
+		Spreads:         cfg.RenderSpreads(),
+		FolderTemplates: cfg.Templates.Rules,
 	})
 	if err != nil {
 		return err

@@ -266,6 +266,7 @@ var defaultBindings = []binding{
 	{actSplitLeft, []string{"alt+left"}, "Go to note: open the note in a split, on the left", groupList, inList},
 	{actSplitRight, []string{"alt+right"}, "Go to note: open the note in a split, on the right", groupList, inList},
 	{actCancel, []string{"esc", "ctrl+c"}, "close the list", groupList, inList},
+	{actNone, []string{"d"}, "folder templates: remove the row", groupList, inList},
 
 	{actNone, []string{"letters"}, "the search, as you type (see Search below)", groupFind, inSearch},
 	{actFindScope, []string{"alt+t"}, "this note, or the whole vault", groupFind, inSearch},

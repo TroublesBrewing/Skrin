@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -111,6 +112,22 @@ func ordinarySettings() []settingsItem {
 				return f + " (" + whose + ")"
 			},
 			pick: func(m *Model) { m.pickTemplatesFolder() },
+		},
+		{
+			label: "Folder templates",
+			help:  "New notes start from a template paired with the folder they're created in. Add a folder and pick its template; enter on a row changes its template, d removes it. No pairing, the note is created empty. A folder matches exactly — Personer and Personer/Vänner can each have their own.",
+			value: func(m *Model) string {
+				n := len(m.opts.FolderTemplates)
+				switch n {
+				case 0:
+					return "none"
+				case 1:
+					return "1 folder"
+				default:
+					return fmt.Sprintf("%d folders", n)
+				}
+			},
+			pick: func(m *Model) { m.pickFolderTemplates() },
 		},
 		{
 			label: "Carry over yesterday's todos",

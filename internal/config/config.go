@@ -16,6 +16,15 @@ import (
 	"github.com/lurioso/skrin/internal/obsidian"
 )
 
+// TemplateRule pairs a folder with the template new notes there start
+// from. The template is a full vault path, so the pairing survives a
+// change of templates folder. A folder matches exactly: no inheritance
+// into subfolders, so Personer and Personer/Vänner can differ.
+type TemplateRule struct {
+	Folder   string `toml:"folder,omitempty"`
+	Template string `toml:"template,omitempty"`
+}
+
 // Config mirrors ~/.config/skrin/config.toml. Everything is omitempty, so
 // Save writes back only what is actually set rather than filling the
 // user's config with empty keys for every setting Skrin has. A *bool that
@@ -46,7 +55,8 @@ type Config struct {
 		Command  string `toml:"command,omitempty"`  // the claude binary; default claude on $PATH
 	} `toml:"assistant,omitempty"`
 	Templates struct {
-		Folder string `toml:"folder,omitempty"` // unset: Obsidian's own Templates folder
+		Folder string         `toml:"folder,omitempty"` // unset: Obsidian's own Templates folder
+		Rules  []TemplateRule `toml:"rules,omitempty"`  // folder → template for new notes; empty means off
 	} `toml:"templates,omitempty"`
 	Theme struct {
 		Builtin string `toml:"builtin,omitempty"` // "gruvbox" (the default) or "flexoki-light", used when there is no system theme

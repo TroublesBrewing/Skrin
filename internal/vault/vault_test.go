@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/lurioso/skrin/internal/config"
 )
 
 func makeVault(t *testing.T, files ...string) *Vault {
@@ -70,6 +72,9 @@ func TestSkrinJsonStaysOutOfTheTree(t *testing.T) {
 	if err := v.Write(OrderFile, `{"/": ["Welcome.md"]}`); err != nil {
 		t.Fatal(err)
 	}
+	if err := v.Write(config.SettingsFile, `{}`); err != nil {
+		t.Fatal(err)
+	}
 	es, err := v.Entries()
 	if err != nil {
 		t.Fatal(err)
@@ -77,6 +82,9 @@ func TestSkrinJsonStaysOutOfTheTree(t *testing.T) {
 	for _, e := range es {
 		if e.Rel == OrderFile {
 			t.Errorf("Entries shouldn't list %s: %v", OrderFile, es)
+		}
+		if e.Rel == config.SettingsFile {
+			t.Errorf("Entries shouldn't list %s: %v", config.SettingsFile, es)
 		}
 	}
 	entries, err := v.List("")
@@ -86,6 +94,9 @@ func TestSkrinJsonStaysOutOfTheTree(t *testing.T) {
 	for _, e := range entries {
 		if e.Name == OrderFile {
 			t.Errorf("List shouldn't list %s: %v", OrderFile, entries)
+		}
+		if e.Name == config.SettingsFile {
+			t.Errorf("List shouldn't list %s: %v", config.SettingsFile, entries)
 		}
 	}
 }

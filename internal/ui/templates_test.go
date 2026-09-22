@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
+
+	"github.com/lurioso/skrin/internal/config"
 )
 
 func TestApplyTemplateBodyAtTheCursor(t *testing.T) {
@@ -107,12 +109,12 @@ func TestChoosingTheTemplatesFolderInSettings(t *testing.T) {
 	if m.manual == nil || m.manual.tab != manualTabSettings || m.settingsItems()[m.manual.setCur].label != "Templates folder" {
 		t.Fatal("choosing should come back to the Settings tab, on the same row")
 	}
-	if m.opts.Config.Templates.Folder != "Filosofi/Antik" || m.flash != "Templates folder: Filosofi/Antik" {
-		t.Errorf("folder %q, flash %q", m.opts.Config.Templates.Folder, m.flash)
+	if m.opts.Vault.TemplatesFolder != "Filosofi/Antik" || m.flash != "Templates folder: Filosofi/Antik" {
+		t.Errorf("folder %q, flash %q", m.opts.Vault.TemplatesFolder, m.flash)
 	}
-	b, _ := os.ReadFile(filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "skrin", "config.toml"))
-	if !strings.Contains(string(b), `folder = "Filosofi/Antik"`) {
-		t.Errorf("saved to config.toml: %q", b)
+	b, _ := os.ReadFile(filepath.Join(m.vault.Root, config.SettingsFile))
+	if !strings.Contains(string(b), `"Filosofi/Antik"`) {
+		t.Errorf("saved to the vault's settings file: %q", b)
 	}
 	if frame := ansi.Strip(m.render()); !strings.Contains(frame, "Templates folder: Filosofi/Antik (chosen in Settings)") {
 		t.Errorf("the row should show the choice:\n%s", frame)
@@ -126,11 +128,11 @@ func TestChoosingTheTemplatesFolderInSettings(t *testing.T) {
 func TestAChosenTemplatesFolderWinsOverObsidians(t *testing.T) {
 	m := newTestModel(t)
 	withTemplatesPlugin(t, m, "Templates")
-	m.opts.Config.Templates.Folder = "Filosofi"
+	m.opts.Vault.TemplatesFolder = "Filosofi"
 	if f, whose := m.templatesFolder(); f != "Filosofi" || whose != "chosen in Settings" {
 		t.Errorf("%q, %q", f, whose)
 	}
-	m.opts.Config.Templates.Folder = "Gone"
+	m.opts.Vault.TemplatesFolder = "Gone"
 	if f, whose := m.templatesFolder(); f != "Templates" || whose != "Obsidian's" {
 		t.Errorf("a chosen folder that's gone falls back to Obsidian's: %q, %q", f, whose)
 	}

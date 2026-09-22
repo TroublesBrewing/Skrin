@@ -141,8 +141,14 @@ type Options struct {
 	Spreads bool
 	// FolderTemplates is the folder → template pairing for new notes: a
 	// note created in a paired folder starts from that folder's
-	// template. Empty means off. See Config.Templates.Rules.
+	// template. Empty means off. This is the vault's own setting —
+	// loaded from the vault's settings file, never config.toml — so it
+	// stays with the vault and doesn't leak into another.
 	FolderTemplates []config.TemplateRule
+	// Vault is the vault's own settings (its templates folder and pairs),
+	// kept as the single source of truth the Settings tab reads and
+	// writes back to the vault's settings file.
+	Vault config.VaultSettings
 	// Config is the config.toml Skrin loaded, kept so the Settings tab
 	// of `?` can show and persist toggles back to it. Its own bare
 	// fields (Vim, RolloverTodos, ...) above are what the rest of Skrin

@@ -16,7 +16,7 @@ import (
 // folder chosen in Settings, else Obsidian's own Templates folder, else
 // none. A chosen or declared folder that no longer exists counts as none.
 func (m *Model) templatesFolder() (folder, whose string) {
-	if f := strings.Trim(m.opts.Config.Templates.Folder, "/"); f != "" && m.vault.IsDir(f) {
+	if f := strings.Trim(m.opts.Vault.TemplatesFolder, "/"); f != "" && m.vault.IsDir(f) {
 		return f, "chosen in Settings"
 	}
 	if f := obsidian.LoadSettings(m.vault.Root).Templates.Folder; f != "" && m.vault.IsDir(f) {
@@ -192,9 +192,9 @@ func (m *Model) pickTemplatesFolder() {
 		m.manual.setCur = setCur
 	}
 	save := func(folder, said string) {
-		m.opts.Config.Templates.Folder = folder
+		m.opts.Vault.TemplatesFolder = folder
 		back()
-		if err := config.Save(m.opts.Config); err != nil {
+		if err := config.SaveVaultSettings(m.vault.Root, m.opts.Vault); err != nil {
 			m.flash = "couldn't save settings: " + err.Error()
 			return
 		}
@@ -234,12 +234,14 @@ func (m *Model) folderTemplatesRule(folder string) (config.TemplateRule, int) {
 	return config.TemplateRule{}, -1
 }
 
-// setFolderTemplates saves the list to config.toml and mirrors it into
-// Options, the single source of truth the rest of Skrin reads.
+// setFolderTemplates saves the list to the vault's own settings file and
+// mirrors it into Options, the single source of truth the rest of Skrin
+// reads. It is a vault setting, so it stays with the vault and never
+// reaches another one.
 func (m *Model) setFolderTemplates(rules []config.TemplateRule) {
 	m.opts.FolderTemplates = rules
-	m.opts.Config.Templates.Rules = rules
-	if err := config.Save(m.opts.Config); err != nil {
+	m.opts.Vault.TemplateRules = rules
+	if err := config.SaveVaultSettings(m.vault.Root, m.opts.Vault); err != nil {
 		m.flash = "couldn't save settings: " + err.Error()
 	}
 }

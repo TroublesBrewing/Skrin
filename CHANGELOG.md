@@ -2,6 +2,17 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.52.0 — 2026-09-22
+
+**Settings are divided into Global Settings and Vault Settings.** The idea, from the user's own note ("Separate vaults" in the Idélådan, written right after the vault picker landed): *"Vaults should be separate. They should not share vault specific settings. Keybindings and other global skrin settings are fine, necessary even. A hard demand. But vault specific settings like what template goes with what folder is NOT something to share between vaults. Each vault or skrin … is a blank slate. We should divide settings into Global Settings and Vault Settings."*
+
+- **Vault settings now live in the vault**, in `skrin-settings.json` at the vault root — the same way the manual file order already lives in `skrin.json`. Templates folder and folder→template pairs are the vault's own; they follow the vault through sync and never leak from one vault into another. A second vault is a blank slate, exactly as the note demands.
+- **Global settings stay in config.toml** — keybindings, theme, editor, rollover, the Claude drawer, and the rest. Those are about how Skrin behaves on this machine, not about any one vault.
+- **The Settings tab shows the split**: global rows first, then a `VAULT` heading, then the two vault rows, and a footer that names both files. The `skrin-settings.json` is hidden from the Files tree like `skrin.json` already is.
+- **Existing folder templates migrate automatically**: on the first run after this, Skrin moves the old `[templates]` block out of config.toml and into the vault's `skrin-settings.json`, merging without ever overwriting what the vault already has, then drops the old block so a later save can't lose or duplicate it.
+
+Migration verified live in tmux against the real vault: the two folder pairs (Begrepp, Möten) moved intact into `skrin-settings.json`, config.toml was cleaned, and a second vault opened as a blank slate with no leakage. Full suite green (`-count=1`), `go vet` and `gofmt` clean.
+
 ## v0.51.0 — 2026-09-22
 
 **"Open a vault" replaces "Switch vault", and any folder can be opened as a Skrin.** The user, having tried the switch for real: "I think you should be able to select any folder freely. If necessary, Skrin can add whatever settings file it needs … Obsidian has the option to 'Open a folder as a vault' and Skrin should be able to do the same." And, on the name: "we will call it 'Open a folder as a skrin'." So the picker became what Obsidian's is.

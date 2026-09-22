@@ -27,6 +27,10 @@ type settingsItem struct {
 	// switched on there, and gone entirely from a build that doesn't
 	// allow beta. See version.Beta.
 	beta bool
+	// vault marks a vault setting: one that belongs to this vault alone
+	// and is saved to the vault's own settings file, never config.toml.
+	// It sits in its own block, apart from the global settings.
+	vault bool
 }
 
 func boolPtr(v bool) *bool { return &v }
@@ -102,34 +106,6 @@ func ordinarySettings() []settingsItem {
 			pick:  (*Model).pickBuiltinTheme,
 		},
 		{
-			label: "Templates folder",
-			help:  "Where Insert template (Ctrl+P, \"template\") finds its templates: every note in this folder is one. Unset, it's the folder Obsidian's Templates plugin uses. Enter chooses a folder.",
-			value: func(m *Model) string {
-				f, whose := m.templatesFolder()
-				if f == "" {
-					return "none yet"
-				}
-				return f + " (" + whose + ")"
-			},
-			pick: func(m *Model) { m.pickTemplatesFolder() },
-		},
-		{
-			label: "Folder templates",
-			help:  "New notes start from a template paired with the folder they're created in. Add a folder and pick its template; enter on a row changes its template, d removes it. No pairing, the note is created empty. A folder matches exactly — Personer and Personer/Vänner can each have their own.",
-			value: func(m *Model) string {
-				n := len(m.opts.FolderTemplates)
-				switch n {
-				case 0:
-					return "none"
-				case 1:
-					return "1 folder"
-				default:
-					return fmt.Sprintf("%d folders", n)
-				}
-			},
-			pick: func(m *Model) { m.pickFolderTemplates() },
-		},
-		{
 			label: "Carry over yesterday's todos",
 			help:  "t carries unfinished todos from the last daily note into a new one.",
 			get:   func(m *Model) bool { return m.opts.RolloverTodos },
@@ -198,6 +174,36 @@ func ordinarySettings() []settingsItem {
 				m.rerender()
 			},
 		},
+		{
+			label: "Templates folder",
+			help:  "Where Insert template (Ctrl+P, \"template\") finds its templates: every note in this folder is one. Unset, it's the folder Obsidian's Templates plugin uses. Enter chooses a folder.",
+			value: func(m *Model) string {
+				f, whose := m.templatesFolder()
+				if f == "" {
+					return "none yet"
+				}
+				return f + " (" + whose + ")"
+			},
+			pick:  func(m *Model) { m.pickTemplatesFolder() },
+			vault: true,
+		},
+		{
+			label: "Folder templates",
+			help:  "New notes start from a template paired with the folder they're created in. Add a folder and pick its template; enter on a row changes its template, d removes it. No pairing, the note is created empty. A folder matches exactly — Personer and Personer/Vänner can each have their own.",
+			value: func(m *Model) string {
+				n := len(m.opts.FolderTemplates)
+				switch n {
+				case 0:
+					return "none"
+				case 1:
+					return "1 folder"
+				default:
+					return fmt.Sprintf("%d folders", n)
+				}
+			},
+			pick:  func(m *Model) { m.pickFolderTemplates() },
+			vault: true,
+		},
 	}
 }
 
@@ -228,18 +234,25 @@ func (m *Model) settingsKey(k tea.KeyPressMsg) {
 }
 
 // settingsView renders the Settings tab: a table of toggles, the cursor's
-// help text underneath.
+// help text underneath. Vault settings stand apart under their own heading.
 func (m *Model) settingsView(w int) []string {
 	items := m.settingsItems()
 	h := m.manual
 	var out []string
 	out = append(out, "")
 	beta := false
+	vault := false
 	for i, it := range items {
 		if it.beta && !beta {
 			// The experiments stand apart, and say so once.
 			beta = true
 			out = append(out, "", m.st.muted.Render("BETA · experiments, which a release can leave out"))
+		}
+		if it.vault && !vault {
+			// Vault settings belong to this vault alone, and are saved
+			// to its own file, not config.toml.
+			vault = true
+			out = append(out, "", m.st.muted.Render("VAULT · this vault's own settings, saved to its "+config.SettingsFile))
 		}
 		var row string
 		switch {
@@ -263,7 +276,7 @@ func (m *Model) settingsView(w int) []string {
 		}
 	}
 	out = append(out, "")
-	out = append(out, m.st.muted.Render("Saved to "+config.Path()+" as each toggle changes."))
+	out = append(out, m.st.muted.Render("Global settings save to "+config.Path()+"; this vault's own settings to its "+config.SettingsFile+"."))
 	return out
 }
 

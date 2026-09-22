@@ -3,6 +3,7 @@ package config
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -21,8 +22,94 @@ import (
 // change of templates folder. A folder matches exactly: no inheritance
 // into subfolders, so Personer and Personer/Vänner can differ.
 type TemplateRule struct {
-	Folder   string `toml:"folder,omitempty"`
-	Template string `toml:"template,omitempty"`
+	Folder   string `toml:"folder,omitempty" json:"folder,omitempty"`
+	Template string `toml:"template,omitempty" json:"template,omitempty"`
+}
+
+// SettingsFile is the vault's own settings file, sitting at the vault
+// root beside skrin.json. It holds what belongs to this vault alone —
+// never the machine — so two vaults never share it and it follows the
+// vault through sync. Obsidian's .obsidian is the same idea.
+const SettingsFile = "skrin-settings.json"
+
+// VaultSettings is a vault's own settings: the templates folder and the
+// folder → template pairs for new notes. Global settings (keybindings,
+// theme, editor, and the rest of Config) stay in config.toml; these are
+// the ones that must not leak from one vault into another.
+type VaultSettings struct {
+	TemplatesFolder string         `json:"templates_folder,omitempty"`
+	TemplateRules   []TemplateRule `json:"template_rules,omitempty"`
+}
+
+// LoadVaultSettings reads the vault's own settings file. A missing or
+// unreadable file, or one that isn't the JSON Skrin writes, means none.
+func LoadVaultSettings(root string) VaultSettings {
+	data, err := os.ReadFile(filepath.Join(root, SettingsFile))
+	if err != nil {
+		return VaultSettings{}
+	}
+	var s VaultSettings
+	if json.Unmarshal(data, &s) != nil {
+		return VaultSettings{}
+	}
+	return s
+}
+
+// SaveVaultSettings writes the vault's own settings file.
+func SaveVaultSettings(root string, s VaultSettings) error {
+	b, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return err
+	}
+	tmp := filepath.Join(root, SettingsFile+".tmp")
+	if err := os.WriteFile(tmp, append(b, '\n'), 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, filepath.Join(root, SettingsFile))
+}
+
+// legacyTemplates is the old [templates] block in config.toml, read once
+// so MigrateVaultSettings can move it into the vault's own settings file.
+// It is not part of Config any more; Config no longer carries templates.
+type legacyTemplates struct {
+	Templates struct {
+		Folder string         `toml:"folder"`
+		Rules  []TemplateRule `toml:"rules"`
+	} `toml:"templates"`
+}
+
+// MigrateVaultSettings moves the old [templates] block out of config.toml
+// and into the vault's own settings file, once. Existing vault settings
+// are never overwritten — an empty field is backfilled from the old block
+// only — and the old block is dropped from config.toml either way, so a
+// later Save can't lose it. With no old block, it does nothing.
+func MigrateVaultSettings(root string, cfg *Config) error {
+	var l legacyTemplates
+	if _, err := toml.DecodeFile(Path(), &l); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
+		return fmt.Errorf("reading %s: %w", Path(), err)
+	}
+	if l.Templates.Folder == "" && len(l.Templates.Rules) == 0 {
+		return nil // nothing old to move
+	}
+	vs := LoadVaultSettings(root)
+	changed := false
+	if vs.TemplatesFolder == "" && l.Templates.Folder != "" {
+		vs.TemplatesFolder = l.Templates.Folder
+		changed = true
+	}
+	if len(vs.TemplateRules) == 0 && len(l.Templates.Rules) > 0 {
+		vs.TemplateRules = l.Templates.Rules
+		changed = true
+	}
+	if changed {
+		if err := SaveVaultSettings(root, vs); err != nil {
+			return err
+		}
+	}
+	return Save(*cfg)
 }
 
 // Config mirrors ~/.config/skrin/config.toml. Everything is omitempty, so
@@ -54,10 +141,6 @@ type Config struct {
 		Model    string `toml:"model,omitempty"`    // "" for Claude Code's default
 		Command  string `toml:"command,omitempty"`  // the claude binary; default claude on $PATH
 	} `toml:"assistant,omitempty"`
-	Templates struct {
-		Folder string         `toml:"folder,omitempty"` // unset: Obsidian's own Templates folder
-		Rules  []TemplateRule `toml:"rules,omitempty"`  // folder → template for new notes; empty means off
-	} `toml:"templates,omitempty"`
 	Theme struct {
 		Builtin string `toml:"builtin,omitempty"` // "gruvbox" (the default) or "flexoki-light", used when there is no system theme
 	} `toml:"theme,omitempty"`

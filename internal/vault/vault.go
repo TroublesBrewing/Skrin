@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+
+	"github.com/lurioso/skrin/internal/config"
 )
 
 // Vault is an Obsidian vault rooted at an absolute path.
@@ -142,7 +144,7 @@ func (v *Vault) walk(fn func(rel string, d fs.DirEntry)) error {
 			return nil
 		}
 		rel := v.rel(p)
-		if rel != "" && (Hidden(d.Name()) || rel == OrderFile) {
+		if rel != "" && (Hidden(d.Name()) || rel == OrderFile || rel == config.SettingsFile) {
 			if d.IsDir() {
 				return filepath.SkipDir
 			}
@@ -162,7 +164,7 @@ func (v *Vault) List(rel string) ([]Entry, error) {
 	}
 	entries := make([]Entry, 0, len(des))
 	for _, d := range des {
-		if Hidden(d.Name()) || (rel == "" && d.Name() == OrderFile) {
+		if Hidden(d.Name()) || (rel == "" && (d.Name() == OrderFile || d.Name() == config.SettingsFile)) {
 			continue
 		}
 		e := Entry{Name: d.Name(), Rel: path.Join(rel, d.Name()), IsDir: d.IsDir()}

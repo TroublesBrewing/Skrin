@@ -78,6 +78,13 @@ func run(vaultArg string) error {
 	if err != nil {
 		return err
 	}
+	// Vault settings (templates) moved from config.toml into the vault's
+	// own file in v0.52.0: move any old block over once, so nothing the
+	// user paired is lost.
+	if err := config.MigrateVaultSettings(v.Root, &cfg); err != nil {
+		return err
+	}
+	vs := config.LoadVaultSettings(v.Root)
 	themeDir := theme.DefaultDir()
 	builtin := theme.Builtin(cfg.ThemeBuiltin())
 	pal, themeErr := theme.LoadOr(themeDir, builtin)
@@ -125,7 +132,8 @@ func run(vaultArg string) error {
 		LineNumbers:     cfg.RenderLineNumbers(),
 		ReadableWidth:   cfg.RenderReadableWidth(),
 		Spreads:         cfg.RenderSpreads(),
-		FolderTemplates: cfg.Templates.Rules,
+		FolderTemplates: vs.TemplateRules,
+		Vault:           vs,
 	})
 	if err != nil {
 		return err

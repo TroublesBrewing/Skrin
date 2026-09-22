@@ -106,9 +106,9 @@ func TestAFolderPairingIsSavedAndCanBeRemoved(t *testing.T) {
 	if len(m.opts.FolderTemplates) != 0 {
 		t.Fatalf("d should remove the pair: %v", m.opts.FolderTemplates)
 	}
-	b, _ := os.ReadFile(filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "skrin", "config.toml"))
+	b, _ := os.ReadFile(filepath.Join(m.vault.Root, config.SettingsFile))
 	if strings.Contains(string(b), "Filosofi") {
-		t.Errorf("the removal should be saved to config.toml: %q", b)
+		t.Errorf("the removal should be saved to the vault's settings file: %q", b)
 	}
 }
 
@@ -137,8 +137,8 @@ func TestAddingAFolderTemplateWalksFolderThenTemplate(t *testing.T) {
 	if got.Folder != "Filosofi" || got.Template != "Templates/Daily template.md" {
 		t.Errorf("pair = %+v", got)
 	}
-	b, _ := os.ReadFile(filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "skrin", "config.toml"))
+	b, _ := os.ReadFile(filepath.Join(m.vault.Root, config.SettingsFile))
 	if !strings.Contains(string(b), "Filosofi") {
-		t.Errorf("the pairing should be saved to config.toml: %q", b)
+		t.Errorf("the pairing should be saved to the vault's settings file: %q", b)
 	}
 }

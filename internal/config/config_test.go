@@ -382,3 +382,101 @@ func TestReadableWidthDefaultsOn(t *testing.T) {
 		t.Error("readable_width = false should turn it off")
 	}
 }
+
+func TestVaultSettingsRoundTrip(t *testing.T) {
+	root := t.TempDir()
+	vs := VaultSettings{
+		TemplatesFolder: "Templates",
+		TemplateRules:   []TemplateRule{{Folder: "Begrepp", Template: "Templates/Begrepp template.md"}},
+	}
+	if err := SaveVaultSettings(root, vs); err != nil {
+		t.Fatal(err)
+	}
+	got := LoadVaultSettings(root)
+	if got.TemplatesFolder != "Templates" || len(got.TemplateRules) != 1 || got.TemplateRules[0].Folder != "Begrepp" {
+		t.Errorf("LoadVaultSettings = %+v, want %+v", got, vs)
+	}
+	// The settings file lives at the vault root, not in config.
+	if _, err := os.Stat(filepath.Join(root, SettingsFile)); err != nil {
+		t.Errorf("settings file should be at the vault root: %v", err)
+	}
+}
+
+func TestLoadVaultSettingsMissingOrGarbageIsNone(t *testing.T) {
+	root := t.TempDir()
+	if got := LoadVaultSettings(root); got.TemplatesFolder != "" || len(got.TemplateRules) != 0 {
+		t.Errorf("missing file should mean none: %+v", got)
+	}
+	if err := os.WriteFile(filepath.Join(root, SettingsFile), []byte("not json"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := LoadVaultSettings(root); got.TemplatesFolder != "" || len(got.TemplateRules) != 0 {
+		t.Errorf("garbage should mean none: %+v", got)
+	}
+}
+
+func TestMigrateVaultSettingsMovesOldTemplatesBlock(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", home)
+	dir := filepath.Join(home, "skrin")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	conf := "vault = \"/vaults/main\"\n\n[templates]\n  folder = \"Templates\"\n\n  [[templates.rules]]\n    folder = \"Begrepp\"\n    template = \"Templates/Begrepp template.md\"\n"
+	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte(conf), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	if err := MigrateVaultSettings(root, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	vs := LoadVaultSettings(root)
+	if vs.TemplatesFolder != "Templates" || len(vs.TemplateRules) != 1 || vs.TemplateRules[0].Folder != "Begrepp" {
+		t.Errorf("migration should move the block into the vault settings: %+v", vs)
+	}
+	// The old block is gone from config.toml so a later Save can't drop
+	// or duplicate it.
+	saved, _ := os.ReadFile(Path())
+	if strings.Contains(string(saved), "[templates]") || strings.Contains(string(saved), "Begrepp") {
+		t.Errorf("the old [templates] block should be gone from config.toml:\n%s", saved)
+	}
+	// A second run is a no-op: the vault settings already hold it.
+	if err := MigrateVaultSettings(root, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	if again := LoadVaultSettings(root); len(again.TemplateRules) != 1 {
+		t.Errorf("a second migration should not duplicate: %+v", again)
+	}
+}
+
+func TestMigrateVaultSettingsNeverOverwritesExisting(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", home)
+	dir := filepath.Join(home, "skrin")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte("[templates]\n  folder = \"Old\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	// The vault already chose its own templates folder.
+	existing := VaultSettings{TemplatesFolder: "Mine"}
+	if err := SaveVaultSettings(root, existing); err != nil {
+		t.Fatal(err)
+	}
+	if err := MigrateVaultSettings(root, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	if got := LoadVaultSettings(root).TemplatesFolder; got != "Mine" {
+		t.Errorf("existing vault settings must win: got %q", got)
+	}
+}

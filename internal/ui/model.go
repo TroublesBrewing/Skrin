@@ -272,6 +272,10 @@ type Model struct {
 	// never reopen a note by surprise when RestoreLastNote is off.
 	lastPeekCur int
 	lastPeekRel string
+
+	// switchTo is the vault Skrin should open once it quits, set by
+	// "Switch vault". main reads it after Run and relaunches there.
+	switchTo string
 }
 
 // New builds the model for vault v, back where opts.Session left off.

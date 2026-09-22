@@ -2,6 +2,16 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.50.0 — 2026-09-22
+
+**Switch vault, from inside Skrin.** The user: "Oh, just realized we can't select other vaults. That is core functionality." A basic Obsidian feature Skrin was missing — Obsidian has a vault picker at launch and "Open another vault" from inside — so it lands under the locked-period exception, on the user's call.
+
+- **"Switch vault" is a palette command**, not a key: switching vaults is rare and deliberate, so it stays out of the way until someone asks for it, as the charter's "invisible until asked for" says. Ctrl+P → "switch vault" lists Obsidian's registered vaults, in name order, the one open now marked "open now".
+- **Choosing one saves it as the default vault and reopens Skrin there**, in the same terminal — the process hands the terminal to itself in the new vault, so nothing is lost in the handoff. The new default survives the relaunch and every launch after, so Skrin stops silently snapping back to the last-opened vault.
+- **It reads Obsidian's own registry** (`obsidian.json`), the same list Obsidian's picker shows — nothing to configure, and a vault Skrin knows about is one Obsidian does too.
+
+The switch is a write to config.toml, so it survives even a launch that fails; `U` doesn't apply here (nothing in the vault changed — a switch is not a file operation). Full suite green (`-count=1`), `go vet` and `gofmt` clean, and the switch verified live in tmux: from one real vault to another, back-to-back, and the new vault held across a relaunch.
+
 ## v0.49.0 — 2026-09-22
 
 **Folder templates: a new note starts from the template paired with its folder.** The user, asked for explicitly over the locked period: "Det är en feature som jag saknar flera gånger om dagen … det enbart tjänar till att snabba upp anteckningstagandet och hjälper användaren hålla sig organiserad." A new feature, so it steps over the freeze on the user's word and bumps the minor number.

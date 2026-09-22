@@ -215,6 +215,13 @@ func Path() string {
 	return filepath.Join(configHome(), "skrin", "config.toml")
 }
 
+// SetVault points Skrin at a vault and remembers it for the next launch,
+// so Save writes it back rather than the file's old spelling.
+func (c *Config) SetVault(path string) {
+	c.Vault = path
+	c.rawVault = path
+}
+
 // Save writes c to config.toml, for the settings screen (`?`, Settings
 // tab) to persist a toggle. It keeps the file's own spelling of vault and
 // editor.external (e.g. a "~/" shorthand) rather than the expanded paths

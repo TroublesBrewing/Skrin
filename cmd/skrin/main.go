@@ -154,6 +154,13 @@ func run(vaultArg string) error {
 	if serr := session.Save(v.Root, m.Session()); serr != nil {
 		fmt.Fprintln(os.Stderr, "skrin: couldn't remember where you were:", serr)
 	}
+	if to := m.SwitchTo(); to != "" {
+		// The user asked to switch vaults. Skrin saved the choice to
+		// config and quits here, then hands the terminal to itself in
+		// the new vault. Exec replaces this process, so the same
+		// terminal stays, and the new run reads the vault from config.
+		return relaunch(to)
+	}
 	return err
 }
 

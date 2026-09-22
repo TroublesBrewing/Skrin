@@ -24,13 +24,16 @@ const legacyOrderFile = ".skrin"
 // migrateOrderFile moves the order from its old dotfile name to the new,
 // syncable one: silently, with no journal step, since the content doesn't
 // change and the old name was the old design's accident, not the user's.
-// If skrin.json already exists, it wins and .skrin is left alone.
+// If skrin.json already exists, it wins and .skrin is left alone. Only a
+// regular file counts as the old order file: .skrin is now also Skrin's
+// vault marker directory, and that must be left untouched.
 func (v *Vault) migrateOrderFile() {
 	if _, err := os.Stat(v.Abs(OrderFile)); err == nil {
 		return // the new name already exists: it wins
 	}
-	if _, err := os.Stat(v.Abs(legacyOrderFile)); err != nil {
-		return // nothing to migrate
+	fi, err := os.Stat(v.Abs(legacyOrderFile))
+	if err != nil || fi.IsDir() {
+		return // nothing to migrate (or .skrin is a marker directory)
 	}
 	_ = os.Rename(v.Abs(legacyOrderFile), v.Abs(OrderFile))
 }

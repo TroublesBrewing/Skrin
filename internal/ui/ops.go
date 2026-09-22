@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/lurioso/skrin/internal/daily"
 	"github.com/lurioso/skrin/internal/habit"
 	"github.com/lurioso/skrin/internal/obsidian"
@@ -167,7 +169,7 @@ func (m *Model) startRename(rel string) {
 	m.prompt = p
 }
 
-func (m *Model) submitPrompt() {
+func (m *Model) submitPrompt() tea.Cmd {
 	p := m.prompt
 	input := strings.TrimSpace(p.in.value())
 	var err error
@@ -180,12 +182,20 @@ func (m *Model) submitPrompt() {
 		err = m.rename(p.target, input)
 	case promptExtract:
 		err = m.extractTo(input)
+	case promptOpenFolder:
+		err = m.openFolderAsSkrin(input)
 	}
 	if err != nil {
 		p.err = err.Error()
-		return
+		return nil
 	}
 	m.prompt = nil
+	// Opening a folder hands the terminal to the new vault: quit, and
+	// main reopens there.
+	if p.kind == promptOpenFolder {
+		return tea.Quit
+	}
+	return nil
 }
 
 // createNote makes a note in the current folder. "sub/name" creates the

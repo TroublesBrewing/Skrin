@@ -90,6 +90,7 @@ const (
 	promptNewFolder
 	promptRename
 	promptExtract
+	promptOpenFolder
 )
 
 // prompt asks for a name in the status line.
@@ -101,22 +102,23 @@ type prompt struct {
 	err    string
 }
 
-func (m *Model) promptKey(k tea.KeyPressMsg) {
+func (m *Model) promptKey(k tea.KeyPressMsg) tea.Cmd {
 	switch k.String() {
 	case "esc", "ctrl+c":
 		m.prompt = nil
 	case "enter":
-		m.submitPrompt()
+		return m.submitPrompt()
 	default:
 		if m.prompt.in.handle(k) {
 			m.prompt.err = ""
 		}
 	}
+	return nil
 }
 
 func (m *Model) promptLine() string {
 	p := m.prompt
-	names := map[promptKind]string{promptNewNote: " NEW NOTE ", promptNewFolder: " NEW FOLDER ", promptRename: " RENAME "}
+	names := map[promptKind]string{promptNewNote: " NEW NOTE ", promptNewFolder: " NEW FOLDER ", promptRename: " RENAME ", promptOpenFolder: " OPEN FOLDER "}
 	left := m.st.pill.Render(names[p.kind]) + " " + m.st.text.Render(p.label+" ▸ ") + p.in.view(m.st.text, m.st.cursor)
 	right := m.st.muted.Render("enter ok · esc cancel")
 	if p.err != "" {

@@ -65,6 +65,24 @@ func (v *Vault) rel(abs string) string {
 // .obsidian, .trash and .git.
 func Hidden(name string) bool { return strings.HasPrefix(name, ".") }
 
+// MarkerDir is Skrin's marker inside a folder it has been opened as a
+// vault from. Like Obsidian's .obsidian, it is what makes a folder
+// recognisable as a Skrin to discovery; opening a folder writes it, so the
+// folder shows up as a known vault next time. It is a dot-directory, so it
+// never shows in the Files tree.
+const MarkerDir = ".skrin"
+
+// LooksLikeVault reports whether a folder is a vault: it carries Obsidian's
+// .obsidian marker or Skrin's .skrin.
+func LooksLikeVault(abs string) bool {
+	for _, m := range []string{".obsidian", MarkerDir} {
+		if fi, err := os.Stat(filepath.Join(abs, m)); err == nil && fi.IsDir() {
+			return true
+		}
+	}
+	return false
+}
+
 // IsNote reports whether a file name is a markdown note.
 func IsNote(name string) bool { return strings.EqualFold(filepath.Ext(name), ".md") }
 

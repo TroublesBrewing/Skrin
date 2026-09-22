@@ -466,7 +466,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// A prompt is a modal question, so it takes keys even when the
 		// editor is open behind it — Pull out asks from in there.
 		case m.prompt != nil:
-			m.promptKey(msg)
+			cmd = m.promptKey(msg)
 		case m.editor != nil:
 			if m.complete == nil || !m.completionKey(msg) {
 				cmd = m.editorKey(msg)

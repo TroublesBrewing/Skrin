@@ -2,6 +2,17 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.51.0 — 2026-09-22
+
+**"Open a vault" replaces "Switch vault", and any folder can be opened as a Skrin.** The user, having tried the switch for real: "I think you should be able to select any folder freely. If necessary, Skrin can add whatever settings file it needs … Obsidian has the option to 'Open a folder as a vault' and Skrin should be able to do the same." And, on the name: "we will call it 'Open a folder as a skrin'." So the picker became what Obsidian's is.
+
+- **"Open a vault" (Ctrl+P)** lists every vault it can find: Obsidian's registered vaults, folders beside the current one that carry an `.obsidian` or `.skrin` marker, and the vault open now. Above them sits **"Open a folder as a Skrin…"**, which prompts for a path and opens any folder at all — a plain folder that has never been a vault, nothing to prepare.
+- **Opening a folder writes Skrin's marker** — a `.skrin` directory — so the folder is recognised as a vault next time, exactly as Obsidian's `.obsidian` marks one. Nothing else about the folder is touched.
+- **Discovery recognises both markers** (`.obsidian` and `.skrin`), so a folder adopted through Skrin shows up alongside Obsidian's own vaults on the next run.
+- Choosing any vault — from the list or by path — saves it as the default and reopens Skrin there, in the same terminal.
+
+The `.skrin` marker coexists with the old order file of the same name: the order file was renamed to `skrin.json` long ago, and the migration now only moves a regular file, leaving a `.skrin` directory untouched. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux: opened a plain `/tmp` folder with no marker, Skrin adopted it (`.skrin` appeared) and showed its notes.
+
 ## v0.50.0 — 2026-09-22
 
 **Switch vault, from inside Skrin.** The user: "Oh, just realized we can't select other vaults. That is core functionality." A basic Obsidian feature Skrin was missing — Obsidian has a vault picker at launch and "Open another vault" from inside — so it lands under the locked-period exception, on the user's call.

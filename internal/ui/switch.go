@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"errors"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -9,38 +11,71 @@ import (
 
 	"github.com/lurioso/skrin/internal/config"
 	"github.com/lurioso/skrin/internal/obsidian"
+	"github.com/lurioso/skrin/internal/vault"
 )
 
-// openSwitchVault lists Obsidian's registered vaults to switch to. It is
-// a palette command, not a key: switching vaults is a rare, deliberate
+// openSwitchVault lists the vaults to switch to: Obsidian's registered
+// vaults, plus any folder next to the current vault that looks like a
+// vault (has its own .obsidian or Skrin's .skrin marker). Above them sits
+// "Open a folder as a Skrin…", which opens any folder at all. It is a
+// palette command, not a key: switching vaults is a rare, deliberate
 // thing, so it stays out of the way until someone asks for it.
 func (m *Model) openSwitchVault() {
-	reg, err := obsidian.LoadRegistry(config.ObsidianRegistry())
-	if err != nil {
-		m.flash = "can't read Obsidian's vault list: " + err.Error()
-		return
-	}
-	type vault struct{ path, name string }
-	var vaults []vault
-	for _, e := range reg.Vaults {
-		if e.Path == "" {
-			continue
+	type candidate struct{ path, name string }
+
+	seen := map[string]bool{}
+	var vaults []candidate
+	add := func(path string) {
+		if path == "" {
+			return
 		}
-		vaults = append(vaults, vault{path: e.Path, name: filepath.Base(e.Path)})
+		key := filepath.Clean(path)
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		vaults = append(vaults, candidate{path: key, name: filepath.Base(key)})
 	}
+
+	// The vault open now, always shown, so the list says where you are
+	// even when no registry or marker names it.
+	add(m.vault.Root)
+
+	// Obsidian's own list, the vaults it knows about.
+	if reg, err := obsidian.LoadRegistry(config.ObsidianRegistry()); err == nil {
+		for _, e := range reg.Vaults {
+			add(e.Path)
+		}
+	}
+
+	// Siblings of the current vault that look like vaults, so a vault
+	// Obsidian hasn't opened yet (a new one sitting next to this one) is
+	// still reachable. "Looks like" means a .obsidian or a .skrin marker.
+	parent := filepath.Dir(filepath.Clean(m.vault.Root))
+	if entries, err := os.ReadDir(parent); err == nil {
+		for _, e := range entries {
+			if !e.IsDir() {
+				continue
+			}
+			if p := filepath.Join(parent, e.Name()); vault.LooksLikeVault(p) {
+				add(p)
+			}
+		}
+	}
+
 	sort.Slice(vaults, func(i, j int) bool {
 		return strings.ToLower(vaults[i].name) < strings.ToLower(vaults[j].name)
 	})
-	if len(vaults) == 0 {
-		m.flash = "Obsidian's vault list is empty"
-		return
-	}
 
 	cur := filepath.Clean(m.vault.Root)
 	var items []choice
+	items = append(items, choice{
+		label: "Open a folder as a Skrin…",
+		do:    m.startOpenFolder,
+	})
 	for _, vv := range vaults {
 		detail := ""
-		if filepath.Clean(vv.path) == cur {
+		if vv.path == cur {
 			detail = "open now"
 		}
 		path := vv.path
@@ -56,12 +91,56 @@ func (m *Model) openSwitchVault() {
 		})
 	}
 	m.openChooser(&chooser{
-		title:  "Switch vault",
+		title:  "Open a vault",
 		prompt: "Vault",
 		empty:  "No vault by that name",
 		verb:   "open",
 		items:  items,
 	})
+}
+
+// startOpenFolder asks for a folder path to open as a Skrin. The prompt is
+// free text: any folder at all, not just ones already known.
+func (m *Model) startOpenFolder() {
+	p := &prompt{kind: promptOpenFolder, label: "Open this folder as a Skrin"}
+	p.in.set(m.vault.Root + string(filepath.Separator))
+	m.prompt = p
+}
+
+// openFolderAsSkrin opens any folder as a vault: it writes Skrin's marker
+// (a .skrin directory) so the folder is recognised as a vault next time,
+// remembers it as the default, and asks to quit so main reopens there. A
+// folder that isn't a directory is refused; one that is, is adopted on the
+// spot — nothing about its contents is touched beyond the marker.
+func (m *Model) openFolderAsSkrin(input string) error {
+	root := strings.TrimSpace(input)
+	if root == "" {
+		return errors.New("no folder given")
+	}
+	abs, err := filepath.Abs(root)
+	if err != nil {
+		return err
+	}
+	fi, err := os.Stat(abs)
+	if err != nil {
+		return err
+	}
+	if !fi.IsDir() {
+		return errors.New("that's not a folder")
+	}
+	// Write the marker if it isn't there, so discovery finds it next time.
+	if !vault.LooksLikeVault(abs) {
+		if err := os.Mkdir(filepath.Join(abs, vault.MarkerDir), 0o755); err != nil && !os.IsExist(err) {
+			return err
+		}
+	}
+	m.switchTo = abs
+	m.opts.Config.SetVault(abs)
+	if err := config.Save(m.opts.Config); err != nil {
+		m.switchTo = ""
+		return err
+	}
+	return nil
 }
 
 // switchVaultTo remembers the chosen vault as Skrin's default and asks to

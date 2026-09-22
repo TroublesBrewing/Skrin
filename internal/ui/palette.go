@@ -216,7 +216,7 @@ func (m *Model) mainPaletteItems() []choice {
 			m.startTemplate()
 			return nil
 		})},
-		choice{label: "Switch vault", also: "change open another vault obsidian", run: m.paletteRun("Switch vault", func() tea.Cmd {
+		choice{label: "Open a vault", also: "switch change open another folder skrin obsidian", run: m.paletteRun("Open a vault", func() tea.Cmd {
 			m.openSwitchVault()
 			return nil
 		})},

@@ -104,6 +104,11 @@ type prompt struct {
 	target string // promptRename: the path being renamed
 	in     lineInput
 	err    string
+	// promptNewNote: the folder the note lands in, resolved when the
+	// prompt opened (so Tab can change it without the cursor moving);
+	// and whether the note opens in a split beside the one being read.
+	folder string
+	split  bool
 }
 
 func (m *Model) promptKey(k tea.KeyPressMsg) tea.Cmd {
@@ -112,6 +117,10 @@ func (m *Model) promptKey(k tea.KeyPressMsg) tea.Cmd {
 		m.prompt = nil
 	case "enter":
 		return m.submitPrompt()
+	case "tab", "shift+tab":
+		if m.prompt.kind == promptNewNote {
+			m.pickNewNoteFolder()
+		}
 	default:
 		if m.prompt.in.handle(k) {
 			m.prompt.err = ""
@@ -120,11 +129,45 @@ func (m *Model) promptKey(k tea.KeyPressMsg) tea.Cmd {
 	return nil
 }
 
+// pickNewNoteFolder is Tab in a new-note prompt: choose which folder the
+// note lands in, from the vault's real folders, instead of the one the
+// cursor is standing in. Esc comes back to the name with the folder
+// unchanged; picking one updates the prompt and returns to the name.
+func (m *Model) pickNewNoteFolder() {
+	dirs, err := m.vault.Dirs()
+	if err != nil {
+		m.flash = err.Error()
+		return
+	}
+	p := m.prompt
+	m.prompt = nil
+	restore := func(folder string) {
+		p.folder = folder
+		p.label = "New note in " + m.folderLabel(folder)
+		m.prompt = p
+	}
+	var items []choice
+	for _, d := range dirs {
+		items = append(items, choice{label: m.folderLabel(d), do: func() { restore(d) }})
+	}
+	m.openChooser(&chooser{
+		title:  "New note in",
+		prompt: "Folder",
+		empty:  "No folder matches",
+		verb:   "choose",
+		items:  items,
+		cancel: func() { m.prompt = p },
+	})
+}
+
 func (m *Model) promptLine() string {
 	p := m.prompt
 	names := map[promptKind]string{promptNewNote: " NEW NOTE ", promptNewFolder: " NEW FOLDER ", promptRename: " RENAME ", promptOpenFolder: " OPEN FOLDER "}
 	left := m.st.pill.Render(names[p.kind]) + " " + m.st.text.Render(p.label+" ▸ ") + p.in.view(m.st.text, m.cursorStyle())
 	right := m.st.muted.Render("enter ok · esc cancel")
+	if p.kind == promptNewNote {
+		right = m.st.muted.Render("enter ok · tab folder · esc cancel")
+	}
 	if p.err != "" {
 		right = m.st.errText.Render(p.err)
 	}

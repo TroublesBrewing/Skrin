@@ -579,6 +579,8 @@ func (m *Model) do(a action) tea.Cmd {
 		m.focus = paneNote
 	case actNewNote:
 		m.startCreate(promptNewNote)
+	case actNewNoteSplit:
+		m.startCreateSplit()
 	case actNewFolder:
 		m.startCreate(promptNewFolder)
 	case actRename, actMove, actDelete:

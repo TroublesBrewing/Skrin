@@ -24,6 +24,7 @@ type paletteEntry struct {
 var mainCommands = []paletteEntry{
 	{actEdit, "Edit the note", "write change modify type"},
 	{actNewNote, "New note", "create add file page"},
+	{actNewNoteSplit, "New note in a split", "beside split side by side reference"},
 	{actDaily, "Today's daily note", "journal diary date day"},
 	{actSearch, "Search the vault", "find grep text look for replace"},
 	{actSwitcher, "Go to a note by name", "open file jump quick switcher"},

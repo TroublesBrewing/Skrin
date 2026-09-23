@@ -156,7 +156,20 @@ func (m *Model) startCreate(k promptKind) {
 	if k == promptNewFolder {
 		what = "New folder in "
 	}
-	m.prompt = &prompt{kind: k, label: what + m.folderLabel(m.cwd())}
+	cwd := m.cwd()
+	m.prompt = &prompt{kind: k, label: what + m.folderLabel(cwd), folder: cwd}
+}
+
+// startCreateSplit is Alt+n: a new note in a split beside the note being
+// read, so the reference stays put while the new note is written in the
+// other pane. With no note open it falls back to an ordinary new note.
+func (m *Model) startCreateSplit() {
+	if m.notePath == "" || m.width < splitMinWidth {
+		m.startCreate(promptNewNote)
+		return
+	}
+	cwd := m.cwd()
+	m.prompt = &prompt{kind: promptNewNote, label: "New note in " + m.folderLabel(cwd), folder: cwd, split: true}
 }
 
 func (m *Model) startRename(rel string) {
@@ -175,7 +188,7 @@ func (m *Model) submitPrompt() tea.Cmd {
 	var err error
 	switch p.kind {
 	case promptNewNote:
-		err = m.createNote(input)
+		err = m.createNote(input, p.folder, p.split)
 	case promptNewFolder:
 		err = m.createFolder(input)
 	case promptRename:
@@ -198,21 +211,27 @@ func (m *Model) submitPrompt() tea.Cmd {
 	return nil
 }
 
-// createNote makes a note in the current folder. "sub/name" creates the
-// folders on the way. An empty name becomes "Untitled", as in Obsidian, and
-// so does "sub/" with no name after the slash, inside sub.
-func (m *Model) createNote(input string) error {
-	cwd := m.cwd()
+// createNote makes a note in the folder the prompt resolved (the one the
+// cursor was in when it opened, or one picked with Tab). "sub/name"
+// creates the folders on the way. An empty name becomes "Untitled", as in
+// Obsidian, and so does "sub/" with no name after the slash, inside sub.
+// With split, the note opens in a split beside the one being read.
+func (m *Model) createNote(input, folder string, split bool) error {
+	cwd := folder
 	if i := strings.LastIndex(input, "/"); input == "" || (i >= 0 && strings.TrimSpace(input[i+1:]) == "") {
 		dir := cwd
-		if folder := strings.TrimSpace(strings.TrimSuffix(input, "/")); folder != "" {
-			d, err := joinUserPath(cwd, folder)
+		if sub := strings.TrimSpace(strings.TrimSuffix(input, "/")); sub != "" {
+			d, err := joinUserPath(cwd, sub)
 			if err != nil {
 				return err
 			}
 			dir = d
 		}
-		return m.createNoteAt(path.Join(dir, m.untitledIn(dir, ".md")+".md"))
+		rel := path.Join(dir, m.untitledIn(dir, ".md")+".md")
+		if split {
+			return m.createNoteAtSplit(rel)
+		}
+		return m.createNoteAt(rel)
 	}
 	rel, err := joinUserPath(cwd, input)
 	if err != nil {
@@ -221,15 +240,19 @@ func (m *Model) createNote(input string) error {
 	if !vault.IsNote(rel) {
 		rel += ".md"
 	}
+	if split {
+		return m.createNoteAtSplit(rel)
+	}
 	return m.createNoteAt(rel)
 }
 
-// createNoteAt creates an empty note at rel, puts the Files cursor on it and
-// opens it in the editor. A paired folder template fills the note instead of
-// leaving it empty.
-func (m *Model) createNoteAt(rel string) error {
+// writeNewNote puts a new note at rel on disk, filled from its folder's
+// paired template if any, and records the undoable create. It reports the
+// content it was written with, so the caller can say whether a template
+// filled it.
+func (m *Model) writeNewNote(rel string) (string, error) {
 	if m.vault.Exists(rel) {
-		return fmt.Errorf("%s already exists", rel)
+		return "", fmt.Errorf("%s already exists", rel)
 	}
 	content := m.newNoteContent(rel)
 	dirs, err := m.vault.CreateFile(rel, content)
@@ -239,17 +262,51 @@ func (m *Model) createNoteAt(rel string) error {
 	}
 	m.journal.Record(vault.Op{Desc: "create " + rel, Steps: steps})
 	if err != nil {
+		return "", err
+	}
+	return content, nil
+}
+
+// createdFlash names a fresh create, saying when a folder template filled it.
+func createdFlash(rel, content string) string {
+	if content != "" {
+		return "Created " + rel + " from its folder's template"
+	}
+	return "Created " + rel
+}
+
+// createNoteAt creates an empty note at rel, puts the Files cursor on it and
+// opens it in the editor. A paired folder template fills the note instead of
+// leaving it empty.
+func (m *Model) createNoteAt(rel string) error {
+	content, err := m.writeNewNote(rel)
+	if err != nil {
 		return err
 	}
 	m.reveal(rel)
 	m.pushHistory()
 	m.showNote(rel)
 	m.openEditor(rel)
-	if content != "" {
-		m.flash = "Created " + rel + " from its folder's template"
-	} else {
-		m.flash = "Created " + rel
+	m.flash = createdFlash(rel, content)
+	return nil
+}
+
+// createNoteAtSplit is createNoteAt for Alt+n: the note being read becomes
+// the split pane, and the new note takes the main pane, open in the
+// editor — so the reference stays visible while the new note is written.
+func (m *Model) createNoteAtSplit(rel string) error {
+	content, err := m.writeNewNote(rel)
+	if err != nil {
+		return err
 	}
+	m.reveal(rel)
+	m.pushHistory()
+	m.split = &noteView{path: m.notePath, src: m.noteSrc, err: m.noteErr, off: m.noteOff}
+	m.splitLeft = false
+	m.zen = false
+	m.showNote(rel)
+	m.openEditor(rel)
+	m.flash = createdFlash(rel, content) + " · " + displayName(m.split.path) + " is beside it"
 	return nil
 }
 

@@ -2,6 +2,16 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.55.0 — 2026-09-23
+
+**A new note in a split beside the one you're reading, and a folder picker for where it lands.** Two of the user's own friction points, built together because they are the same one: you could not catch a thought in the right place without losing your place in what you were reading. Reading a note in one folder (say Maruzor) and wanting the new note in the root meant navigating away — or settling for the wrong folder.
+
+- **Alt+n: a new note in a split.** While reading a note, Alt+n asks for a name and opens the new note in the editor, moving the note you were reading into the split pane beside it — so the reference stays visible while you write. With no note open (or a window too narrow to split) it falls back to an ordinary new note.
+- **Tab in the new-note prompt picks the folder.** The prompt now shows "enter ok · tab folder · esc cancel". Tab opens a chooser of the vault's real folders; pick one (or Esc back, unchanged) and the note lands there instead of the folder the cursor is standing in. The two compose: Alt+n, then Tab, then name, puts the split note in any folder you like.
+- **It is the same flow underneath.** One prompt, one folder resolver, one undoable create — the split and the folder choice are just where the new note is opened and where it is written.
+
+Full suite green (`-count=1`), `go vet` and `gofmt` clean, with five new tests covering the folder pick, the split, the fall-back, and the two composed.
+
 ## v0.54.0 — 2026-09-22
 
 **The input cursor blinks everywhere, and how fast is a setting.** The user's original idea, built in full: the blink is no longer confined to the Book Card, and its speed is now a choice in Settings and the palette — off, slow, medium or fast.

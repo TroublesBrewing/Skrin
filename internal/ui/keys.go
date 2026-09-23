@@ -98,6 +98,7 @@ const (
 	actFindNote  // Ctrl+F in the editor
 	actNextMatch // in it: the next match, and the one before
 	actPrevMatch
+	actNewNoteSplit // Alt+n: a new note in a split beside the one you're reading
 )
 
 // Contexts say where a binding works. Each gets its own keymap, built from
@@ -185,6 +186,7 @@ var defaultBindings = []binding{
 	{actBack, []string{"ctrl+o", "alt+left"}, "Files: close the folder · note: go back", groupMove, inMain},
 	{actForward, []string{"ctrl+i", "alt+right"}, "Files: open the folder · note: go forward", groupMove, inMain},
 	{actNewNote, []string{"n"}, "new note in the current folder", groupFiles, inMain},
+	{actNewNoteSplit, []string{"alt+n"}, "new note in a split beside the one you're reading", groupFiles, inMain},
 	{actNewFolder, []string{"N"}, "new folder in the current folder", groupFiles, inMain},
 	{actRename, []string{"r"}, "rename", groupFiles, inMain},
 	{actMove, []string{"m"}, "move (the marked items, if any)", groupFiles, inMain},
@@ -419,6 +421,7 @@ var actionName = map[action]string{
 	actHabits: "habits", actHabitTab: "habit-tab", actQuickNote: "quick-note",
 	actPalette:  "palette",
 	actFindNote: "find-note", actNextMatch: "next-match", actPrevMatch: "prev-match",
+	actNewNoteSplit: "new-note-split",
 }
 
 // actionByName is actionName the other way round, for reading overrides

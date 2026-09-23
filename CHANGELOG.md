@@ -12,6 +12,8 @@ Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor versi
 - **The errors name what was written.** `this.file.day` says "this.file.day isn't supported yet", not "file.day"; `this` or `this.file` on its own says what to try instead. `FROM this.file`, which has worked since spreads existed, is unchanged.
 - The manual's Spreads section says so, in the key list and in a line of its own.
 
+**Also in this release: `FLATTEN`.** It was finished and tested in the working tree but never committed or released — it had been sitting there since the v0.21.0 line — and went out with this release. `FLATTEN file.outlinks AS link` fans a list field out into one row per value: a note whose list is empty drops out, and a note without a FLATTEN answers with its single row as before. The manual's Spreads section names it now, which it never did.
+
 `GROUP BY`, arithmetic and a function library beyond `contains()`/`icontains()` are still Dataview syntax Skrin doesn't do yet; they each say so by name.
 
 Full suite green (`-count=1`), `go vet` and `gofmt` clean, with five new tests. Verified live in tmux against the vault copy: the same query with and without the `this.` line, one table leaving the note out and one keeping it in.

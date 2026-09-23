@@ -16,18 +16,26 @@ const (
 
 // Query is a parsed spread.
 type Query struct {
-	kind   queryKind
-	noID   bool    // TABLE WITHOUT ID: no note column
-	fields []field // a table's columns, or a list's one value
-	from   source  // nil: the whole vault
-	where  expr    // nil: every note
-	sort   []sortKey
-	Limit  int // -1: no LIMIT
+	kind    queryKind
+	noID    bool // TABLE WITHOUT ID: no note column
+	fields  []field
+	from    source // nil: the whole vault
+	where   expr   // nil: every note
+	flatten []flattenClause
+	sort    []sortKey
+	Limit   int // -1: no LIMIT
 }
 
 type field struct {
 	e    expr
 	name string // the column header: as written, or AS's name
+}
+
+// flattenClause is one FLATTEN: expand a list-valued expression into one
+// row per element, bound to name.
+type flattenClause struct {
+	e    expr
+	name string
 }
 
 type sortKey struct {
@@ -38,7 +46,7 @@ type sortKey struct {
 // The file.* fields a spread knows.
 var fileFields = map[string]bool{
 	"file.name": true, "file.link": true, "file.folder": true, "file.path": true,
-	"file.tags": true, "file.mtime": true, "file.size": true,
+	"file.tags": true, "file.mtime": true, "file.size": true, "file.outlinks": true,
 }
 
 type parser struct {
@@ -198,7 +206,11 @@ func Parse(src string) (*Query, error) {
 		case t.is("GROUP"):
 			return nil, errAt(t, "GROUP BY isn't supported yet")
 		case t.is("FLATTEN"):
-			return nil, errAt(t, "FLATTEN isn't supported yet")
+			f, err := p.flatten()
+			if err != nil {
+				return nil, err
+			}
+			q.flatten = append(q.flatten, f)
 		default:
 			return nil, errAt(t, "expected FROM, WHERE, SORT or LIMIT, found %s", t)
 		}
@@ -218,6 +230,26 @@ func (p *parser) field() (field, error) {
 		n := p.next()
 		if n.kind != tString && n.kind != tIdent {
 			return field{}, errAt(n, "AS needs a name after it, found %s", n)
+		}
+		f.name = n.text
+	}
+	return f, nil
+}
+
+// flatten parses one FLATTEN clause: an expression, expanded into one row
+// per element, named by its own text or by AS.
+func (p *parser) flatten() (flattenClause, error) {
+	start := p.pos
+	e, err := p.expr()
+	if err != nil {
+		return flattenClause{}, err
+	}
+	f := flattenClause{e: e, name: p.text(start, p.pos)}
+	if p.peek().is("AS") {
+		p.next()
+		n := p.next()
+		if n.kind != tString && n.kind != tIdent {
+			return flattenClause{}, errAt(n, "AS needs a name after it, found %s", n)
 		}
 		f.name = n.text
 	}
@@ -332,18 +364,38 @@ func (p *parser) primary() (expr, error) {
 			return p.call(t)
 		case isClause(t), t.is("AND"), t.is("OR"), t.is("AS"):
 			return nil, errAt(t, "expected a value, found %s", t)
-		case lower == "file.ctime", lower == "file.cday":
-			return nil, errAt(t, "%s isn't available: Linux can't tell when a note was created", lower)
-		case strings.HasPrefix(lower, "file."):
-			if !fileFields[lower] {
-				return nil, errAt(t, "%s isn't supported yet", lower)
+		case lower == "this", lower == "this.file":
+			return nil, errAt(t, "%s on its own isn't a value — try this.file.name, this.file.link or this.property", lower)
+		case strings.HasPrefix(lower, "this."):
+			name := strings.TrimPrefix(lower, "this.")
+			if err := checkField(t, "this.", name); err != nil {
+				return nil, err
 			}
-		case lower == "this" || strings.HasPrefix(lower, "this."):
-			return nil, errAt(t, "this isn't supported yet")
+			return thisRef{name}, nil
+		case strings.HasPrefix(lower, "file."):
+			if err := checkField(t, "", lower); err != nil {
+				return nil, err
+			}
 		}
 		return fieldRef{strings.ToLower(t.text)}, nil
 	}
 	return nil, errAt(t, "expected a value, found %s", t)
+}
+
+// checkField turns down a file.* field a spread doesn't know. prefix is
+// "this." when the field was written that way, so the message names it
+// as the user wrote it. Anything that isn't a file.* field is a note's
+// own property, and every name is allowed there.
+func checkField(t token, prefix, name string) error {
+	switch {
+	case !strings.HasPrefix(name, "file."):
+		return nil
+	case name == "file.ctime", name == "file.cday":
+		return errAt(t, "%s%s isn't available: Linux can't tell when a note was created", prefix, name)
+	case !fileFields[name]:
+		return errAt(t, "%s%s isn't supported yet", prefix, name)
+	}
+	return nil
 }
 
 func (p *parser) call(name token) (expr, error) {
@@ -420,6 +472,11 @@ func (p *parser) unarySource() (source, error) {
 		return folderS{strings.Trim(t.text, "/")}, nil
 	case t.kind == tLink:
 		return linksToS{t.text}, nil
+	case t.kind == tIdent && strings.EqualFold(t.text, "this.file"):
+		// this.file: the note the spread sits in. In FROM it is a source
+		// — the note itself — which is how "FROM this.file
+		// FLATTEN file.outlinks" lists the note's own links.
+		return thisFileS{}, nil
 	case t.is("outgoing"):
 		if c := p.next(); c.kind != tLParen {
 			return nil, errAt(c, "expected ( after outgoing, found %s", c)

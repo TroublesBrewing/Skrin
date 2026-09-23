@@ -202,6 +202,106 @@ func TestFileFields(t *testing.T) {
 	}
 }
 
+func TestFlattenExpandsAListField(t *testing.T) {
+	// The reading log links to two books; FLATTEN fans them into one row
+	// each, bound to the name "link".
+	r := run(t, `TABLE WITHOUT ID link FROM "Reading log" FLATTEN file.outlinks AS link`)
+	want := "| link |\n| --- |\n| [[Books/Dune\\|Dune]] |\n| [[Books/Kallocain\\|Kallocain]] |\n"
+	if r.Err != "" || r.Markdown != want {
+		t.Errorf("got %q (err %q)\nwant %q", r.Markdown, r.Err, want)
+	}
+}
+
+func TestFlattenSeesTheBoundNameElsewhere(t *testing.T) {
+	// The bound name works in SORT too, not just in a field.
+	r := run(t, `TABLE WITHOUT ID link FROM "Reading log" FLATTEN file.outlinks AS link SORT link DESC`)
+	want := "| link |\n| --- |\n| [[Books/Kallocain\\|Kallocain]] |\n| [[Books/Dune\\|Dune]] |\n"
+	if r.Err != "" || r.Markdown != want {
+		t.Errorf("got %q (err %q)\nwant %q", r.Markdown, r.Err, want)
+	}
+}
+
+func TestFlattenLeavesANonListValueAlone(t *testing.T) {
+	// A FLATTEN over a single value yields that value once per note.
+	r := run(t, `TABLE WITHOUT ID rating FROM #books FLATTEN rating AS r`)
+	want := "| rating |\n| --- |\n| 5 |\n| 4 |\n| 3 |\n"
+	if r.Err != "" || r.Markdown != want {
+		t.Errorf("got %q (err %q)\nwant %q", r.Markdown, r.Err, want)
+	}
+}
+
+func TestFlattenDropsNotesWhoseListIsEmpty(t *testing.T) {
+	// The daily note links to the reading log; the books link to nothing,
+	// so FROM "" FLATTEN file.outlinks keeps only notes that link out.
+	r := run(t, `TABLE WITHOUT ID link FROM "" FLATTEN file.outlinks AS link`)
+	got := names(r.Markdown)
+	if strings.Join(got, ",") != "Reading log,Dune,Kallocain" {
+		t.Errorf("got %v, want Reading log,Dune,Kallocain", got)
+	}
+}
+
+func TestThisFileListsTheNotesOwnLinks(t *testing.T) {
+	// The "se även" query: from the note the spread sits in, list the
+	// notes it links to. Run it from the reading log, which links to two
+	// books.
+	r := Run(`TABLE WITHOUT ID link FROM this.file FLATTEN file.outlinks AS link`, library, "Reading log.md")
+	want := "| link |\n| --- |\n| [[Books/Dune\\|Dune]] |\n| [[Books/Kallocain\\|Kallocain]] |\n"
+	if r.Err != "" || r.Markdown != want {
+		t.Errorf("got %q (err %q)\nwant %q", r.Markdown, r.Err, want)
+	}
+}
+
+func TestThisLeavesOutTheNoteTheSpreadSitsIn(t *testing.T) {
+	// Dataview's commonest line of all: every note but this one. The
+	// spread is read from the daily note, so that is the one left out.
+	wantNames(t, `LIST FROM "" WHERE file.name != this.file.name`,
+		"Dune", "Kallocain", "Thinking", "Unrated", "Reading log")
+	wantNames(t, `LIST FROM "" WHERE file.path = this.file.path`, "2026-09-18")
+	wantNames(t, `LIST FROM "" WHERE file.folder = this.file.folder`, "2026-09-18")
+}
+
+func TestThisReadsTheNotesOwnProperties(t *testing.T) {
+	// this.<property>, not only this.file.*: read from Dune, the books
+	// by the same author.
+	r := Run(`LIST FROM #books WHERE author = this.author`, library, "Books/Dune.md")
+	if got := names(r.Markdown); r.Err != "" || strings.Join(got, ",") != "Dune" {
+		t.Errorf("got %v (err %q), want [Dune]", got, r.Err)
+	}
+}
+
+func TestThisIsTheSpreadsNoteNotTheRows(t *testing.T) {
+	// The column holds the note the spread sits in, the same on every
+	// row, while file.link keeps following the row.
+	r := Run(`TABLE WITHOUT ID file.link, this.file.link FROM #books/fiction`, library, "Reading log.md")
+	want := "| file.link | this.file.link |\n| --- | --- |\n" +
+		"| [[Books/Dune\\|Dune]] | [[Reading log\\|Reading log]] |\n" +
+		"| [[Books/Kallocain\\|Kallocain]] | [[Reading log\\|Reading log]] |\n"
+	if r.Err != "" || r.Markdown != want {
+		t.Errorf("got %q (err %q)\nwant %q", r.Markdown, r.Err, want)
+	}
+}
+
+func TestThisInATaskSpreadReadsTheNoteNotTheTask(t *testing.T) {
+	// Read from Alpha, whose owner is Ann: the condition is about the
+	// note the spread sits in, so every project's tasks show.
+	r := Run(`TASK FROM #project WHERE this.owner = "Ann"`, planner, "Projects/Alpha.md")
+	if r.Err != "" || !strings.Contains(r.Markdown, "book the room") {
+		t.Errorf("got %q (err %q)", r.Markdown, r.Err)
+	}
+	if r := Run(`TASK FROM #project WHERE this.owner = "Bo"`, planner, "Projects/Alpha.md"); r.Note != "No tasks match" {
+		t.Errorf("this.owner should be Alpha's: %+v", r)
+	}
+}
+
+func TestThisIsNullWhenTheIndexDoesntKnowTheNote(t *testing.T) {
+	// A spread in a note the index hasn't seen — one just written, or
+	// outside the vault. this.* is null, and the rest still answers.
+	r := Run(`LIST FROM #books/fiction WHERE file.name != this.file.name`, library, "Nowhere.md")
+	if got := names(r.Markdown); r.Err != "" || strings.Join(got, ",") != "Dune,Kallocain" {
+		t.Errorf("got %v (err %q)", got, r.Err)
+	}
+}
+
 func TestEmptyResultSaysSo(t *testing.T) {
 	r := run(t, `LIST FROM #nothing`)
 	if r.Markdown != "" || r.Note != "No notes match" || r.Err != "" {
@@ -232,11 +332,15 @@ func TestErrorsNameTheProblemAndTheLine(t *testing.T) {
 		"SHOW everything":                         `Spread: expected TABLE, LIST or TASK, found "SHOW" (line 1)`,
 		"TABLE author\nFROM #books\nWHER x":       `Spread: expected FROM, WHERE, SORT or LIMIT, found "WHER" (line 3)`,
 		"LIST FROM #books\nGROUP BY status":       "Spread: GROUP BY isn't supported yet (line 2)",
-		"LIST\nFLATTEN authors":                   "Spread: FLATTEN isn't supported yet (line 2)",
+		"LIST\nFLATTEN":                           "Spread: expected a value, found the end of the spread (line 2)",
 		"CALENDAR file.mtime":                     "Spread: CALENDAR isn't supported yet (line 1)",
 		"TASK text FROM #todo":                    "Spread: TASK takes no fields — put conditions in WHERE (line 1)",
 		"TABLE file.ctime":                        "Spread: file.ctime isn't available: Linux can't tell when a note was created (line 1)",
 		"TABLE file.day":                          "Spread: file.day isn't supported yet (line 1)",
+		"TABLE this.file.day":                     "Spread: this.file.day isn't supported yet (line 1)",
+		"TABLE this.file.ctime":                   "Spread: this.file.ctime isn't available: Linux can't tell when a note was created (line 1)",
+		"LIST WHERE this = 1":                     "Spread: this on its own isn't a value — try this.file.name, this.file.link or this.property (line 1)",
+		"LIST WHERE this.file = 1":                "Spread: this.file on its own isn't a value — try this.file.name, this.file.link or this.property (line 1)",
 		"LIST WHERE rating * 2 > 4":               "Spread: arithmetic (+ - * /) isn't supported yet (line 1)",
 		"LIST WHERE startswith(file.name, \"a\")": "Spread: startswith() isn't supported yet (line 1)",
 		"LIST WHERE contains(tags)":               "Spread: contains() takes two values: contains(field, value) (line 1)",

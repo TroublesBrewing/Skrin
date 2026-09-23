@@ -2,6 +2,20 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.56.0 — 2026-09-23
+
+**`this.` in a spread: the note the spread is written in.** Dataview's commonest line of all — `WHERE file.name != this.file.name`, the one that keeps an index note out of its own answer — was turned down with "this isn't supported yet". A note whose `dataview` block Obsidian draws a table for showed a ⚠ line in Skrin instead. It works now.
+
+- **Any field with `this.` in front reads the note the spread sits in**, not the note in the row: `this.file.name`, `this.file.link`, `this.file.folder` and the rest of the `file.*` fields, and the note's own properties too — `WHERE author = this.author` finds the notes that share its author.
+- **It is the spread's note on every row.** `TABLE file.link, this.file.link` puts the row's note in one column and the note you are reading in the other, the same all the way down. In a TASK spread it is still the note the spread is written in, not the task's note and not the task.
+- **A note the index doesn't know yet** — one just written, one outside the vault — makes `this.*` read as null rather than stopping the spread, so the rest of the answer still arrives.
+- **The errors name what was written.** `this.file.day` says "this.file.day isn't supported yet", not "file.day"; `this` or `this.file` on its own says what to try instead. `FROM this.file`, which has worked since spreads existed, is unchanged.
+- The manual's Spreads section says so, in the key list and in a line of its own.
+
+`GROUP BY`, arithmetic and a function library beyond `contains()`/`icontains()` are still Dataview syntax Skrin doesn't do yet; they each say so by name.
+
+Full suite green (`-count=1`), `go vet` and `gofmt` clean, with five new tests. Verified live in tmux against the vault copy: the same query with and without the `this.` line, one table leaving the note out and one keeping it in.
+
 ## v0.55.1 — 2026-09-23
 
 **The new-note folder now reads as a choice, not a fact.** In v0.55.0 the folder the note would land in sat in the prompt as ordinary text, so Tab's folder picker stayed hidden — the user pressed n, saw no way to change the folder, and rightly concluded the feature wasn't there. Now the folder name renders in the accent colour (bold), so it looks like the thing you can change, and the hint spells it out: "enter ok · tab change folder · esc cancel".

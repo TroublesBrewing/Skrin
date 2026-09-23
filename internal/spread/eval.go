@@ -77,10 +77,32 @@ type ctx struct {
 	task    *Task                      // the task being looked at, in a TASK spread
 	linksTo map[string]map[string]bool // note → the notes linking to it
 	linksOf map[string]map[string]bool // note → the notes it links to
+	scope   map[string]value           // FLATTEN bindings for the row being built
+
+	self     *Note // the note the spread sits in, for this.*; see selfNote
+	selfLook bool
 }
 
 func newCtx(v Vault, from string) *ctx {
 	return &ctx{v: v, from: from, linksTo: map[string]map[string]bool{}, linksOf: map[string]map[string]bool{}}
+}
+
+// selfNote is the note the spread sits in: the one this.* reads. It's
+// looked up once, and stays nil when the index doesn't know that note —
+// a spread in a note that was never saved — so this.* reads as null
+// rather than stopping the whole spread.
+func (c *ctx) selfNote() *Note {
+	if !c.selfLook {
+		c.selfLook = true
+		for _, n := range c.v.Notes() {
+			if n.Rel == c.from {
+				self := n
+				c.self = &self
+				break
+			}
+		}
+	}
+	return c.self
 }
 
 // values turns a field's written values into one value: nothing is null,
@@ -139,6 +161,12 @@ func (e linkLit) eval(c *ctx, _ *Note) value {
 type fieldRef struct{ name string }
 
 func (e fieldRef) eval(c *ctx, n *Note) value {
+	// A FLATTEN binding shadows any note field of the same name.
+	if c.scope != nil {
+		if v, ok := c.scope[e.name]; ok {
+			return v
+		}
+	}
 	if t := c.task; t != nil {
 		switch e.name {
 		case "text":
@@ -170,6 +198,8 @@ func (e fieldRef) eval(c *ctx, n *Note) value {
 		return text("")
 	case "file.tags":
 		return tagList(n.Tags)
+	case "file.outlinks":
+		return outlinkList(c.v.Outgoing(n.Rel))
 	case "file.mtime":
 		return value{k: vDate, t: n.Mod, raw: n.Mod.Format("2006-01-02 15:04")}
 	case "file.size":
@@ -179,6 +209,22 @@ func (e fieldRef) eval(c *ctx, n *Note) value {
 	// Dataview: both values, frontmatter's first.
 	vals := append(append([]string(nil), n.Props[e.name]...), n.Fields[e.name]...)
 	return c.values(vals, n.Rel)
+}
+
+// thisRef is this.<name>: a field of the note the spread sits in, rather
+// than of the note being looked at. "WHERE file.name != this.file.name"
+// is how a spread leaves out the note it's written in.
+type thisRef struct{ name string }
+
+func (e thisRef) eval(c *ctx, _ *Note) value {
+	self := c.selfNote()
+	if self == nil {
+		return value{}
+	}
+	// Its own context: a FLATTEN binding and the task being looked at
+	// belong to the row being built, and this.* is the note itself.
+	own := &ctx{v: c.v, from: c.from, linksTo: c.linksTo, linksOf: c.linksOf}
+	return fieldRef{e.name}.eval(own, self)
 }
 
 // tagList is file.tags: every tag with its '#', and each parent of a
@@ -200,6 +246,17 @@ func tagList(tags []string) value {
 	l := value{k: vList, raw: strings.Join(out, ", ")}
 	for _, t := range out {
 		l.l = append(l.l, text(t))
+	}
+	return l
+}
+
+// outlinkList is file.outlinks: every note the note links to, each as a
+// link value, in link order. It is the field FLATTEN exists to expand —
+// "FLATTEN file.outlinks AS link" lists a note's links one per row.
+func outlinkList(rels []string) value {
+	l := value{k: vList}
+	for _, rel := range rels {
+		l.l = append(l.l, value{k: vLink, s: rel, raw: linkTo(rel)})
 	}
 	return l
 }
@@ -381,6 +438,11 @@ func (s linksToS) match(c *ctx, n *Note) bool {
 	return c.linksTo[rel][n.Rel]
 }
 
+// thisFileS is this.file: the note the spread sits in.
+type thisFileS struct{}
+
+func (s thisFileS) match(c *ctx, n *Note) bool { return n.Rel == c.from }
+
 // linksFromS is outgoing([[note]]): the notes it links to.
 type linksFromS struct{ target string }
 
@@ -415,6 +477,10 @@ type row struct {
 	keys []value // the sort keys, in order
 }
 
+// eval runs a query over the whole vault. FLATTEN expands each surviving
+// note into one row per element of its flattened lists: a note whose
+// FLATTEN evaluates to an empty list yields nothing (the note drops out),
+// and a note that has no FLATTEN yields its single row as before.
 func (q *Query) eval(v Vault, from string) ([]row, error) {
 	c := newCtx(v, from)
 	notes := v.Notes()
@@ -422,20 +488,20 @@ func (q *Query) eval(v Vault, from string) ([]row, error) {
 	var rows []row
 	for i := range notes {
 		n := &notes[i]
+		c.scope = nil // fresh bindings per note; FLATTEN runs after WHERE
 		if q.from != nil && !q.from.match(c, n) {
 			continue
 		}
 		if q.where != nil && !truthy(q.where.eval(c, n)) {
 			continue
 		}
-		r := row{rel: n.Rel}
-		for _, f := range q.fields {
-			r.vals = append(r.vals, f.e.eval(c, n))
+		if len(q.flatten) == 0 {
+			rows = append(rows, q.buildRow(c, n))
+			continue
 		}
-		for _, k := range q.sort {
-			r.keys = append(r.keys, k.e.eval(c, n))
-		}
-		rows = append(rows, r)
+		// Expand, left to right: each FLATTEN fans its rows out into the
+		// next. A non-list value counts as a one-element list.
+		rows = append(rows, q.flattenRow(c, n, 0)...)
 	}
 	sort.SliceStable(rows, func(i, j int) bool {
 		for k, key := range q.sort {
@@ -449,6 +515,50 @@ func (q *Query) eval(v Vault, from string) ([]row, error) {
 		rows = rows[:q.Limit]
 	}
 	return rows, nil
+}
+
+// buildRow evaluates the fields and sort keys for one row, after FLATTEN
+// has bound its values into the scope.
+func (q *Query) buildRow(c *ctx, n *Note) row {
+	r := row{rel: n.Rel}
+	for _, f := range q.fields {
+		r.vals = append(r.vals, f.e.eval(c, n))
+	}
+	for _, k := range q.sort {
+		r.keys = append(r.keys, k.e.eval(c, n))
+	}
+	return r
+}
+
+// flattenRow walks FLATTEN clauses from index i, producing one row per
+// element. A list spreads into its elements; null or an empty list stops
+// this branch (Dataview drops those rows); a single value acts as one.
+func (q *Query) flattenRow(c *ctx, n *Note, i int) []row {
+	if i == len(q.flatten) {
+		return []row{q.buildRow(c, n)}
+	}
+	f := q.flatten[i]
+	v := f.e.eval(c, n)
+	var out []row
+	add := func(elem value) {
+		if c.scope == nil {
+			c.scope = map[string]value{}
+		}
+		// Bind under the lower-cased name, the way fieldRef looks it up.
+		c.scope[strings.ToLower(f.name)] = elem
+		out = append(out, q.flattenRow(c, n, i+1)...)
+	}
+	switch v.k {
+	case vList:
+		for _, e := range v.l {
+			add(e)
+		}
+	case vNull:
+		// nothing — a null FLATTEN drops the row
+	default:
+		add(v)
+	}
+	return out
 }
 
 // order sorts two keys. A missing value goes last whichever way the sort

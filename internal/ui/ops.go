@@ -157,7 +157,13 @@ func (m *Model) startCreate(k promptKind) {
 		what = "New folder in "
 	}
 	cwd := m.cwd()
-	m.prompt = &prompt{kind: k, label: what + m.folderLabel(cwd), folder: cwd}
+	// For a new note the folder is shown separately in the prompt line,
+	// in the accent colour, because it is the thing Tab can change.
+	label := what + m.folderLabel(cwd)
+	if k == promptNewNote {
+		label = what
+	}
+	m.prompt = &prompt{kind: k, label: label, folder: cwd}
 }
 
 // startCreateSplit is Alt+n: a new note in a split beside the note being
@@ -169,7 +175,7 @@ func (m *Model) startCreateSplit() {
 		return
 	}
 	cwd := m.cwd()
-	m.prompt = &prompt{kind: promptNewNote, label: "New note in " + m.folderLabel(cwd), folder: cwd, split: true}
+	m.prompt = &prompt{kind: promptNewNote, label: "New note in ", folder: cwd, split: true}
 }
 
 func (m *Model) startRename(rel string) {

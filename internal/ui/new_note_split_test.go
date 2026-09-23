@@ -22,7 +22,7 @@ func TestNewNotePicksAFolderWithTab(t *testing.T) {
 	// Pick the root: filter to it and choose.
 	typeText(m, "/")
 	press(m, "enter")
-	if m.prompt == nil || m.prompt.folder != "" || !strings.Contains(m.prompt.label, m.vault.Name()+"/") {
+	if m.prompt == nil || m.prompt.folder != "" || !strings.Contains(m.prompt.label, "New note in") {
 		t.Fatalf("after picking the root: prompt = %+v", m.prompt)
 	}
 	typeText(m, "Vid roten")

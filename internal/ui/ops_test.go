@@ -17,8 +17,8 @@ func TestCreateNoteInCurrentFolderAndUndo(t *testing.T) {
 	m := newTestModel(t)
 	inFilosofi(m)
 	press(m, "j", "n")
-	if m.prompt == nil || !strings.Contains(m.prompt.label, "Filosofi/") {
-		t.Fatalf("prompt = %+v, want one naming Filosofi/", m.prompt)
+	if m.prompt == nil || m.prompt.folder != "Filosofi" {
+		t.Fatalf("prompt = %+v, want folder Filosofi", m.prompt)
 	}
 	typeText(m, "Ny tanke")
 	press(m, "enter")
@@ -47,8 +47,8 @@ func TestNewNoteOnAFolderGoesInside(t *testing.T) {
 	m := newTestModel(t)
 	inFilosofi(m) // on Antik/
 	press(m, "n")
-	if m.prompt == nil || !strings.Contains(m.prompt.label, "Filosofi/Antik/") {
-		t.Fatalf("prompt = %+v, want one naming Filosofi/Antik/", m.prompt)
+	if m.prompt == nil || m.prompt.folder != "Filosofi/Antik" {
+		t.Fatalf("prompt = %+v, want folder Filosofi/Antik", m.prompt)
 	}
 }
 

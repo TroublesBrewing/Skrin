@@ -2,6 +2,16 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.55.1 — 2026-09-23
+
+**The new-note folder now reads as a choice, not a fact.** In v0.55.0 the folder the note would land in sat in the prompt as ordinary text, so Tab's folder picker stayed hidden — the user pressed n, saw no way to change the folder, and rightly concluded the feature wasn't there. Now the folder name renders in the accent colour (bold), so it looks like the thing you can change, and the hint spells it out: "enter ok · tab change folder · esc cancel".
+
+- **The folder is in the accent colour** in the new-note prompt, distinct from the plain label and the input — the one part of the line Tab acts on.
+- **The hint names the action**: "tab change folder", not "tab folder".
+- Same behaviour underneath: Tab still opens the folder picker, Esc still returns unchanged.
+
+Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux: the folder renders bold-accent and the hint reads "tab change folder".
+
 ## v0.55.0 — 2026-09-23
 
 **A new note in a split beside the one you're reading, and a folder picker for where it lands.** Two of the user's own friction points, built together because they are the same one: you could not catch a thought in the right place without losing your place in what you were reading. Reading a note in one folder (say Maruzor) and wanting the new note in the root meant navigating away — or settling for the wrong folder.

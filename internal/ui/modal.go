@@ -143,7 +143,7 @@ func (m *Model) pickNewNoteFolder() {
 	m.prompt = nil
 	restore := func(folder string) {
 		p.folder = folder
-		p.label = "New note in " + m.folderLabel(folder)
+		p.label = "New note in "
 		m.prompt = p
 	}
 	var items []choice
@@ -163,10 +163,19 @@ func (m *Model) pickNewNoteFolder() {
 func (m *Model) promptLine() string {
 	p := m.prompt
 	names := map[promptKind]string{promptNewNote: " NEW NOTE ", promptNewFolder: " NEW FOLDER ", promptRename: " RENAME ", promptOpenFolder: " OPEN FOLDER "}
-	left := m.st.pill.Render(names[p.kind]) + " " + m.st.text.Render(p.label+" ▸ ") + p.in.view(m.st.text, m.cursorStyle())
+	left := m.st.pill.Render(names[p.kind]) + " " + m.st.text.Render(p.label)
+	if p.kind == promptNewNote {
+		// The folder is the part Tab can change, so it reads as a choice:
+		// accent colour, and the hint on the right says to change it.
+		left += m.st.brand.Render(m.folderLabel(p.folder))
+		left += m.st.text.Render(" ▸ ")
+	} else {
+		left += m.st.text.Render(" ▸ ")
+	}
+	left += p.in.view(m.st.text, m.cursorStyle())
 	right := m.st.muted.Render("enter ok · esc cancel")
 	if p.kind == promptNewNote {
-		right = m.st.muted.Render("enter ok · tab folder · esc cancel")
+		right = m.st.muted.Render("enter ok · tab change folder · esc cancel")
 	}
 	if p.err != "" {
 		right = m.st.errText.Render(p.err)

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -161,9 +162,15 @@ type Settings struct {
 	NewLinkFormat     string // "shortest", "relative" or "absolute"
 	NewFileLocation   string // where notes created from links go: "root", "current" or "folder"
 	NewFileFolderPath string // the folder for NewFileLocation "folder"
-	Daily             DailyNotes
-	Templates         Templates
-	Rollover          Rollover
+	// AttachmentFolder is where a pasted or dropped file goes, exactly as
+	// Obsidian writes it: "" or "/" is the vault root (Obsidian's own
+	// default), "./" is the note's own folder, "./sub" a folder beside
+	// the note, and anything else a folder path from the vault root.
+	// AttachmentDir turns it into one path.
+	AttachmentFolder string
+	Daily            DailyNotes
+	Templates        Templates
+	Rollover         Rollover
 }
 
 // RolloverPluginID is the Rollover Daily Todos plugin's id.
@@ -188,6 +195,7 @@ func LoadSettings(root string) Settings {
 		NewLinkFormat     string `json:"newLinkFormat"`
 		NewFileLocation   string `json:"newFileLocation"`
 		NewFileFolderPath string `json:"newFileFolderPath"`
+		AttachmentFolder  string `json:"attachmentFolderPath"`
 	}
 	if readJSON(filepath.Join(dir, "app.json"), &app) {
 		if app.TrashOption != "" {
@@ -201,6 +209,10 @@ func LoadSettings(root string) Settings {
 		}
 		s.AlwaysUpdateLinks = app.AlwaysUpdateLinks
 		s.NewFileFolderPath = strings.Trim(app.NewFileFolderPath, "/")
+		// Kept as written: "./" and "./sub" mean the note's own folder
+		// and are not vault-relative paths, so trimming here would lose
+		// the difference. AttachmentDir reads it.
+		s.AttachmentFolder = strings.TrimSpace(app.AttachmentFolder)
 	}
 
 	var dn struct {
@@ -265,4 +277,23 @@ func LoadSettings(root string) Settings {
 func readJSON(path string, v any) bool {
 	data, err := os.ReadFile(path)
 	return err == nil && json.Unmarshal(data, v) == nil
+}
+
+// AttachmentDir is the folder a file pasted into noteRel belongs in,
+// vault-relative with "/" and "" for the root, following Obsidian's own
+// four forms of attachmentFolderPath. It only reads the setting: whether
+// the folder exists, and what to do when it doesn't, is the caller's
+// business.
+func (s Settings) AttachmentDir(noteRel string) string {
+	f := s.AttachmentFolder
+	switch {
+	case f == "", f == "/":
+		return ""
+	case f == "./", f == ".":
+		return path.Dir("/" + noteRel)[1:]
+	case strings.HasPrefix(f, "./"):
+		return path.Join(path.Dir("/" + noteRel)[1:], strings.Trim(f[2:], "/"))
+	default:
+		return strings.Trim(f, "/")
+	}
 }

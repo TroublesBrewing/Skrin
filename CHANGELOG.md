@@ -2,6 +2,21 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.57.0 — 2026-09-28
+
+**Paste an image into a note.** `Ctrl+V` with a picture in the clipboard — a screenshot, an image copied out of a browser — saves the file in the vault and writes Obsidian's own embed into the note, on a line of its own, where Skrin draws it in half-blocks the way it draws a book cover. It was the one core Obsidian gesture Skrin had no answer to at all: the halves for showing an image have been in place since image embeds arrived, and what was missing was the way from the clipboard to a file and a line.
+
+- **No new key.** The same `Ctrl+V` that pastes text. With a note open for editing, the clipboard is asked for an image first; a clipboard with text in it, and every field, form and panel that takes text ahead of the editor, goes on to the text path exactly as before.
+- **The file is named as Obsidian names it**: `Pasted image 20260928005526.png`, the clock to the second, with a counter added rather than landing on a file that is already there.
+- **It lands where Obsidian's own setting says**, `attachmentFolderPath` in `.obsidian/app.json` — the vault root unless the vault says otherwise, a folder you name, or beside the note (`./`, `./subfolder`). A folder nobody has made isn't conjured up: the image goes to the root and the flash says so, the same ruling as a new note's declared folder in v0.47.0.
+- **The line is `![[Pasted image ….png]]`**, alone on its line so both programs draw a picture, and in the vault's own link format.
+- **One key back, each way:** `Ctrl+Z` takes the line out of the note, `U` takes the file back out of the vault.
+- **PNG, JPEG, GIF, WebP and BMP**, PNG preferred when the clipboard offers a choice — the formats Skrin can read a header from and draw.
+
+Skrin's own copy and paste go through the terminal (OSC 52), which works over ssh and in tmux but can only carry text, so an image is read from the desktop instead: `wl-paste` on Wayland, `xclip` on X11, `pngpaste` on macOS. That makes an image the one thing `Ctrl+V` can't bring in over ssh, and the only place Skrin asks the desktop for anything. With none of those installed, an empty clipboard now says that an image in it can't be reached from here, instead of looking like an empty clipboard.
+
+New package `internal/clipimg`, thirteen tests over canned clipboards; `Settings.AttachmentDir` in `internal/obsidian` with Obsidian's four forms; eight tests over the paste itself. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux against a copy of the vault, with a real PNG on a real Wayland clipboard: the file appeared at the vault root, the embed went in on its own line, the reading view drew it in half-blocks, and `U` took it back out to the trash and left the embed reading "not found".
+
 ## v0.56.0 — 2026-09-23
 
 **`this.` in a spread: the note the spread is written in.** Dataview's commonest line of all — `WHERE file.name != this.file.name`, the one that keeps an index note out of its own answer — was turned down with "this isn't supported yet". A note whose `dataview` block Obsidian draws a table for showed a ⚠ line in Skrin instead. It works now.

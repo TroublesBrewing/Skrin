@@ -21,7 +21,7 @@ func write(t *testing.T, root, rel, content string) {
 
 func TestLoadSettings(t *testing.T) {
 	root := t.TempDir()
-	write(t, root, ".obsidian/app.json", `{"trashOption":"local","alwaysUpdateLinks":true,"newLinkFormat":"absolute","newFileLocation":"folder","newFileFolderPath":"/Inbox/"}`)
+	write(t, root, ".obsidian/app.json", `{"trashOption":"local","alwaysUpdateLinks":true,"newLinkFormat":"absolute","newFileLocation":"folder","newFileFolderPath":"/Inbox/","attachmentFolderPath":"./bilder"}`)
 	write(t, root, ".obsidian/daily-notes.json", `{"folder":"/Journal/Daily/","format":"DD.MM.YYYY","template":"Templates/Day"}`)
 	write(t, root, ".obsidian/community-plugins.json", `["obsidian-rollover-daily-todos"]`)
 	write(t, root, ".obsidian/plugins/obsidian-rollover-daily-todos/data.json",
@@ -29,7 +29,8 @@ func TestLoadSettings(t *testing.T) {
 
 	s := LoadSettings(root)
 	if s.TrashOption != "local" || !s.AlwaysUpdateLinks || s.NewLinkFormat != "absolute" ||
-		s.NewFileLocation != "folder" || s.NewFileFolderPath != "Inbox" {
+		s.NewFileLocation != "folder" || s.NewFileFolderPath != "Inbox" ||
+		s.AttachmentFolder != "./bilder" {
 		t.Errorf("app settings = %+v", s)
 	}
 	if s.Daily != (DailyNotes{Folder: "Journal/Daily", Format: "DD.MM.YYYY", Template: "Templates/Day"}) {
@@ -128,5 +129,29 @@ func TestPgrepTellsFoundFromNotFound(t *testing.T) {
 	}
 	if found, err := pgrep("skrin-test-no-such-process"); found || err != nil {
 		t.Errorf("no such process: found %v, err %v; want false, nil", found, err)
+	}
+}
+
+// AttachmentDir is where a pasted image goes. Obsidian's
+// attachmentFolderPath has four forms, and the vault root — the default
+// when the setting is missing — must stay the default.
+func TestAttachmentDirFollowsObsidiansFourForms(t *testing.T) {
+	for _, c := range []struct {
+		setting, note, want string
+	}{
+		{"", "Filosofi/Stoic.md", ""},
+		{"/", "Filosofi/Stoic.md", ""},
+		{"Assets", "Filosofi/Stoic.md", "Assets"},
+		{"/Assets/Bilder/", "Filosofi/Stoic.md", "Assets/Bilder"},
+		{"./", "Filosofi/Stoic.md", "Filosofi"},
+		{".", "Filosofi/Stoic.md", "Filosofi"},
+		{"./bilder", "Filosofi/Stoic.md", "Filosofi/bilder"},
+		{"./bilder", "Welcome.md", "bilder"},
+		{"./", "Welcome.md", ""},
+	} {
+		s := Settings{AttachmentFolder: c.setting}
+		if got := s.AttachmentDir(c.note); got != c.want {
+			t.Errorf("AttachmentDir(%q) with %q = %q, want %q", c.note, c.setting, got, c.want)
+		}
 	}
 }

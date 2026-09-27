@@ -11,6 +11,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/lurioso/skrin/internal/assistant"
+	"github.com/lurioso/skrin/internal/clipimg"
 	"github.com/lurioso/skrin/internal/config"
 	"github.com/lurioso/skrin/internal/obsidian"
 	"github.com/lurioso/skrin/internal/session"
@@ -127,6 +128,9 @@ func run(vaultArg string) error {
 			CoversFolder:  cfg.LibraryCoversFolder(),
 			DefaultStatus: cfg.LibraryDefaultStatus(),
 		},
+		// The real OS clipboard, so Ctrl+V can paste an image. Tests
+		// leave this nil and never run a clipboard program.
+		ClipImage:       clipimg.New(),
 		Images:          cfg.RenderImages(),
 		Habits:          cfg.HabitsEnabled(),
 		Beta:            cfg.BetaEnabled(),

@@ -37,7 +37,7 @@ func (m *Model) pasteFrom(clip string, answered bool) {
 	case clip != "":
 		m.pasted(clip, "")
 	case answered && m.copied == "":
-		m.flash = "The clipboard is empty"
+		m.flash = "The clipboard is empty" + m.noImageToolNote()
 	case m.copied != "":
 		m.pasted(m.copied, " · your terminal won't hand its clipboard over, so this is what you copied in Skrin")
 	default:
@@ -55,4 +55,16 @@ func (m *Model) pasted(s, note string) {
 		return
 	}
 	m.flash = "Pasted" + note
+}
+
+// noImageToolNote owns up, on an empty clipboard, to the one thing that
+// can look like an empty clipboard without being one: an image sitting
+// there that Skrin can't reach, because the desktop has no program to
+// hand it over. Said only when the clipboard came back empty, so it
+// never nags a paste that worked.
+func (m *Model) noImageToolNote() string {
+	if !m.noImageTool {
+		return ""
+	}
+	return " · an image in it can't be reached from here: install wl-clipboard (Wayland), xclip (X11) or pngpaste (macOS)"
 }

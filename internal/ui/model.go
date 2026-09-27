@@ -14,6 +14,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/lurioso/skrin/internal/clipimg"
 	"github.com/lurioso/skrin/internal/config"
 	"github.com/lurioso/skrin/internal/editor"
 	"github.com/lurioso/skrin/internal/index"
@@ -119,6 +120,11 @@ type Options struct {
 	// Library sets up the Book Card (B): folders, default status and the
 	// metadata/cover lookups it makes.
 	Library LibraryOptions
+	// ClipImage reads an image out of the OS clipboard for Ctrl+V. nil
+	// turns image pasting off entirely — the text path is untouched —
+	// which is what tests leave it as, so no test ever runs a clipboard
+	// program.
+	ClipImage clipimg.Reader
 	// Images turns on block-art previews for image embeds; off means the
 	// placeholder frame always, everywhere. Either way a found embed's
 	// name, dimensions and size still show.
@@ -210,6 +216,12 @@ type Model struct {
 	lastCtrlC time.Time
 
 	// copied is what Ctrl+C last put on the clipboard from in here, and
+	// pastingImage says a Ctrl+V is waiting for the OS clipboard to say
+	// whether it holds an image; noImageTool remembers that this machine
+	// has no program that could tell us, so an empty clipboard can say
+	// why an image didn't paste either.
+	pastingImage bool
+	noImageTool  bool
 	// pasting says a Ctrl+V is waiting for the terminal to answer.
 	copied  string
 	pasting bool
@@ -433,6 +445,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !m.paste(msg.Content) {
 			m.pasted("", "")
 		}
+	case clipImageMsg:
+		cmd = m.clipImage(msg)
 	case tea.ClipboardMsg:
 		if m.pasting {
 			m.pasting = false
@@ -463,7 +477,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		lastG, lastCtrlC := m.lastG, m.lastCtrlC
 		m.lastG, m.lastCtrlC = time.Time{}, time.Time{}
 		if msg.String() == "ctrl+v" {
-			cmd = m.askPaste()
+			cmd = m.startPaste()
 			break
 		}
 		switch {

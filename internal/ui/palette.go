@@ -57,6 +57,7 @@ var mainCommands = []paletteEntry{
 	{actWeeds, "Weeds: what needs tending in the vault", "loose ends dead links orphans stubs tidy garden"},
 	{actMentions, "Mentions: where this note is talked about without a link", "unlinked mention backlink connect"},
 	{actMergeNote, "Merge this note into another…", "join combine two notes duplicate same name"},
+	{actRenameTag, "Rename a tag everywhere…", "tags spelling typo unify label"},
 	{actNewBook, "Book Card: catalogue a book", "library reading isbn"},
 	{actClaude, "Claude drawer: open or hide", "ai assistant chat"},
 	{actClaudeInput, "Ask Claude", "ai assistant chat question"},

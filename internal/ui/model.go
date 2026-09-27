@@ -624,6 +624,8 @@ func (m *Model) do(a action) tea.Cmd {
 		m.openMentions()
 	case actMergeNote:
 		m.startMerge()
+	case actRenameTag:
+		m.startTagRename()
 	case actQuickNote:
 		m.openQuickNote()
 	case actEscape:

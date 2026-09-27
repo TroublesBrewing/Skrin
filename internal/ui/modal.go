@@ -141,6 +141,7 @@ const (
 	promptRename
 	promptExtract
 	promptOpenFolder
+	promptRenameTag
 )
 
 // prompt asks for a name in the status line.

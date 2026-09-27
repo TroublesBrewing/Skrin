@@ -2,6 +2,21 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.62.0 — 2026-09-28
+
+**Rename a tag everywhere**, from the palette: *"Rename a tag everywhere…"*. Pick the tag from the same list `#` shows, say what it should be called, and every note that has it is rewritten in one step. It is the mend for what the tag list and Weeds both keep showing — one tag written two ways — and until now the only answer was search and replace, note by note, which never touched frontmatter at all.
+
+- **Both places a tag lives**: the `#tags` in the text and the values of a `tags` (or `tag`) property, in every shape Obsidian writes them — `[a, b]`, a block list, a single value, quoted or not. Another property that happens to hold the same word is left alone.
+- **Every spelling is gathered into one.** Renaming `#Filosofi` to `#filosofi` ends the split rather than adding a third spelling, because matching ignores case — which is the usual reason for renaming a tag at all.
+- **Nested tags come along**: `#work/urgent` follows `#work`, at any depth.
+- **A word that merely starts the same is not touched**: `#ux` leaves `#uxdesign` alone.
+- **A `#tag` inside code or a link is not a tag.** The rule for what counts as prose now lives in one place (`internal/prose`) and is shared with Mentions, so the two can't disagree about it.
+- **One `U` undoes the whole rename**, however many notes it touched, and every note is snapshotted first, so `u` works on each one too.
+- **The name is checked the way Obsidian checks it** — no spaces, no empty level, a letter somewhere — and a name that won't do is refused in the prompt, with the reason, before anything is written.
+- **No new key.** Rare and large, so it lives in the palette.
+
+New packages `internal/tagname` (thirteen tests) and `internal/prose` (six), five tests over the flow itself. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux against a copy of the vault: `#s` — a real typo Weeds found earlier today — renamed and then undone with `U`, the note back to the byte.
+
 ## v0.61.0 — 2026-09-28
 
 **Merge one note into another**, from the palette: *"Merge this note into another…"*. It is the fix for what Weeds finds and can't mend — two notes that turned out to be the same note — and Obsidian's "Merge entire file with…" by another name.

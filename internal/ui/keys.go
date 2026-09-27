@@ -102,6 +102,7 @@ const (
 	actWeeds        // W: the vault's loose ends, gathered on one page
 	actMakeMissing  // n in it: make the note a dead link wanted
 	actMergeNote    // from the palette: join this note onto another
+	actRenameTag    // from the palette: rename a tag everywhere it is written
 	actMentions     // M: where this note is talked about without a link
 	actLinkMention  // a in it: link this mention
 	actLinkAllMentions
@@ -448,8 +449,8 @@ var actionName = map[action]string{
 	actFindNote: "find-note", actNextMatch: "next-match", actPrevMatch: "prev-match",
 	actNewNoteSplit: "new-note-split",
 	actWeeds:        "weeds", actMakeMissing: "make-missing",
-	actMergeNote: "merge-note",
-	actMentions:  "mentions", actLinkMention: "link-mention",
+	actMergeNote: "merge-note", actRenameTag: "rename-tag",
+	actMentions: "mentions", actLinkMention: "link-mention",
 	actLinkAllMentions: "link-all-mentions",
 }
 

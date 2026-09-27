@@ -14,7 +14,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/lurioso/skrin/internal/frontmatter"
+	"github.com/lurioso/skrin/internal/prose"
 	"github.com/lurioso/skrin/internal/search"
 )
 
@@ -55,7 +55,9 @@ func Find(docs []Doc, names []string, self string) []Hit {
 }
 
 func findIn(d Doc, names []string) []Hit {
-	keep := open(d.Content)
+	// Prose only, and not the frontmatter either: a property holding the
+	// name is not a sentence about the note.
+	keep := prose.MaskFrontmatter(prose.Mask(d.Content), d.Content)
 	lines := lineStarts(d.Content)
 	var hits []Hit
 	for _, name := range names {
@@ -63,7 +65,7 @@ func findIn(d Doc, names []string) []Hit {
 			continue
 		}
 		for _, sp := range search.Find(d.Content, name, false, true) {
-			if !free(keep, sp[0], sp[1]) {
+			if !prose.Free(keep, sp[0], sp[1]) {
 				continue
 			}
 			line := lineOf(lines, sp[0])
@@ -115,83 +117,6 @@ func Apply(content string, hits []Hit) string {
 	}
 	b.WriteString(content[pos:])
 	return b.String()
-}
-
-// open marks the bytes a mention may be found in. False means the byte
-// belongs to something that isn't prose: frontmatter, a fenced or inline
-// code span, a wikilink, or a markdown link.
-func open(s string) []bool {
-	keep := make([]bool, len(s))
-	for i := range keep {
-		keep[i] = true
-	}
-	block := func(from, to int) {
-		for i := max(from, 0); i < min(to, len(keep)); i++ {
-			keep[i] = false
-		}
-	}
-
-	// Frontmatter: a property that happens to hold the name is not a
-	// sentence about the note.
-	lines := strings.Split(s, "\n")
-	if end := frontmatter.End(lines); end > 0 {
-		at := 0
-		for i := 0; i <= end && i < len(lines); i++ {
-			at += len(lines[i]) + 1
-		}
-		block(0, at)
-	}
-
-	// Fenced code, by line, so an unterminated fence protects the rest of
-	// the note rather than nothing.
-	at, fenced := 0, false
-	for _, l := range lines {
-		t := strings.TrimSpace(l)
-		if strings.HasPrefix(t, "```") || strings.HasPrefix(t, "~~~") {
-			fenced = !fenced
-			block(at, at+len(l)+1)
-		} else if fenced {
-			block(at, at+len(l)+1)
-		}
-		at += len(l) + 1
-	}
-
-	// Inline code, wikilinks and markdown links.
-	for i := 0; i < len(s); i++ {
-		switch {
-		case s[i] == '`':
-			if j := strings.IndexByte(s[i+1:], '`'); j >= 0 {
-				block(i, i+j+2)
-				i += j + 1
-			}
-		case strings.HasPrefix(s[i:], "[["):
-			if j := strings.Index(s[i:], "]]"); j >= 0 {
-				block(i, i+j+2)
-				i += j + 1
-			}
-		case s[i] == '[':
-			// A markdown link: the text and the target both belong to the
-			// link, not to the prose around it.
-			if close := strings.IndexByte(s[i:], ']'); close >= 0 &&
-				strings.HasPrefix(s[i+close+1:], "(") {
-				if end := strings.IndexByte(s[i+close:], ')'); end >= 0 {
-					block(i, i+close+end+1)
-					i += close + end
-				}
-			}
-		}
-	}
-	return keep
-}
-
-// free reports whether every byte of a span is prose.
-func free(keep []bool, from, to int) bool {
-	for i := from; i < to && i < len(keep); i++ {
-		if !keep[i] {
-			return false
-		}
-	}
-	return true
 }
 
 // lineStarts is the byte offset each line begins at.

@@ -203,6 +203,8 @@ func (m *Model) submitPrompt() tea.Cmd {
 		err = m.extractTo(input)
 	case promptOpenFolder:
 		err = m.openFolderAsSkrin(input)
+	case promptRenameTag:
+		err = m.renameTag(p.target, input)
 	}
 	if err != nil {
 		p.err = err.Error()

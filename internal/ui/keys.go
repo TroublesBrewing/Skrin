@@ -101,6 +101,7 @@ const (
 	actNewNoteSplit // Alt+n: a new note in a split beside the one you're reading
 	actWeeds        // W: the vault's loose ends, gathered on one page
 	actMakeMissing  // n in it: make the note a dead link wanted
+	actMergeNote    // from the palette: join this note onto another
 	actMentions     // M: where this note is talked about without a link
 	actLinkMention  // a in it: link this mention
 	actLinkAllMentions
@@ -447,7 +448,8 @@ var actionName = map[action]string{
 	actFindNote: "find-note", actNextMatch: "next-match", actPrevMatch: "prev-match",
 	actNewNoteSplit: "new-note-split",
 	actWeeds:        "weeds", actMakeMissing: "make-missing",
-	actMentions: "mentions", actLinkMention: "link-mention",
+	actMergeNote: "merge-note",
+	actMentions:  "mentions", actLinkMention: "link-mention",
 	actLinkAllMentions: "link-all-mentions",
 }
 

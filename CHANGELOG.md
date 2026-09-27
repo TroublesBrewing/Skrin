@@ -2,6 +2,21 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.61.0 — 2026-09-28
+
+**Merge one note into another**, from the palette: *"Merge this note into another…"*. It is the fix for what Weeds finds and can't mend — two notes that turned out to be the same note — and Obsidian's "Merge entire file with…" by another name.
+
+- **The text joins the end of the note you pick.** A source with its own heading brings it; one without gets a heading naming it, so the joined text doesn't run into what was above it without a seam.
+- **Every link to the note you merged away follows it**, in whatever form it was written: a wikilink stays a wikilink, an alias keeps its alias, a markdown link keeps its shape. The same rewriting a rename does.
+- **The note goes to the trash**, not away: your trash setting decides where, exactly as `d` does.
+- **All three in one journal step**, so `U` puts the text, the links and the note back as they were.
+- **It asks first**, naming every part of what will happen — a note disappearing is the same stake as deleting one, and `d` asks too.
+- **Properties are the one thing that doesn't come along**: two sets of frontmatter can't be one, so the target keeps its own, the trashed copy keeps the source's, and the flash says so.
+- **An empty note says to delete it with `d` instead** rather than merging nothing, and the chooser never offers the note itself.
+- **No new key.** A rare, large action belongs in the palette, where it is found by name; the keymap is untouched.
+
+Ten new tests (the text composition on its own, then the whole thing through the palette and back out with `U`). Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux against a copy of the vault: a note merged into another, `[[Dubbel]]` in a third note rewritten to `[[Reading]]`, and the merged note gone from the tree into the trash.
+
 ## v0.60.0 — 2026-09-28
 
 **Mentions (M): where a note is talked about without being linked.** `b` says which notes link here. `M` says which notes mean this one and never said so — its name, or any alias it has, written in someone else's prose. Vaults fill up with these by themselves, because the sentence is usually written before the note exists and nobody goes back. It is Obsidian's unlinked mentions, which Skrin had no answer to.

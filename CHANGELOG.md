@@ -2,6 +2,20 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.60.0 — 2026-09-28
+
+**Mentions (M): where a note is talked about without being linked.** `b` says which notes link here. `M` says which notes mean this one and never said so — its name, or any alias it has, written in someone else's prose. Vaults fill up with these by themselves, because the sentence is usually written before the note exists and nobody goes back. It is Obsidian's unlinked mentions, which Skrin had no answer to.
+
+- **Each row is the sentence itself**, with the note and line on the right: you read the prose, not a list of paths.
+- **`a` links the one under the cursor, `A` links every mention in the list**, in one step. The words already written become the link text — "stoic" becomes `[[stoic]]`, not `[[Stoic]]` — so the prose reads exactly as it did and only the brackets are new. Obsidian resolves a link whatever its capitals.
+- **One key back:** `u` on the note, `U` for the whole lot, whether it touched one note or ten.
+- **A note changed on disk since the panel opened is named and left alone**, never written over; the others still go through, and the flash says which was skipped and why.
+- **What is skipped is the point:** a mention already inside a link, inside inline or fenced code, or in a note's frontmatter is not a missing link and isn't listed. Nor is the note's own name in its own text.
+- **`Enter` reads the place** instead, at the line, and `Esc` closes. With nothing to show, `M` says so and points at `b`.
+- Aliases are looked for as well as the name, and the title says so. One mention is one row even when a name and an alias both cover the same words.
+
+New package `internal/mentions`, eleven tests over canned notes; ten tests over the panel. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux against a copy of the vault: three mentions of *Stoiska reflektioner* found, including one inside a quotation in another note, `a` linking one and leaving the sentence otherwise untouched, and the list keeping what was still unlinked.
+
 ## v0.59.0 — 2026-09-28
 
 **Weeds (W): what needs tending in the vault, on one page.** A new **beta** feature, off until switched on. It answers a question no single note can: what has grown here where nobody wanted it?

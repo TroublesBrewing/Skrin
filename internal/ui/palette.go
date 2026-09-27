@@ -55,6 +55,7 @@ var mainCommands = []paletteEntry{
 	{actLineNumbers, "Line numbers on or off", "gutter rows"},
 	{actHabits, "Habits: today's list, the week and the month", "tracker streak routine"},
 	{actWeeds, "Weeds: what needs tending in the vault", "loose ends dead links orphans stubs tidy garden"},
+	{actMentions, "Mentions: where this note is talked about without a link", "unlinked mention backlink connect"},
 	{actNewBook, "Book Card: catalogue a book", "library reading isbn"},
 	{actClaude, "Claude drawer: open or hide", "ai assistant chat"},
 	{actClaudeInput, "Ask Claude", "ai assistant chat question"},

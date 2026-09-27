@@ -274,7 +274,8 @@ type Model struct {
 	manual    *manual
 	book      *bookCard
 	habits    *habitView
-	weeds     *weedsView // the W overlay: the vault's loose ends
+	weeds     *weedsView    // the W overlay: the vault's loose ends
+	mentions  *mentionsView // the M overlay: unlinked mentions of a note
 	quickNote *quickNote
 	table     *tableForm // Insert table, over the editor
 	noteFind  *noteFind  // Ctrl+F in the editor
@@ -526,6 +527,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.habitKey(msg)
 		case m.weeds != nil:
 			m.weedKey(msg)
+		case m.mentions != nil:
+			m.mentionKey(msg)
 		case m.quickNote != nil:
 			m.quickNoteKey(msg)
 		case m.search != nil:
@@ -617,6 +620,8 @@ func (m *Model) do(a action) tea.Cmd {
 		m.openHabits()
 	case actWeeds:
 		m.openWeeds()
+	case actMentions:
+		m.openMentions()
 	case actQuickNote:
 		m.openQuickNote()
 	case actEscape:

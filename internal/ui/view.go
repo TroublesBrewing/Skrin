@@ -41,6 +41,9 @@ func (m *Model) render() string {
 	if m.weeds != nil {
 		out = m.overlay(out, m.weedsBox())
 	}
+	if m.mentions != nil {
+		out = m.overlay(out, m.mentionsBox())
+	}
 	if m.quickNote != nil {
 		out = m.overlay(out, m.quickNoteBox())
 	}

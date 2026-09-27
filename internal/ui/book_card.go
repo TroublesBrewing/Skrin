@@ -312,6 +312,52 @@ func wrapPlain(r []rune, w int) (rows []string, rowAt, colAt []int) {
 	return rows, rowAt, colAt
 }
 
+// quoteWidth is how wide a quote's text may be drawn inside a card whose
+// inner width is inner: the row's own two-space indent, the opening and
+// closing quotation marks with their spaces, and the two cells fit()
+// keeps at the far edge.
+func quoteWidth(inner int) int { return max(inner-8, 8) }
+
+// quoteRows draws one passage's text over as many rows as it needs, the
+// cursor where it sits in that wrap. The opening quotation mark sits on
+// the first row and the closing one after the last word, with the
+// continuation rows indented to line up under the text — so a long
+// passage reads as one quotation rather than a line cut off at the edge.
+// Every row is drawn through row(), so a focused quote is highlighted
+// whole and still looks like one field.
+func (m *Model) quoteRows(q *quoteRow, focused bool, row func(bool, string) string, width int) []string {
+	q.text.wrapWidth = width // the arrows move through the rows this wrap draws
+	lines, curRow, curCol := q.text.wrapped(width)
+	out := make([]string, 0, len(lines))
+	for i, l := range lines {
+		text := m.st.text.Render(l)
+		if focused && i == curRow {
+			r := []rune(l)
+			at := " "
+			if curCol < len(r) {
+				at = string(r[curCol])
+			}
+			pre, post := "", ""
+			if curCol <= len(r) {
+				pre = string(r[:curCol])
+			}
+			if curCol < len(r) {
+				post = string(r[curCol+1:])
+			}
+			text = m.st.text.Render(pre) + m.cursorStyle().Render(at) + m.st.text.Render(post)
+		}
+		opening, closing := "  ", ""
+		if i == 0 {
+			opening = "\" "
+		}
+		if i == len(lines)-1 {
+			closing = " \""
+		}
+		out = append(out, row(focused, opening+text+closing))
+	}
+	return out
+}
+
 // quoteRow is one passage in the card's Quotes section.
 type quoteRow struct {
 	text, page, speaker lineInput
@@ -463,6 +509,21 @@ func (c *bookCard) pasteInto(s string) bool {
 	return false
 }
 
+// moveWithin is Up and Down inside a field that is drawn over more than
+// one row: the Notes area, and a quote whose text has wrapped. It reports
+// false when there is no row that way, and the caller then moves to the
+// next field — so the arrows always do something, and a wrapped field
+// needs no key of its own.
+func (c *bookCard) moveWithin(dir int) bool {
+	switch {
+	case c.area == bookAreaNotes:
+		return c.notes.moveVert(dir)
+	case c.area == bookAreaQuote && c.quoteField == 0:
+		return c.quotes[c.quoteIdx].text.moveVert(dir)
+	}
+	return false
+}
+
 // addQuote appends a blank quote row and focuses its text field.
 func (c *bookCard) addQuote() {
 	c.quotes = append(c.quotes, quoteRow{})
@@ -603,21 +664,13 @@ func (m *Model) bookCardKey(k tea.KeyPressMsg) tea.Cmd {
 		return m.startBookSave()
 	case actUp:
 		c.err = ""
-		if c.area == bookAreaNotes {
-			if !c.notes.moveVert(-1) {
-				c.prev()
-			}
-		} else {
+		if !c.moveWithin(-1) {
 			c.prev()
 		}
 		return nil
 	case actDown:
 		c.err = ""
-		if c.area == bookAreaNotes {
-			if !c.notes.moveVert(1) {
-				c.next()
-			}
-		} else {
+		if !c.moveWithin(1) {
 			c.next()
 		}
 		return nil
@@ -894,12 +947,17 @@ func (m *Model) bookCardBox() []string {
 	body = append(body, strings.Repeat("─", inner))
 
 	body = append(body, "  "+m.st.muted.Render("Quotes & Passages:")+"  "+m.st.muted.Render("(Alt+q +row)"))
-	for qi, q := range c.quotes {
+	for qi := range c.quotes {
+		q := &c.quotes[qi]
 		tf := c.area == bookAreaQuote && c.quoteIdx == qi && c.quoteField == 0
 		pf := c.area == bookAreaQuote && c.quoteIdx == qi && c.quoteField == 1
 		sf := c.area == bookAreaQuote && c.quoteIdx == qi && c.quoteField == 2
 
-		body = append(body, row(tf, "\" "+val(&q.text, tf)+" \""))
+		// A passage is usually longer than the card is wide, so the quote
+		// wraps at the field's edge and grows downwards instead of running
+		// off the side. It is still one line of text: the wrap is drawing,
+		// not content, and what gets saved has no newline in it.
+		body = append(body, m.quoteRows(q, tf, row, quoteWidth(inner))...)
 
 		pageCur := m.st.text
 		pageLabel := m.st.muted.Render("Page: ")

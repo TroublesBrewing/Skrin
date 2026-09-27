@@ -2,6 +2,17 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.58.0 — 2026-09-28
+
+**A quote in the Book Card wraps instead of running off the edge.** A passage is nearly always longer than the card is wide, and the quote field drew it on one line, so everything past the field's edge was simply cut off — you could type a whole quotation and only ever see its beginning.
+
+- **The text wraps at the field's edge and grows downwards**, breaking between words, with the opening quotation mark on the first row and the closing one after the last word. The continuation rows line up under the text, so a long passage reads as one quotation.
+- **It is still one line of text.** The wrap is drawing, not content: nothing gains a newline, and what the note gets is the same single line as before, whatever width the card happens to be.
+- **The arrows move through the rows the wrap draws**, keeping the column the eye is in, and leave the field for the next one when there is no row that way — exactly what Notes & Reflections has always done. No new key, and nothing else in the card changed.
+- A short quote still sits on one row, as before.
+
+Four new tests, full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux at 90 columns: a 120-character passage wrapped over two rows, Up moved into the first row at the same column, another Up left the field, and the saved note has the quote on one line.
+
 ## v0.57.0 — 2026-09-28
 
 **Paste an image into a note.** `Ctrl+V` with a picture in the clipboard — a screenshot, an image copied out of a browser — saves the file in the vault and writes Obsidian's own embed into the note, on a line of its own, where Skrin draws it in half-blocks the way it draws a book cover. It was the one core Obsidian gesture Skrin had no answer to at all: the halves for showing an image have been in place since image embeds arrived, and what was missing was the way from the clipboard to a file and a line.

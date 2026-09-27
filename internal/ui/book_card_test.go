@@ -550,3 +550,105 @@ func TestBookCardDotLeadersAlignTheValues(t *testing.T) {
 		t.Fatal("no static label rendered with dot leaders")
 	}
 }
+
+// A quote is usually longer than the card is wide. Before v0.58.0 the
+// text ran straight past the field's edge and was cut off there, so a
+// passage could only be read to the width of the card. It wraps now, and
+// the arrows move through the rows the wrap draws.
+
+func TestALongQuoteWrapsInsteadOfRunningPastTheEdge(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "B")
+	long := "Waste no more time arguing about what a good man should be. Be one. " +
+		"You have power over your mind, not outside events. Realize this, and you will find strength."
+	m.book.quotes[0].text.set(long)
+	body := m.bookCardBox()
+
+	// Every word of the passage is on screen, and no line of the card is
+	// wider than the card.
+	// The card is drawn inside a box, so each line arrives between its
+	// borders: take what is between them.
+	inside := func(s string) string { return strings.Trim(ansi.Strip(s), "│ ") }
+	var quoted []string
+	for _, line := range body {
+		s := inside(line)
+		if strings.Contains(s, "Waste") || strings.Contains(s, "Be one") ||
+			strings.Contains(s, "arguing") || strings.Contains(s, "strength") ||
+			strings.Contains(s, "Realize") {
+			quoted = append(quoted, s)
+		}
+	}
+	if len(quoted) < 2 {
+		t.Fatalf("a quote wider than the card should wrap over more than one row, got %d:\n%s", len(quoted), strings.Join(quoted, "\n"))
+	}
+	joined := strings.Join(strings.Fields(strings.Trim(strings.Join(quoted, " "), `" `)), " ")
+	if !strings.Contains(joined, strings.TrimSpace(long)) {
+		t.Errorf("the whole quote should be on screen, got:\n%s", joined)
+	}
+	if !strings.HasPrefix(quoted[0], `"`) {
+		t.Errorf("the quotation should open on its first row: %q", quoted[0])
+	}
+	if !strings.HasSuffix(quoted[len(quoted)-1], `"`) {
+		t.Errorf("the quotation should close after its last word: %q", quoted[len(quoted)-1])
+	}
+}
+
+func TestAWrappedQuoteIsStillOneLineWhenItIsSaved(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "B")
+	long := strings.Repeat("ord ", 40)
+	m.book.quotes[0].text.set(long)
+	m.bookCardBox() // drawing is what sets the wrap width
+	if got := m.book.quotes[0].text.value(); strings.Contains(got, "\n") {
+		t.Errorf("wrapping is drawing, not content: the value gained a newline:\n%q", got)
+	}
+	if got := m.book.quotes[0].text.value(); got != long {
+		t.Errorf("the value changed: %q", got)
+	}
+}
+
+func TestTheArrowsMoveThroughAWrappedQuoteBeforeLeavingIt(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "B")
+	m.book.quotes[0].text.set(strings.Repeat("ord ", 90))
+	m.bookCardBox()
+	// Focus the quote's text: Tab from the search bar through the static
+	// fields lands there.
+	for m.book.area != bookAreaQuote || m.book.quoteField != 0 {
+		press(m, "tab")
+	}
+	rows, curRow, _ := m.book.quotes[0].text.wrapped(m.book.quotes[0].text.wrapWidth)
+	if len(rows) < 3 {
+		t.Fatalf("setup: the quote should wrap over at least three rows, got %d", len(rows))
+	}
+	if curRow != len(rows)-1 {
+		t.Fatalf("setup: the cursor should start on the last row, got %d of %d", curRow, len(rows))
+	}
+	// Up walks back through the quote's own rows, and only leaves the
+	// field once there are none left.
+	for i := len(rows) - 1; i > 0; i-- {
+		press(m, "up")
+		if m.book.area != bookAreaQuote || m.book.quoteField != 0 {
+			t.Fatalf("up left the quote with %d rows still above the cursor", i)
+		}
+	}
+	press(m, "up")
+	if m.book.area == bookAreaQuote && m.book.quoteField == 0 {
+		t.Error("up from the quote's first row should leave the field")
+	}
+}
+
+func TestAShortQuoteStillSitsOnOneRow(t *testing.T) {
+	m := newTestModel(t)
+	press(m, "B")
+	m.book.quotes[0].text.set("carpe diem")
+	rows := 0
+	for _, line := range m.bookCardBox() {
+		if strings.Contains(ansi.Strip(line), "carpe diem") {
+			rows++
+		}
+	}
+	if rows != 1 {
+		t.Errorf("a short quote should take one row, got %d", rows)
+	}
+}

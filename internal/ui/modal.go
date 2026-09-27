@@ -15,6 +15,11 @@ import (
 type lineInput struct {
 	runes []rune
 	cur   int
+	// wrapWidth is the width the field is drawn at when whatever shows it
+	// wraps rather than truncates — the Book Card's quotes do. It lets the
+	// arrow keys move through the rows the eye sees. Zero means the field
+	// is drawn on one row, as most of them are.
+	wrapWidth int
 }
 
 func (in *lineInput) set(s string) {
@@ -86,6 +91,47 @@ func (in *lineInput) view(text, cursor lipgloss.Style) string {
 // plain renders the field's text with no cursor, for a field that is not
 // focused: a card shows its cursor on the active field alone.
 func (in *lineInput) plain() string { return string(in.runes) }
+
+// wrapped word-wraps the field to at most w cells a row and says where
+// the cursor sits in that wrap. The value is untouched — still one line,
+// with no newline in it — and only the drawing of it changes, so what a
+// field holds never depends on how wide the box around it happens to be.
+func (in *lineInput) wrapped(w int) (rows []string, curRow, curCol int) {
+	rows, rowAt, colAt := wrapPlain(in.runes, w)
+	return rows, rowAt[in.cur], colAt[in.cur]
+}
+
+// moveVert moves the cursor one wrapped row up (dir<0) or down (dir>0),
+// keeping the column the eye is in and stopping at the row's end when the
+// column lies past it. It reports false when there is no row that way, so
+// the caller can leave the field for the next one — the same rule the
+// Notes area follows (textArea.moveVert), and the reason a wrapped field
+// doesn't cost a key.
+func (in *lineInput) moveVert(dir int) bool {
+	if in.wrapWidth < 1 {
+		return false
+	}
+	rows, rowAt, colAt := wrapPlain(in.runes, in.wrapWidth)
+	to := rowAt[in.cur] + dir
+	if to < 0 || to >= len(rows) {
+		return false
+	}
+	col := colAt[in.cur]
+	// Columns rise along a row, so the last position still at or before
+	// the column we came from is either that same column or the row's
+	// end.
+	pos, found := 0, false
+	for i := range rowAt {
+		if rowAt[i] != to {
+			continue
+		}
+		if !found || colAt[i] <= col {
+			pos, found = i, true
+		}
+	}
+	in.cur = pos
+	return true
+}
 
 type promptKind int
 

@@ -54,6 +54,7 @@ var mainCommands = []paletteEntry{
 	{actForward, "Go forward", "history next"},
 	{actLineNumbers, "Line numbers on or off", "gutter rows"},
 	{actHabits, "Habits: today's list, the week and the month", "tracker streak routine"},
+	{actWeeds, "Weeds: what needs tending in the vault", "loose ends dead links orphans stubs tidy garden"},
 	{actNewBook, "Book Card: catalogue a book", "library reading isbn"},
 	{actClaude, "Claude drawer: open or hide", "ai assistant chat"},
 	{actClaudeInput, "Ask Claude", "ai assistant chat question"},
@@ -200,6 +201,9 @@ func (m *Model) ran(name string) {
 func (m *Model) mainPaletteItems() []choice {
 	var items []choice
 	for _, e := range mainCommands {
+		if !m.weedsOn() && e.act == actWeeds {
+			continue
+		}
 		if !m.habitsOn() && e.act == actHabits {
 			continue
 		}

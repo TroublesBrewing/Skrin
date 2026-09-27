@@ -2,6 +2,25 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.59.0 — 2026-09-28
+
+**Weeds (W): what needs tending in the vault, on one page.** A new **beta** feature, off until switched on. It answers a question no single note can: what has grown here where nobody wanted it?
+
+- **Links that lead nowhere** — the note was renamed or never written. `n` makes the note the link wanted, where Obsidian would put it, exactly as following that link would; `U` takes it back.
+- **Notes on their own** — nothing links there, and they link nowhere themselves.
+- **A title and no note** — under 80 characters of body: written down and never written.
+- **One name, two notes** — where `[[the name]]` can only ever mean one of them.
+- **Tags used once** — with the commoner spelling named when there is one, since that is usually the typo. `#Filosofi` used once next to `#filosofi` in four notes is a misfiled thought, not a category.
+- **Not touched in half a year**, oldest first.
+
+`j`/`k` move, `Enter` goes there — the note, and the line itself for a link that leads nowhere — `Esc` closes. The panel changes nothing on its own: the single fix it offers is the create that following a dead link already does, and it is undoable like any other. Daily notes and your templates are left out of the judgements about notes as a whole, because a day and a template are unlinked and thin on purpose; a dead link inside one is still reported.
+
+It reads only what the index already holds, so opening it costs a walk over notes in memory and no disk pass. The backlink counting is one pass over every link in the vault rather than a question per note.
+
+Being beta, it takes two switches (Settings' "Beta features", then its own row) and a build with `version.Beta = false` leaves it out entirely — no key, no palette row, no tip. `W` says where to switch it on rather than doing nothing.
+
+New package `internal/weeds` with eleven tests over canned vaults, `Index.Links` and `Index.WrittenTags` alongside them, and twelve tests over the panel. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux against a copy of the vault: eighteen loose ends found in a small vault — including a `#s` tag that was a typo and an embed left dangling by the undo test earlier today — `Enter` landing on the right line, and `n` making the missing note.
+
 ## v0.58.0 — 2026-09-28
 
 **A quote in the Book Card wraps instead of running off the edge.** A passage is nearly always longer than the card is wide, and the quote field drew it on one line, so everything past the field's edge was simply cut off — you could type a whole quotation and only ever see its beginning.

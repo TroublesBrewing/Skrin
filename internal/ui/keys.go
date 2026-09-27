@@ -99,6 +99,8 @@ const (
 	actNextMatch // in it: the next match, and the one before
 	actPrevMatch
 	actNewNoteSplit // Alt+n: a new note in a split beside the one you're reading
+	actWeeds        // W: the vault's loose ends, gathered on one page
+	actMakeMissing  // n in it: make the note a dead link wanted
 )
 
 // Contexts say where a binding works. Each gets its own keymap, built from
@@ -122,6 +124,7 @@ const (
 	inQuickNote = "quicknote" // the i overlay: capture text, folder row
 	inTable     = "table"     // Insert table, from the palette
 	inNoteFind  = "notefind"  // Ctrl+F in the editor
+	inWeeds     = "weeds"     // the W overlay: the vault's loose ends
 )
 
 // binding is one row of the keymap registry. Every key Skrin handles is
@@ -161,6 +164,7 @@ const (
 	groupQuickNote = "In the quick note (i)"
 	groupTable     = "In Insert table (from Ctrl+P)"
 	groupNoteFind  = "Finding in the note (Ctrl+F)"
+	groupWeeds     = "In Weeds (W)"
 )
 
 var defaultBindings = []binding{
@@ -198,6 +202,7 @@ var defaultBindings = []binding{
 	{actUndoOp, []string{"U"}, "undo the last file operation", groupFiles, inMain},
 	{actDaily, []string{"t"}, "open or create today's daily note", groupFiles, inMain},
 	{actHabits, []string{"T"}, "habits: today's list, and the week/month grids", groupFiles, inMain},
+	{actWeeds, []string{"W"}, "weeds: the vault's loose ends on one page", groupSearch, inMain},
 	{actNewBook, []string{"B"}, "Book Card: catalogue a book, or edit the open book note", groupFiles, inMain},
 	{actQuickNote, []string{"i"}, "quick note: capture into a folder, first line names it", groupFiles, inMain},
 	{actOrderUp, []string{"shift+up"}, "Files: move the item up · note: select up", groupFiles, inMain},
@@ -355,6 +360,12 @@ var defaultBindings = []binding{
 	{actUndoOp, []string{"U"}, "undo the last tick you made from here", groupHabits, inHabits},
 	{actCancel, []string{"esc", "ctrl+c"}, "close the habits view", groupHabits, inHabits},
 
+	{actDown, []string{"j", "down"}, "down a row", groupWeeds, inWeeds},
+	{actUp, []string{"k", "up"}, "up a row", groupWeeds, inWeeds},
+	{actPick, []string{"enter"}, "go there: the note, and the line for a dead link", groupWeeds, inWeeds},
+	{actMakeMissing, []string{"n"}, "on a dead link: make the note it wanted (U undoes)", groupWeeds, inWeeds},
+	{actCancel, []string{"esc", "ctrl+c"}, "close Weeds", groupWeeds, inWeeds},
+
 	{actPick, []string{"enter"}, "text: save · folder row: pick the highlighted match", groupQuickNote, inQuickNote},
 	{actNewLine, []string{"shift+enter", "alt+enter"}, "a new line", groupQuickNote, inQuickNote},
 	{actNextField, []string{"tab"}, "text ↔ folder", groupQuickNote, inQuickNote},
@@ -422,6 +433,7 @@ var actionName = map[action]string{
 	actPalette:  "palette",
 	actFindNote: "find-note", actNextMatch: "next-match", actPrevMatch: "prev-match",
 	actNewNoteSplit: "new-note-split",
+	actWeeds:        "weeds", actMakeMissing: "make-missing",
 }
 
 // actionByName is actionName the other way round, for reading overrides

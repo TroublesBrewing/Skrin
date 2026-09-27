@@ -151,6 +151,9 @@ type Config struct {
 	Habits struct {
 		Enabled *bool `toml:"enabled,omitempty"` // unset means off: the habits view is asked for, never assumed
 	} `toml:"habits,omitempty"`
+	Weeds struct {
+		Enabled *bool `toml:"enabled,omitempty"` // unset means off: an experiment is always asked for
+	} `toml:"weeds,omitempty"`
 	Library struct {
 		Folder        string `toml:"folder,omitempty"`         // default: "Books"
 		CoversFolder  string `toml:"covers_folder,omitempty"`  // default: "Assets/Covers"
@@ -233,6 +236,14 @@ func (c Config) BetaEnabled() bool {
 // tomorrow's todos.
 func (c Config) HabitsEnabled() bool {
 	return c.Habits.Enabled != nil && *c.Habits.Enabled
+}
+
+// WeedsEnabled reports whether the Weeds panel (W) is switched on. Off
+// unless asked for, like every experiment: it reads the whole vault's
+// links, tags and dates to say what needs tending, and a feature that
+// judges your notes should never turn up unasked.
+func (c Config) WeedsEnabled() bool {
+	return c.Weeds.Enabled != nil && *c.Weeds.Enabled
 }
 
 // LibraryFolder is where new book notes are created: Books, unless set.

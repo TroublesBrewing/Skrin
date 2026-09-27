@@ -241,6 +241,34 @@ func (x *Index) Outgoing(rel string) []string {
 	return out
 }
 
+// Links are every link a note makes, in the order they appear, dead ones
+// included and each occurrence its own entry. Outgoing answers "what does
+// this note reach"; this answers "what does it say", which is what a check
+// for links that lead nowhere needs.
+func (x *Index) Links(rel string) []Link {
+	n := x.notes[rel]
+	if n == nil {
+		return nil
+	}
+	out := make([]Link, len(n.links))
+	copy(out, n.links)
+	return out
+}
+
+// WrittenTags are the tags a note has, spelled as that note spells them,
+// each spelling once and without the '#'. Doc lower-cases its tags for
+// searching; this keeps the capitals, so two spellings of one tag can be
+// told apart.
+func (x *Index) WrittenTags(rel string) []string {
+	n := x.notes[rel]
+	if n == nil {
+		return nil
+	}
+	out := make([]string, len(n.written))
+	copy(out, n.written)
+	return out
+}
+
 // Content is a note's text as last read.
 func (x *Index) Content(rel string) (string, bool) {
 	if n := x.notes[rel]; n != nil {

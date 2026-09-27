@@ -133,6 +133,7 @@ func run(vaultArg string) error {
 		ClipImage:       clipimg.New(),
 		Images:          cfg.RenderImages(),
 		Habits:          cfg.HabitsEnabled(),
+		Weeds:           cfg.WeedsEnabled(),
 		Beta:            cfg.BetaEnabled(),
 		LineNumbers:     cfg.RenderLineNumbers(),
 		ReadableWidth:   cfg.RenderReadableWidth(),

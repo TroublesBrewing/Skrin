@@ -38,6 +38,9 @@ func (m *Model) render() string {
 	if m.habits != nil {
 		out = m.overlay(out, m.habitsBox())
 	}
+	if m.weeds != nil {
+		out = m.overlay(out, m.weedsBox())
+	}
 	if m.quickNote != nil {
 		out = m.overlay(out, m.quickNoteBox())
 	}

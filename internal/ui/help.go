@@ -310,6 +310,8 @@ func (m *Model) guideText(w int) []manualLine {
 	para("Habiton lives in that view, beside today's list: a small creature drawn in the theme's colours, who is asleep until you tick something, awake once you have, and stands with his arms up when the day is done. He is wordless on purpose, he never scolds, and a day with no note at all is not counted against you. Everything he is is read from your checkboxes each time — nothing about him is written down, so there is no score to lose.")
 	para("Each habit shows the days it has run, from today backwards. A single day isn't a streak and doesn't show: every start would look like a failure.")
 	para("The habit tracker is one of those experiments. Switched on, T shows today's habits, the week and the month, read from a ### Habits block in your daily note; off, it stays out of the way entirely. The checkboxes are plain markdown either way, and never roll over into tomorrow's todos.")
+	para("Weeds (W) is the other one. It answers \"what needs tending?\" about the whole vault, on one page: links that lead nowhere, notes nothing points at and which point nowhere themselves, notes that are a title and nothing else, one name on two notes (where [[the name]] can only mean one of them), tags only one note uses — with the commoner spelling named, since that is usually the typo — and notes nobody has touched in half a year, oldest first. None of it can be seen from inside a single note, which is why it is normally met by accident, months later.")
+	para("j and k move, Enter goes there — the note, and the line itself for a link that leads nowhere — and Esc closes. n on a dead link makes the note it wanted, where Obsidian would put it, exactly as following that link would; U takes it back. Nothing else is changed by opening the page: it only reads, and only what the index already knows, so it costs no disk pass. Your daily notes are left out of the judgements about notes as a whole, since a day is meant to stand alone, but a dead link inside one is still reported.")
 	para("Footnotes render as numbers: [^why] in the text and [^why]: at the bottom both show as [1], counted in the order the labels first appear, as Obsidian numbers them.")
 	para("t opens today's daily note, made from Obsidian's daily-notes settings, with the unfinished todos of the last one carried over.")
 
@@ -445,6 +447,8 @@ func (m *Model) guideText(w int) []manualLine {
 	code(`images = true           # block-art previews of image embeds`)
 	code(`line_numbers = false    # line numbers in notes and the editor`)
 	code(`spreads = true          # spread blocks show what they find`)
+	code(`[weeds]`)
+	code(`enabled = false         # W: the vault's loose ends (beta)`)
 	blank()
 	para("Keys you change in the Keys tab are saved under [keys], one table per context, against the name of the thing the key does:")
 	blank()

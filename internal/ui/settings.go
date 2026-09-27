@@ -67,6 +67,16 @@ func (m *Model) settingsItems() []settingsItem {
 func betaSettings() []settingsItem {
 	return []settingsItem{
 		{
+			label: "Weeds (W): the vault's loose ends",
+			help:  "W gathers what needs tending across the whole vault: links that lead nowhere, notes nothing points at, notes that are a title and nothing else, one name on two notes, tags only one note uses, and notes untouched for half a year. Enter goes to the place; n makes the note a dead link wanted. It changes nothing on its own, and reads only what the index already knows. An experiment: it either earns its key or goes.",
+			get:   func(m *Model) bool { return m.opts.Weeds },
+			set: func(m *Model, v bool) {
+				m.opts.Weeds = v
+				m.opts.Config.Weeds.Enabled = boolPtr(v)
+			},
+			beta: true,
+		},
+		{
 			label: "Habit tracker",
 			help:  "T shows today's habits, the week and the month, read from the ### Habits block of your daily note. An experiment: either it grows into something that stands on its own, or it goes. Your checkboxes are plain markdown and stay as they are either way.",
 			get:   func(m *Model) bool { return m.opts.Habits },

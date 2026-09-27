@@ -133,6 +133,11 @@ type Options struct {
 	// feature needs this and its own switch, and a build with
 	// version.Beta false ignores both.
 	Beta bool
+	// Weeds turns on the Weeds panel (W): the vault's loose ends — dead
+	// links, notes on their own, stubs, one name on two notes, tags used
+	// once, notes untouched for half a year — gathered on one page. An
+	// experiment, off unless switched on in Settings' beta block.
+	Weeds bool
 	// Habits turns on the habits view (T). Off — the default — keeps it
 	// out of the way entirely: no key, no palette row, no tip, as the
 	// Claude drawer does when it is switched off. The "### Habits" block
@@ -269,6 +274,7 @@ type Model struct {
 	manual    *manual
 	book      *bookCard
 	habits    *habitView
+	weeds     *weedsView // the W overlay: the vault's loose ends
 	quickNote *quickNote
 	table     *tableForm // Insert table, over the editor
 	noteFind  *noteFind  // Ctrl+F in the editor
@@ -518,6 +524,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd = m.bookCardKey(msg)
 		case m.habits != nil:
 			m.habitKey(msg)
+		case m.weeds != nil:
+			m.weedKey(msg)
 		case m.quickNote != nil:
 			m.quickNoteKey(msg)
 		case m.search != nil:
@@ -607,6 +615,8 @@ func (m *Model) do(a action) tea.Cmd {
 		m.openBookCard()
 	case actHabits:
 		m.openHabits()
+	case actWeeds:
+		m.openWeeds()
 	case actQuickNote:
 		m.openQuickNote()
 	case actEscape:

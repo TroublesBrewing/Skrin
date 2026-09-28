@@ -67,6 +67,16 @@ func (m *Model) settingsItems() []settingsItem {
 func betaSettings() []settingsItem {
 	return []settingsItem{
 		{
+			label: "Scroll the other half of a split (Alt+↑/↓)",
+			help:  "With two notes open side by side, Alt+↑ and Alt+↓ move the pane that doesn't have the focus, and Alt+PgUp/PgDn move it a screen at a time — so a reference note can be read while you keep writing in the other one, without ever leaving it. Alt already means the other half: Alt+F follows a link into it, Alt+n makes a note in it. Off, Alt+↑/↓ only skim in Files, as before.",
+			get:   func(m *Model) bool { return m.opts.ScrollOther },
+			set: func(m *Model, v bool) {
+				m.opts.ScrollOther = v
+				m.opts.Config.Split.ScrollOther = boolPtr(v)
+			},
+			beta: true,
+		},
+		{
 			label: "Time machine (V): a note's earlier versions",
 			help:  "V shows the whole line of versions Skrin has kept of a note — oldest on the left, the note as it is now on the right — instead of stepping back one at a time with u. Read any of them, see what changed against now with d, and put one back with Enter; u and U take that off again. It only ever writes when you press Enter. An experiment: the versions themselves have been kept since v0.14.0 either way.",
 			get:   func(m *Model) bool { return m.opts.Versions },

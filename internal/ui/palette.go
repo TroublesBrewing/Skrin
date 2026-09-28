@@ -88,6 +88,7 @@ var notInPalette = map[action]bool{
 	actOpen: true, actParent: true, actNextPane: true, actPrevPane: true,
 	actPaneLeft: true, actPaneRight: true, actEscape: true, actPalette: true,
 	actSelDown: true, actSelUp: true,
+	actOtherPageDown: true, actOtherPageUp: true,
 }
 
 // editorCommand is one command in the palette while editing. Most of the
@@ -115,6 +116,10 @@ var editorCommands = []editorCommand{
 	{act: actZen, name: "Zen mode, still editing", also: "focus distraction free fullscreen"},
 	{act: actBacklinks, name: "Backlinks: notes linking here", also: "references mentions incoming"},
 	{act: actOutline, name: "Outline: jump to a heading", also: "headings toc sections"},
+	{act: actSkimDown, name: "Scroll the other half down", also: "split pane beside other scroll"},
+	{act: actSkimUp, name: "Scroll the other half up", also: "split pane beside other scroll"},
+	{act: actOtherPageDown, name: "The other half, a screen down", also: "split pane page"},
+	{act: actOtherPageUp, name: "The other half, a screen up", also: "split pane page"},
 	{act: actFindNote, name: "Find in the note", also: "search sök hitta text"},
 	{name: "Insert table", also: "add new grid columns rows markdown tabell", run: func(m *Model) tea.Cmd { m.startTable(); return nil }},
 	{name: "Insert template", also: "add snippet boilerplate mall", run: func(m *Model) tea.Cmd { m.startTemplate(); return nil }},

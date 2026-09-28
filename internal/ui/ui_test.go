@@ -116,6 +116,12 @@ func key(k string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModAlt}
 	case "shift+enter":
 		return tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModShift}
+	case "pgdown":
+		return tea.KeyPressMsg{Code: tea.KeyPgDown}
+	case "alt+pgdown":
+		return tea.KeyPressMsg{Code: tea.KeyPgDown, Mod: tea.ModAlt}
+	case "alt+pgup":
+		return tea.KeyPressMsg{Code: tea.KeyPgUp, Mod: tea.ModAlt}
 	case "pgup":
 		return tea.KeyPressMsg{Code: tea.KeyPgUp}
 	case "shift+down":

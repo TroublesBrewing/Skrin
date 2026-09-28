@@ -157,6 +157,9 @@ type Config struct {
 	Versions struct {
 		Enabled *bool `toml:"enabled,omitempty"` // unset means off: an experiment is always asked for
 	} `toml:"versions,omitempty"`
+	Split struct {
+		ScrollOther *bool `toml:"scroll_other,omitempty"` // unset means off: an experiment is always asked for
+	} `toml:"split,omitempty"`
 	Library struct {
 		Folder        string `toml:"folder,omitempty"`         // default: "Books"
 		CoversFolder  string `toml:"covers_folder,omitempty"`  // default: "Assets/Covers"
@@ -254,6 +257,14 @@ func (c Config) WeedsEnabled() bool {
 // either way: they are what u has always walked back through.
 func (c Config) VersionsEnabled() bool {
 	return c.Versions.Enabled != nil && *c.Versions.Enabled
+}
+
+// ScrollOtherEnabled reports whether Alt+↑/↓ move the other half of a
+// split while the focus stays put. Off unless asked for, like every
+// experiment — and this one also gives two keys a second meaning, which is
+// the kind of thing that should never arrive unasked.
+func (c Config) ScrollOtherEnabled() bool {
+	return c.Split.ScrollOther != nil && *c.Split.ScrollOther
 }
 
 // LibraryFolder is where new book notes are created: Books, unless set.

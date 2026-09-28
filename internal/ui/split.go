@@ -9,6 +9,7 @@ import (
 
 	"github.com/lurioso/skrin/internal/markdown"
 	"github.com/lurioso/skrin/internal/vault"
+	"github.com/lurioso/skrin/internal/version"
 )
 
 // noteView is a note in the pane that doesn't have focus: the other half of
@@ -159,4 +160,63 @@ func (m *Model) splitPane(w, h int) []string {
 		}
 	}
 	return m.box(displayName(s.path), body, w, h, false)
+}
+
+// scrollOther is Alt+↑ / Alt+↓ with a split open and the focus in a note:
+// it moves the *other* pane, the one without focus, and leaves you where
+// you are. The user's own proposal, 2026-09-28: "Något som hade varit guld
+// hade varit om man kunde skrolla den panel som inte var i fokus … så att
+// man aldrig behövde lämna anteckningen man skriver i bara för att skrolla
+// ner på den andra." Alt is already the modifier that means the other
+// half — Alt+F follows a link into it, Alt+n makes a note in it, Alt+↑/↓
+// in Files opens the next note beside — so this is the same word used for
+// the same thing, not a new one.
+//
+// It is what makes a split worth having while writing: the reference note
+// stays put and readable, and the note you are typing in never loses the
+// cursor. Paging keys (Alt+PgUp/PgDn) move it a screen at a time, because
+// a long note read a line at a time is no better than leaving it.
+func (m *Model) scrollOther(a action) {
+	if m.split == nil {
+		// No other half to move: the key keeps the meaning it has always
+		// had in a note, which is to point at where skimming happens.
+		m.inFiles("skim")
+		return
+	}
+	if !m.scrollOtherOn() {
+		m.flash = "Scrolling the other half is a beta feature, switched on in Settings (" + note(m.keyFor(inMain, actHelp), "?") + " then tab)"
+		return
+	}
+	s := m.split
+	vis := max(m.layout().bodyH-2, 1)
+	// The same clamp the focused pane uses: the last line may sit at the
+	// top of the window, and no further, so a note can never be scrolled
+	// past its own end.
+	maxOff := max(len(s.lines)-vis, 0)
+	before := s.off
+	switch a {
+	case actSkimDown:
+		s.off++
+	case actSkimUp:
+		s.off--
+	case actOtherPageDown:
+		s.off += vis
+	case actOtherPageUp:
+		s.off -= vis
+	}
+	s.off = clamp(s.off, 0, maxOff)
+	if s.off == before {
+		// No silent anything: at an end, say which end.
+		if before == 0 {
+			m.flash = "The top of " + displayName(s.path)
+		} else {
+			m.flash = "The end of " + displayName(s.path)
+		}
+	}
+}
+
+// scrollOtherOn is the feature's real state: a beta feature needs the build
+// to allow beta, beta mode to be on, and its own switch on.
+func (m *Model) scrollOtherOn() bool {
+	return version.Beta && m.opts.Beta && m.opts.ScrollOther
 }

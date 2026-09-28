@@ -2,6 +2,21 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.65.0 — 2026-09-28
+
+**Scroll the other half of a split without leaving the note you're in.** A new **beta** feature, off until switched on, and the user's own proposal: *"Något som hade varit guld hade varit om man kunde skrolla den panel som inte var i fokus … så att man aldrig behövde lämna anteckningen man skriver i bara för att skrolla ner på den andra."*
+
+- **`Alt+↑` and `Alt+↓` move the pane that doesn't have the focus.** `Alt+PgUp` and `Alt+PgDn` move it a screen at a time, because a long reference note read a line at a time is no better than leaving it.
+- **It works from the editor**, which is the whole point: the reference stays readable, and the note you are typing in never loses the cursor. Those keys were silent in the editor before, which no key should be.
+- **Alt already meant the other half**, so this is the same word for the same thing rather than a new one: `Alt+←/→` opens a note beside in Go to note, `Alt+F` follows a link into it, `Alt+n` makes a note in it, `Alt+↑/↓` in Files opens the next note beside.
+- **In Files nothing changed**: `Alt+↑/↓` still skim, opening the note the cursor lands on beside the open one.
+- **With no split open nothing changed either**: the key still points at Files, where skimming happens. The new meaning only exists when there is another half to move.
+- **Both ends say which end.** At the top or the bottom of the other note the flash names it, rather than the key going quiet.
+
+Being beta it takes two switches (Settings' "Beta features", then its own row) and a build with `version.Beta = false` leaves it out. It is off by default for a second reason as well: it gives two keys a meaning they didn't have, and that should never arrive unasked.
+
+Seven new tests, and the test helper learned the paging keys. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux at 150×35: writing in one pane, six `Alt+↓` moving the reference from line 1 to line 5 with the status line still reading EDIT, `Alt+PgDn` jumping it to line 34, and typing continuing straight afterwards without a key in between.
+
 ## v0.64.1 — 2026-09-28
 
 **The cursor comes back to where it was.** The UX charter's flow rules have always promised continuity — *"back into a note lands where you left it; the editor opens at the line you were reading"* — and half of it was true. The editor opened at the note pane's top line every time, so writing, pressing Esc to read something, and going back put the cursor at the top of the screen instead of in the sentence you were in the middle of. The user's report: *"Markören ska minnas sin plats i dokumentet … och inte behöva börja om med markören högst upp i dokumentet."*

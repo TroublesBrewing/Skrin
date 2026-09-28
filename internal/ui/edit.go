@@ -171,6 +171,12 @@ func (m *Model) editorKey(k tea.KeyPressMsg) tea.Cmd {
 		return nil
 	case actZen, actBacklinks, actOutline:
 		return m.do(a)
+	case actSkimDown, actSkimUp, actOtherPageDown, actOtherPageUp:
+		// The whole point of scrolling the other half is to do it without
+		// leaving the note you are writing in, so these reach the editor
+		// too. They were silent here before, which no key should be.
+		m.scrollOther(a)
+		return nil
 	}
 	switch m.editor.HandleKey(k) {
 	case editor.Save:

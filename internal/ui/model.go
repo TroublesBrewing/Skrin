@@ -133,6 +133,11 @@ type Options struct {
 	// feature needs this and its own switch, and a build with
 	// version.Beta false ignores both.
 	Beta bool
+	// ScrollOther lets Alt+↑/↓ (and Alt+PgUp/PgDn) move the other half of a
+	// split while the focus stays where it is, so a reference note can be
+	// read without leaving the note being written. An experiment, off
+	// unless switched on in Settings' beta block.
+	ScrollOther bool
 	// Versions turns on the time machine (V): a note's earlier versions,
 	// read from the same snapshots u walks back through, with any of them
 	// restorable. An experiment, off unless switched on in Settings' beta
@@ -664,7 +669,16 @@ func (m *Model) do(a action) tea.Cmd {
 		}
 		m.shiftItem(a == actOrderDown)
 	case actSkimDown, actSkimUp:
-		m.skimSplit(a == actSkimDown)
+		// One word, one meaning: "the other half, this way". In Files that
+		// is the next note opened beside this one; in a note it is the
+		// other pane scrolling while you stay put.
+		if m.focus == paneFiles {
+			m.skimSplit(a == actSkimDown)
+			break
+		}
+		m.scrollOther(a)
+	case actOtherPageDown, actOtherPageUp:
+		m.scrollOther(a)
 	case actFolderJumpUp, actFolderJumpDown:
 		m.folderJump(a == actFolderJumpDown)
 	case actOrderReset:

@@ -135,6 +135,7 @@ func run(vaultArg string) error {
 		Habits:          cfg.HabitsEnabled(),
 		Weeds:           cfg.WeedsEnabled(),
 		Versions:        cfg.VersionsEnabled(),
+		ScrollOther:     cfg.ScrollOtherEnabled(),
 		Beta:            cfg.BetaEnabled(),
 		LineNumbers:     cfg.RenderLineNumbers(),
 		ReadableWidth:   cfg.RenderReadableWidth(),

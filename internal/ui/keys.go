@@ -98,15 +98,17 @@ const (
 	actFindNote  // Ctrl+F in the editor
 	actNextMatch // in it: the next match, and the one before
 	actPrevMatch
-	actNewNoteSplit // Alt+n: a new note in a split beside the one you're reading
-	actWeeds        // W: the vault's loose ends, gathered on one page
-	actMakeMissing  // n in it: make the note a dead link wanted
-	actMergeNote    // from the palette: join this note onto another
-	actRenameTag    // from the palette: rename a tag everywhere it is written
-	actVersions     // V: the time machine, a note's earlier versions
-	actVersionDiff  // d in it: what changed, instead of the text
-	actMentions     // M: where this note is talked about without a link
-	actLinkMention  // a in it: link this mention
+	actNewNoteSplit  // Alt+n: a new note in a split beside the one you're reading
+	actWeeds         // W: the vault's loose ends, gathered on one page
+	actMakeMissing   // n in it: make the note a dead link wanted
+	actMergeNote     // from the palette: join this note onto another
+	actRenameTag     // from the palette: rename a tag everywhere it is written
+	actOtherPageDown // Alt+PgDn/PgUp: the other half of a split, a screen at a time
+	actOtherPageUp
+	actVersions    // V: the time machine, a note's earlier versions
+	actVersionDiff // d in it: what changed, instead of the text
+	actMentions    // M: where this note is talked about without a link
+	actLinkMention // a in it: link this mention
 	actLinkAllMentions
 )
 
@@ -221,8 +223,10 @@ var defaultBindings = []binding{
 	{actOrderUp, []string{"shift+up"}, "Files: move the item up · note: select up", groupFiles, inMain},
 	{actOrderDown, []string{"shift+down"}, "Files: move the item down · note: select down", groupFiles, inMain},
 	{actOrderReset, []string{"R"}, "put this level back in the default order", groupFiles, inMain},
-	{actSkimDown, []string{"alt+down", "alt+j"}, "move down, opening the note beside the open one", groupMove, inMain},
-	{actSkimUp, []string{"alt+up", "alt+k"}, "move up, opening the note beside the open one", groupMove, inMain},
+	{actSkimDown, []string{"alt+down", "alt+j"}, "Files: the next note, beside · a note: the other half down", groupMove, inMain},
+	{actSkimUp, []string{"alt+up", "alt+k"}, "Files: the note above, beside · a note: the other half up", groupMove, inMain},
+	{actOtherPageDown, []string{"alt+pgdown"}, "the other half of a split, a screen down", groupMove, inMain},
+	{actOtherPageUp, []string{"alt+pgup"}, "the other half of a split, a screen up", groupMove, inMain},
 	{actEdit, []string{"e"}, "edit the note in Skrin", groupNote, inMain},
 	{actEditExternal, []string{"E"}, "edit the note in $EDITOR", groupNote, inMain},
 	{actUndoEdit, []string{"u"}, "undo the note's last edit", groupNote, inMain},
@@ -268,6 +272,10 @@ var defaultBindings = []binding{
 	{actZen, []string{"alt+z"}, "zen mode, still editing", groupEditor, inEditor},
 	{actBacklinks, []string{"alt+b"}, "notes linking here", groupEditor, inEditor},
 	{actOutline, []string{"alt+o"}, "outline: jump to a heading", groupEditor, inEditor},
+	{actSkimDown, []string{"alt+down", "alt+j"}, "scroll the other half of a split, staying here", groupEditor, inEditor},
+	{actSkimUp, []string{"alt+up", "alt+k"}, "scroll the other half up, staying here", groupEditor, inEditor},
+	{actOtherPageDown, []string{"alt+pgdown"}, "the other half, a screen down", groupEditor, inEditor},
+	{actOtherPageUp, []string{"alt+pgup"}, "the other half, a screen up", groupEditor, inEditor},
 	{actNone, []string{"ctrl+left", "ctrl+right"}, "a word left / right", groupEditor, inEditor},
 	{actNone, []string{"ctrl+home", "ctrl+end"}, "start / end of the note", groupEditor, inEditor},
 	{actNone, []string{"i", "a", "I", "A", "o", "O"}, "insert", groupVim, inEditor},
@@ -464,6 +472,7 @@ var actionName = map[action]string{
 	actWeeds:        "weeds", actMakeMissing: "make-missing",
 	actMergeNote: "merge-note", actRenameTag: "rename-tag",
 	actVersions: "versions", actVersionDiff: "version-diff",
+	actOtherPageDown: "other-page-down", actOtherPageUp: "other-page-up",
 	actMentions: "mentions", actLinkMention: "link-mention",
 	actLinkAllMentions: "link-all-mentions",
 }

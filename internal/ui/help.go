@@ -328,6 +328,7 @@ func (m *Model) guideText(w int) []manualLine {
 	para("In the note, Shift+← and Shift+→ move between the two panes; keys act on the one with the bright border. Esc closes the pane you're in, and z (zen) closes the other.")
 	para("Two is the most, so a new split replaces the older one. Below 80 columns there's no room for one, and splits aren't remembered when you quit.")
 
+	para("With two notes side by side, Alt+↑ and Alt+↓ move the pane that doesn't have the focus, and Alt+PgUp/PgDn move it a screen at a time — so a reference note can be read while you keep writing in the other one, without leaving it and losing the cursor. It works from the editor too. Alt already means the other half here: Alt+←/→ opens a note beside in Go to note, Alt+F follows a link into it, Alt+n makes a note in it. A beta feature, switched on in Settings; off, Alt+↑/↓ only skim in Files as before.")
 	head("Your own order")
 	para("In Files, Shift+↑ and Shift+↓ move the item under the cursor up and down its level. There's no mode to enter: the arrows move the cursor, and with Shift they move the thing under it. R puts the level back in the default order.")
 	para("Within a level anything can sit anywhere, a file above a folder too. New items appear at the end of an ordered level, and renaming or moving keeps an item's place.")

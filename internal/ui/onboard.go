@@ -210,6 +210,9 @@ func (m *Model) tipOfTheDay() (k, what string, ok bool) {
 		if t.act == actWeeds && !m.weedsOn() {
 			continue
 		}
+		if t.act == actVersions && !m.versionsOn() {
+			continue
+		}
 		if t.act == actHabits && !m.habitsOn() {
 			continue
 		}

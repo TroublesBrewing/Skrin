@@ -2,6 +2,21 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.63.0 — 2026-09-28
+
+**The time machine (`V`): a note's earlier versions, shown whole.** A new **beta** feature, off until switched on. Skrin has kept the last 20 versions of every note since v0.14.0 — that is what `u` walks back through, one step at a time, without ever showing you where you are going. This shows the line: the versions oldest on the left, the note as it is now at the right-hand end, and any of them readable.
+
+- **`←`/`→` move along the line**, `j`/`k` scroll the version you are reading. It opens on the newest saved version — where `u` would take you — so one keypress already answers "what did this say before?".
+- **`d` shows what changed against now** instead of the text, as a diff with both sides named. The strip says how far from now you are: `+8 −3 against now`.
+- **`Enter` puts that version back.** The text it writes over becomes the newest saved version, so `u` steps straight back out of it, and it is one journal step, so `U` undoes it too. Two ways back from a feature whose whole job is going back.
+- **`Esc` closes it having changed nothing**, which is what it does unless you press `Enter`. It only ever writes on that one key.
+- **It won't open on a note that is open for editing** — the one thing it must never do is write over text still being typed — and says to save or close first. With the editor open, `V` is simply the letter V, as it must be.
+- **A note Skrin has never written over says so** rather than opening empty, and mentions that versions are kept from now on.
+
+`Store.List` reads the whole stack without spending it, unlike `Undo`, and leaves out a version it can't read rather than failing the lot. Being beta, it takes two switches (Settings' "Beta features", then its own row) and a build with `version.Beta = false` leaves it out entirely.
+
+Two new snapshot tests, fifteen over the panel. Full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux against a copy of the vault: four versions built up by editing, the line walked back to the oldest, the diff read the right way round, that version restored, and `U` putting the note back to the byte.
+
 ## v0.62.0 — 2026-09-28
 
 **Rename a tag everywhere**, from the palette: *"Rename a tag everywhere…"*. Pick the tag from the same list `#` shows, say what it should be called, and every note that has it is rewritten in one step. It is the mend for what the tag list and Weeds both keep showing — one tag written two ways — and until now the only answer was search and replace, note by note, which never touched frontmatter at all.

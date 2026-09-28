@@ -103,6 +103,8 @@ const (
 	actMakeMissing  // n in it: make the note a dead link wanted
 	actMergeNote    // from the palette: join this note onto another
 	actRenameTag    // from the palette: rename a tag everywhere it is written
+	actVersions     // V: the time machine, a note's earlier versions
+	actVersionDiff  // d in it: what changed, instead of the text
 	actMentions     // M: where this note is talked about without a link
 	actLinkMention  // a in it: link this mention
 	actLinkAllMentions
@@ -131,6 +133,7 @@ const (
 	inNoteFind  = "notefind"  // Ctrl+F in the editor
 	inWeeds     = "weeds"     // the W overlay: the vault's loose ends
 	inMentions  = "mentions"  // the M overlay: unlinked mentions of a note
+	inVersions  = "versions"  // the V overlay: the time machine
 )
 
 // binding is one row of the keymap registry. Every key Skrin handles is
@@ -172,6 +175,7 @@ const (
 	groupNoteFind  = "Finding in the note (Ctrl+F)"
 	groupWeeds     = "In Weeds (W)"
 	groupMentions  = "In Mentions (M)"
+	groupVersions  = "In the time machine (V)"
 )
 
 var defaultBindings = []binding{
@@ -211,6 +215,7 @@ var defaultBindings = []binding{
 	{actHabits, []string{"T"}, "habits: today's list, and the week/month grids", groupFiles, inMain},
 	{actWeeds, []string{"W"}, "weeds: the vault's loose ends on one page", groupSearch, inMain},
 	{actMentions, []string{"M"}, "mentions: where this note is talked about without a link", groupSearch, inMain},
+	{actVersions, []string{"V"}, "time machine: this note's earlier versions", groupNote, inMain},
 	{actNewBook, []string{"B"}, "Book Card: catalogue a book, or edit the open book note", groupFiles, inMain},
 	{actQuickNote, []string{"i"}, "quick note: capture into a folder, first line names it", groupFiles, inMain},
 	{actOrderUp, []string{"shift+up"}, "Files: move the item up · note: select up", groupFiles, inMain},
@@ -381,6 +386,14 @@ var defaultBindings = []binding{
 	{actLinkAllMentions, []string{"A"}, "link every mention in the list, in one step", groupMentions, inMentions},
 	{actCancel, []string{"esc", "ctrl+c"}, "close Mentions", groupMentions, inMentions},
 
+	{actLeft, []string{"left", "h"}, "back in time, one version", groupVersions, inVersions},
+	{actRight, []string{"right", "l"}, "forward in time, towards now", groupVersions, inVersions},
+	{actDown, []string{"j", "down"}, "scroll the version down", groupVersions, inVersions},
+	{actUp, []string{"k", "up"}, "scroll the version up", groupVersions, inVersions},
+	{actVersionDiff, []string{"d"}, "what changed against now, or the text itself", groupVersions, inVersions},
+	{actPick, []string{"enter"}, "put this version back (u or U undoes)", groupVersions, inVersions},
+	{actCancel, []string{"esc", "ctrl+c"}, "close the time machine, changing nothing", groupVersions, inVersions},
+
 	{actPick, []string{"enter"}, "text: save · folder row: pick the highlighted match", groupQuickNote, inQuickNote},
 	{actNewLine, []string{"shift+enter", "alt+enter"}, "a new line", groupQuickNote, inQuickNote},
 	{actNextField, []string{"tab"}, "text ↔ folder", groupQuickNote, inQuickNote},
@@ -450,6 +463,7 @@ var actionName = map[action]string{
 	actNewNoteSplit: "new-note-split",
 	actWeeds:        "weeds", actMakeMissing: "make-missing",
 	actMergeNote: "merge-note", actRenameTag: "rename-tag",
+	actVersions: "versions", actVersionDiff: "version-diff",
 	actMentions: "mentions", actLinkMention: "link-mention",
 	actLinkAllMentions: "link-all-mentions",
 }

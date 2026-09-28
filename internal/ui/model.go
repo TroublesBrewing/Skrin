@@ -133,6 +133,11 @@ type Options struct {
 	// feature needs this and its own switch, and a build with
 	// version.Beta false ignores both.
 	Beta bool
+	// Versions turns on the time machine (V): a note's earlier versions,
+	// read from the same snapshots u walks back through, with any of them
+	// restorable. An experiment, off unless switched on in Settings' beta
+	// block.
+	Versions bool
 	// Weeds turns on the Weeds panel (W): the vault's loose ends — dead
 	// links, notes on their own, stubs, one name on two notes, tags used
 	// once, notes untouched for half a year — gathered on one page. An
@@ -276,6 +281,7 @@ type Model struct {
 	habits    *habitView
 	weeds     *weedsView    // the W overlay: the vault's loose ends
 	mentions  *mentionsView // the M overlay: unlinked mentions of a note
+	versions  *versionsView // the V overlay: the time machine
 	quickNote *quickNote
 	table     *tableForm // Insert table, over the editor
 	noteFind  *noteFind  // Ctrl+F in the editor
@@ -529,6 +535,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.weedKey(msg)
 		case m.mentions != nil:
 			m.mentionKey(msg)
+		case m.versions != nil:
+			m.versionKey(msg)
 		case m.quickNote != nil:
 			m.quickNoteKey(msg)
 		case m.search != nil:
@@ -626,6 +634,8 @@ func (m *Model) do(a action) tea.Cmd {
 		m.startMerge()
 	case actRenameTag:
 		m.startTagRename()
+	case actVersions:
+		m.openVersions()
 	case actQuickNote:
 		m.openQuickNote()
 	case actEscape:

@@ -92,3 +92,42 @@ func TestMoveFollowsNotesAndFolders(t *testing.T) {
 		t.Errorf("moving a note without snapshots: %v", err)
 	}
 }
+
+// List is the time machine's way in: it reads the whole stack without
+// spending it, unlike Undo.
+func TestListShowsEveryVersionOldestFirstWithoutSpendingThem(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	s := Open("/vault")
+	for _, v := range []string{"one", "two", "three"} {
+		if err := s.Save("A.md", v); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got := s.List("A.md")
+	if len(got) != 3 {
+		t.Fatalf("List = %d versions, want 3", len(got))
+	}
+	for i, want := range []string{"one", "two", "three"} {
+		if got[i].Content != want {
+			t.Errorf("version %d = %q, want %q (oldest first)", i, got[i].Content, want)
+		}
+	}
+	if got[0].Time.After(got[2].Time) {
+		t.Error("the times should run forwards with the list")
+	}
+	// Looking must not consume: Undo still has all three to give.
+	if again := s.List("A.md"); len(again) != 3 {
+		t.Errorf("List spent the stack: %d left", len(again))
+	}
+	if _, ok, _ := s.Undo("A.md", "now"); !ok {
+		t.Error("Undo should still work after listing")
+	}
+}
+
+func TestListOfANoteWithNoHistoryIsEmpty(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	s := Open("/vault")
+	if got := s.List("Never touched.md"); len(got) != 0 {
+		t.Errorf("List = %+v, want nothing", got)
+	}
+}

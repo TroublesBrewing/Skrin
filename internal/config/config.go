@@ -154,6 +154,9 @@ type Config struct {
 	Weeds struct {
 		Enabled *bool `toml:"enabled,omitempty"` // unset means off: an experiment is always asked for
 	} `toml:"weeds,omitempty"`
+	Versions struct {
+		Enabled *bool `toml:"enabled,omitempty"` // unset means off: an experiment is always asked for
+	} `toml:"versions,omitempty"`
 	Library struct {
 		Folder        string `toml:"folder,omitempty"`         // default: "Books"
 		CoversFolder  string `toml:"covers_folder,omitempty"`  // default: "Assets/Covers"
@@ -244,6 +247,13 @@ func (c Config) HabitsEnabled() bool {
 // judges your notes should never turn up unasked.
 func (c Config) WeedsEnabled() bool {
 	return c.Weeds.Enabled != nil && *c.Weeds.Enabled
+}
+
+// VersionsEnabled reports whether the time machine (V) is switched on. Off
+// unless asked for, like every experiment. The snapshots it reads are kept
+// either way: they are what u has always walked back through.
+func (c Config) VersionsEnabled() bool {
+	return c.Versions.Enabled != nil && *c.Versions.Enabled
 }
 
 // LibraryFolder is where new book notes are created: Books, unless set.

@@ -83,6 +83,27 @@ func (s *Store) Redo(rel, current string) (Snapshot, bool, error) {
 	return snap, true, s.prune(rel)
 }
 
+// List is every saved version of a note, oldest first, without taking any
+// of them off the stack. Undo consumes what it hands back, because that is
+// what stepping back one version means; a panel that shows the whole
+// history has to be able to look without spending.
+//
+// A version that can't be read is left out rather than stopping the lot:
+// showing nine of ten versions is better than showing none.
+func (s *Store) List(rel string) []Snapshot {
+	dir := s.stack(rel, "undo")
+	names := versions(dir)
+	out := make([]Snapshot, 0, len(names))
+	for _, n := range names {
+		b, err := os.ReadFile(filepath.Join(dir, n))
+		if err != nil {
+			continue
+		}
+		out = append(out, Snapshot{Content: string(b), Time: stamp(n)})
+	}
+	return out
+}
+
 // Move makes snapshots follow a note or folder that was renamed or moved.
 func (s *Store) Move(from, to string) error {
 	if from == "" || to == "" {

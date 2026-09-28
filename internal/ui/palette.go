@@ -58,6 +58,7 @@ var mainCommands = []paletteEntry{
 	{actMentions, "Mentions: where this note is talked about without a link", "unlinked mention backlink connect"},
 	{actMergeNote, "Merge this note into another…", "join combine two notes duplicate same name"},
 	{actRenameTag, "Rename a tag everywhere…", "tags spelling typo unify label"},
+	{actVersions, "Time machine: this note's earlier versions", "history versions restore snapshot undo back"},
 	{actNewBook, "Book Card: catalogue a book", "library reading isbn"},
 	{actClaude, "Claude drawer: open or hide", "ai assistant chat"},
 	{actClaudeInput, "Ask Claude", "ai assistant chat question"},
@@ -205,6 +206,9 @@ func (m *Model) mainPaletteItems() []choice {
 	var items []choice
 	for _, e := range mainCommands {
 		if !m.weedsOn() && e.act == actWeeds {
+			continue
+		}
+		if !m.versionsOn() && e.act == actVersions {
 			continue
 		}
 		if !m.habitsOn() && e.act == actHabits {

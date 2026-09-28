@@ -370,7 +370,14 @@ func (m *Model) closeEditor() {
 }
 
 func diffLines(disk, mine string) []string {
-	u := udiff.Unified("on disk", "yours", disk, mine)
+	return diffLinesNamed("on disk", "yours", disk, mine)
+}
+
+// diffLinesNamed is diffLines with the two sides named: a diff's header is
+// the only thing saying which way round it reads, so it has to say what
+// the two texts are wherever it is shown.
+func diffLinesNamed(fromName, toName, from, to string) []string {
+	u := udiff.Unified(fromName, toName, from, to)
 	if u == "" {
 		return []string{"No differences"}
 	}

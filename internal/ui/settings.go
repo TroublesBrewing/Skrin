@@ -67,6 +67,16 @@ func (m *Model) settingsItems() []settingsItem {
 func betaSettings() []settingsItem {
 	return []settingsItem{
 		{
+			label: "Time machine (V): a note's earlier versions",
+			help:  "V shows the whole line of versions Skrin has kept of a note — oldest on the left, the note as it is now on the right — instead of stepping back one at a time with u. Read any of them, see what changed against now with d, and put one back with Enter; u and U take that off again. It only ever writes when you press Enter. An experiment: the versions themselves have been kept since v0.14.0 either way.",
+			get:   func(m *Model) bool { return m.opts.Versions },
+			set: func(m *Model, v bool) {
+				m.opts.Versions = v
+				m.opts.Config.Versions.Enabled = boolPtr(v)
+			},
+			beta: true,
+		},
+		{
 			label: "Weeds (W): the vault's loose ends",
 			help:  "W gathers what needs tending across the whole vault: links that lead nowhere, notes nothing points at, notes that are a title and nothing else, one name on two notes, tags only one note uses, and notes untouched for half a year. Enter goes to the place; n makes the note a dead link wanted. It changes nothing on its own, and reads only what the index already knows. An experiment: it either earns its key or goes.",
 			get:   func(m *Model) bool { return m.opts.Weeds },

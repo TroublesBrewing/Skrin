@@ -428,6 +428,7 @@ func (m *Model) guideText(w int) []manualLine {
 	para("U undoes the last file operation: a create, rename, move, delete (back from the trash) or replace.")
 	para("In the editor, Ctrl-z undoes typing.")
 	para("Earlier versions of each note are kept in ~/.local/state/skrin/snapshots, the last 20 per note.")
+	para("V opens the time machine on them, which is the same history u walks back through, shown whole: the versions in a line, oldest on the left, the note as it is now at the right-hand end. The arrows move along it, j and k scroll the version you are looking at, and d shows what changed against now instead of the text itself. Enter puts the version you are reading back — the text it wrote over becomes the newest saved version, so u steps back out of it and U undoes it as one operation. Esc closes it having changed nothing, which is what it does unless you press Enter. It won't open on a note that is open for editing: the one thing it must never do is write over text you are still typing. A beta feature, switched on in Settings.")
 
 	head("Config")
 	para("The Settings tab of this manual (Tab) toggles the everyday ones without an editor; everything else, plus anything hand-set, lives in ~/.config/skrin/config.toml:")
@@ -452,6 +453,8 @@ func (m *Model) guideText(w int) []manualLine {
 	code(`spreads = true          # spread blocks show what they find`)
 	code(`[weeds]`)
 	code(`enabled = false         # W: the vault's loose ends (beta)`)
+	code(`[versions]`)
+	code(`enabled = false         # V: the time machine (beta)`)
 	blank()
 	para("Keys you change in the Keys tab are saved under [keys], one table per context, against the name of the thing the key does:")
 	blank()

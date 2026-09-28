@@ -70,7 +70,10 @@ func TestSpreadTableAndErrors(t *testing.T) {
 		t.Errorf("the table's header and folder column are missing:\n%s", s)
 	}
 	m = withSpread(t, Options{Spreads: true}, "LIST FROM \"Daily\"\nGROUP BY file.folder")
-	if s := screen(m); !strings.Contains(s, "⚠ Spread: GROUP BY isn't supported yet (line 2)") {
+	// The message carries a hint after a "·" (see internal/spread), and the
+	// renderer wraps it, so this looks for the mistake and the line rather
+	// than one unbroken string.
+	if s := screen(m); !strings.Contains(s, "⚠ Spread: GROUP BY isn't supported yet") || !strings.Contains(s, "(line 2)") {
 		t.Errorf("no message for unsupported syntax:\n%s", s)
 	}
 }

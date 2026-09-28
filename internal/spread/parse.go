@@ -24,6 +24,12 @@ type Query struct {
 	flatten []flattenClause
 	sort    []sortKey
 	Limit   int // -1: no LIMIT
+	// refs are the property names the query asks for, in the order they
+	// were written, so an answer with no rows can say when one of them is
+	// a name no note in the vault has. A spelling mistake and a genuinely
+	// empty answer look exactly alike otherwise, and that is the hardest
+	// thing about writing a query you aren't fluent in yet.
+	refs []string
 }
 
 type field struct {
@@ -49,9 +55,62 @@ var fileFields = map[string]bool{
 	"file.tags": true, "file.mtime": true, "file.size": true, "file.outlinks": true,
 }
 
+// fileFieldOrder is fileFields in the order a person would want to read
+// them, for the message that names them all. A map has no order, and a
+// hint that shuffles itself between two runs reads like a bug.
+var fileFieldOrder = []string{
+	"file.name", "file.link", "file.path", "file.folder",
+	"file.tags", "file.outlinks", "file.mtime", "file.size",
+}
+
+func fileFieldList() string { return strings.Join(fileFieldOrder, ", ") }
+
+// valueHint is tacked onto the messages that turn down something written
+// where a value belongs. Every refusal in a spread says what would have
+// worked, because the syntax is the part nobody is fluent in yet.
+const valueHint = ` · a value is a property name (status), a file field (file.name), "text", a number, a [[link]], true, false or null`
+
 type parser struct {
 	toks []token
 	pos  int
+	refs []string // property names asked for; see Query.refs
+}
+
+// note remembers a name the query asks for, unless it is a field spreads
+// answer themselves. Each name once, in the order written.
+func (p *parser) note(name string) {
+	if fileFields[name] || taskFields[name] {
+		return
+	}
+	for _, r := range p.refs {
+		if r == name {
+			return
+		}
+	}
+	p.refs = append(p.refs, name)
+}
+
+// refsWithout is the names the query asks for, less the ones FLATTEN
+// binds. "FLATTEN file.outlinks AS link" makes link a name of the query's
+// own, and blaming the vault for not having a property called link would
+// be worse than saying nothing.
+func (p *parser) refsWithout(fs []flattenClause) []string {
+	bound := make(map[string]bool, len(fs))
+	for _, f := range fs {
+		bound[strings.ToLower(f.name)] = true
+	}
+	var out []string
+	for _, r := range p.refs {
+		if !bound[r] {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// taskFields are the names a TASK spread answers from the task itself.
+var taskFields = map[string]bool{
+	"text": true, "status": true, "completed": true, "checked": true, "line": true,
 }
 
 func (p *parser) peek() token { return p.toks[p.pos] }
@@ -107,7 +166,7 @@ func Parse(src string) (*Query, error) {
 		if p.peek().is("WITHOUT") {
 			p.next()
 			if id := p.next(); !id.is("ID") {
-				return nil, errAt(id, "expected ID after WITHOUT, found %s", id)
+				return nil, errAt(id, "expected ID after WITHOUT, found %s · e.g. TABLE WITHOUT ID file.link, status", id)
 			}
 			q.noID = true
 		}
@@ -125,7 +184,7 @@ func Parse(src string) (*Query, error) {
 			}
 		}
 		if q.noID && len(q.fields) == 0 {
-			return nil, errAt(t, "TABLE WITHOUT ID needs at least one field")
+			return nil, errAt(t, "TABLE WITHOUT ID needs at least one field · e.g. TABLE WITHOUT ID file.link, status")
 		}
 	case t.is("LIST"):
 		q.kind = kList
@@ -136,20 +195,20 @@ func Parse(src string) (*Query, error) {
 			}
 			q.fields = []field{f}
 			if c := p.peek(); c.kind == tComma {
-				return nil, errAt(c, "LIST shows one value per note — use TABLE for more")
+				return nil, errAt(c, "LIST shows one value per note — use TABLE for more · e.g. TABLE file.link, status")
 			}
 		}
 	case t.is("TASK"):
 		q.kind = kTask
 		if !p.atClauseOrEnd() {
-			return nil, errAt(p.peek(), "TASK takes no fields — put conditions in WHERE")
+			return nil, errAt(p.peek(), `TASK takes no fields — put conditions in WHERE · e.g. TASK FROM "Daily" WHERE !completed`)
 		}
 	case t.is("CALENDAR"):
-		return nil, errAt(t, "CALENDAR isn't supported yet")
+		return nil, errAt(t, "CALENDAR isn't supported yet · TABLE, LIST and TASK are the three there are")
 	case t.kind == tEOF:
-		return nil, errAt(t, "empty — start with TABLE, LIST or TASK")
+		return nil, errAt(t, `empty — start with TABLE, LIST or TASK · e.g. TABLE file.link, status FROM "Books"`)
 	default:
-		return nil, errAt(t, "expected TABLE, LIST or TASK, found %s", t)
+		return nil, errAt(t, `expected TABLE, LIST or TASK, found %s · e.g. TABLE file.link, status FROM "Books"`, t)
 	}
 
 	haveFrom := false
@@ -157,10 +216,11 @@ func Parse(src string) (*Query, error) {
 		t := p.next()
 		switch {
 		case t.kind == tEOF:
+			q.refs = p.refsWithout(q.flatten)
 			return q, nil
 		case t.is("FROM"):
 			if haveFrom {
-				return nil, errAt(t, "FROM is given twice")
+				return nil, errAt(t, `FROM is given twice · join the sources instead: FROM "Books" AND #book, or FROM "Books" OR "Källor"`)
 			}
 			haveFrom = true
 			if q.from, err = p.source(); err != nil {
@@ -200,11 +260,11 @@ func Parse(src string) (*Query, error) {
 			n := p.next()
 			v, err := strconv.Atoi(n.text)
 			if n.kind != tNumber || err != nil {
-				return nil, errAt(n, "LIMIT needs a whole number, found %s", n)
+				return nil, errAt(n, "LIMIT needs a whole number, found %s · e.g. LIMIT 10", n)
 			}
 			q.Limit = v
 		case t.is("GROUP"):
-			return nil, errAt(t, "GROUP BY isn't supported yet")
+			return nil, errAt(t, "GROUP BY isn't supported yet · SORT puts the same values next to each other: SORT status, file.name")
 		case t.is("FLATTEN"):
 			f, err := p.flatten()
 			if err != nil {
@@ -212,7 +272,7 @@ func Parse(src string) (*Query, error) {
 			}
 			q.flatten = append(q.flatten, f)
 		default:
-			return nil, errAt(t, "expected FROM, WHERE, SORT or LIMIT, found %s", t)
+			return nil, errAt(t, `expected FROM, WHERE, SORT, LIMIT or FLATTEN, found %s · e.g. FROM "Books" WHERE status = "reading" SORT file.mtime DESC LIMIT 10`, t)
 		}
 	}
 }
@@ -229,7 +289,7 @@ func (p *parser) field() (field, error) {
 		p.next()
 		n := p.next()
 		if n.kind != tString && n.kind != tIdent {
-			return field{}, errAt(n, "AS needs a name after it, found %s", n)
+			return field{}, errAt(n, `AS needs a name after it, found %s · e.g. file.mtime AS "Ändrad"`, n)
 		}
 		f.name = n.text
 	}
@@ -325,7 +385,7 @@ func (p *parser) cmp() (expr, error) {
 		a = cmpE{op, a, b}
 	}
 	if p.peekOp("+", "-", "*", "/") {
-		return nil, errAt(p.peek(), "arithmetic (+ - * /) isn't supported yet")
+		return nil, errAt(p.peek(), "arithmetic (+ - * /) isn't supported yet · compare the values instead: WHERE pages > 300")
 	}
 	return a, nil
 }
@@ -349,7 +409,7 @@ func (p *parser) primary() (expr, error) {
 	case tLink:
 		return linkLit{t.text}, nil
 	case tTag:
-		return nil, errAt(t, "a tag here needs quotes: \"#%s\"", t.text)
+		return nil, errAt(t, `a tag here needs quotes: "#%s" · e.g. WHERE contains(file.tags, "#%s"), or put the tag in FROM: FROM #%s`, t.text, t.text, t.text)
 	case tOp:
 		if t.text == "-" && p.peek().kind == tNumber {
 			return lit{coerce("-" + p.next().text)}, nil
@@ -363,23 +423,25 @@ func (p *parser) primary() (expr, error) {
 		case p.peek().kind == tLParen:
 			return p.call(t)
 		case isClause(t), t.is("AND"), t.is("OR"), t.is("AS"):
-			return nil, errAt(t, "expected a value, found %s", t)
+			return nil, errAt(t, "expected a value, found %s"+valueHint, t)
 		case lower == "this", lower == "this.file":
-			return nil, errAt(t, "%s on its own isn't a value — try this.file.name, this.file.link or this.property", lower)
+			return nil, errAt(t, "%s on its own isn't a value · try this.file.name, this.file.link, or this.<property> for a property of the note the spread is in", lower)
 		case strings.HasPrefix(lower, "this."):
 			name := strings.TrimPrefix(lower, "this.")
 			if err := checkField(t, "this.", name); err != nil {
 				return nil, err
 			}
+			p.note(name)
 			return thisRef{name}, nil
 		case strings.HasPrefix(lower, "file."):
 			if err := checkField(t, "", lower); err != nil {
 				return nil, err
 			}
 		}
+		p.note(strings.ToLower(t.text))
 		return fieldRef{strings.ToLower(t.text)}, nil
 	}
-	return nil, errAt(t, "expected a value, found %s", t)
+	return nil, errAt(t, "expected a value, found %s"+valueHint, t)
 }
 
 // checkField turns down a file.* field a spread doesn't know. prefix is
@@ -391,9 +453,9 @@ func checkField(t token, prefix, name string) error {
 	case !strings.HasPrefix(name, "file."):
 		return nil
 	case name == "file.ctime", name == "file.cday":
-		return errAt(t, "%s%s isn't available: Linux can't tell when a note was created", prefix, name)
+		return errAt(t, "%s%s isn't available: Linux can't tell when a note was created · use %sfile.mtime, or a created property of your own", prefix, name, prefix)
 	case !fileFields[name]:
-		return errAt(t, "%s%s isn't supported yet", prefix, name)
+		return errAt(t, "%s%s isn't supported yet · the file fields are %s · any other name is read as a property of the note", prefix, name, fileFieldList())
 	}
 	return nil
 }
@@ -401,7 +463,7 @@ func checkField(t token, prefix, name string) error {
 func (p *parser) call(name token) (expr, error) {
 	fn := strings.ToLower(name.text)
 	if fn != "contains" && fn != "icontains" {
-		return nil, errAt(name, "%s() isn't supported yet", fn)
+		return nil, errAt(name, "%s() isn't supported yet · contains(field, value) and icontains(field, value) are the two there are", fn)
 	}
 	p.next() // (
 	var args []expr
@@ -420,7 +482,7 @@ func (p *parser) call(name token) (expr, error) {
 		return nil, errAt(c, "expected ) after %s(…), found %s", fn, c)
 	}
 	if len(args) != 2 {
-		return nil, errAt(name, "%s() takes two values: %s(field, value)", fn, fn)
+		return nil, errAt(name, `%s() takes two values: %s(field, value) · e.g. %s(file.tags, "#book")`, fn, fn, fn)
 	}
 	return containsE{args[0], args[1], fn == "icontains"}, nil
 }
@@ -490,5 +552,5 @@ func (p *parser) unarySource() (source, error) {
 		}
 		return linksFromS{l.text}, nil
 	}
-	return nil, errAt(t, `expected a #tag, a "folder" or a [[note]], found %s`, t)
+	return nil, errAt(t, `expected a #tag, a "folder" or a [[note]], found %s · FROM "Books" · FROM #book · FROM [[Stoic]] (notes linking there) · FROM outgoing([[Stoic]]) (notes it links to) · FROM this.file (this note)`, t)
 }

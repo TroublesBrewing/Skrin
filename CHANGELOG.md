@@ -2,6 +2,19 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.64.0 — 2026-09-28
+
+**Every spread error now shows what would have worked, and an empty answer says why it is empty.** The user's report: *"Felmeddelanden i Spread behöver fler hints, jag är inte så flytande i syntaxen ännu."* A message that only names the mistake leaves you exactly where you were.
+
+- **Twenty refusals carry a worked example.** `TABLE file.day` answers *"file.day isn't supported yet · the file fields are file.name, file.link, file.path, file.folder, file.tags, file.outlinks, file.mtime, file.size · any other name is read as a property of the note"* — the one hint that answers "what can I even ask for?". `FROM` with nothing after it lists all five sources. `GROUP BY` points at `SORT`. Arithmetic points at comparison. `contains()` shows the call. A value in the wrong place says what a value is.
+- **`FLATTEN` was missing from the clause list** in the message that names the clauses, though it has worked since v0.56.0. It is named now.
+- **"No notes match" says why when it can.** If the query asks for a property no note in the vault has — `statuss` for `status` — the answer says so, because a spelling mistake and an honestly empty answer read exactly alike otherwise. A property that does exist and simply didn't match is never blamed, nor is a file field, a task field, or a name `FLATTEN` bound with `AS`.
+- The manual's Spreads section names all eight file fields (it had left out `file.outlinks`), says `file.ctime` doesn't exist and what to use instead, and describes the new empty-answer hint.
+
+A test now holds every refusal to carrying a hint, so a new message can't arrive without one, and another holds the file-field hint to naming every field there is.
+
+Full suite green (`-count=1`), `go vet` and `gofmt` clean. The whole language was also run against the user's real vault, read-only, to write **[[Spreads]]** in the vault: a reference for what can be queried and sixteen worked examples, each verified to answer. One bug came out of that: `FLATTEN … AS link` made the empty-answer hint blame the vault for having no property called "link". Fixed, with a test.
+
 ## v0.63.0 — 2026-09-28
 
 **The time machine (`V`): a note's earlier versions, shown whole.** A new **beta** feature, off until switched on. Skrin has kept the last 20 versions of every note since v0.14.0 — that is what `u` walks back through, one step at a time, without ever showing you where you are going. This shows the line: the versions oldest on the left, the note as it is now at the right-hand end, and any of them readable.

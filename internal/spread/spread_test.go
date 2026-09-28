@@ -330,7 +330,7 @@ func TestErrorsNameTheProblemAndTheLine(t *testing.T) {
 	for q, want := range map[string]string{
 		"":                                        "Spread: empty — start with TABLE, LIST or TASK (line 1)",
 		"SHOW everything":                         `Spread: expected TABLE, LIST or TASK, found "SHOW" (line 1)`,
-		"TABLE author\nFROM #books\nWHER x":       `Spread: expected FROM, WHERE, SORT or LIMIT, found "WHER" (line 3)`,
+		"TABLE author\nFROM #books\nWHER x":       `Spread: expected FROM, WHERE, SORT, LIMIT or FLATTEN, found "WHER" (line 3)`,
 		"LIST FROM #books\nGROUP BY status":       "Spread: GROUP BY isn't supported yet (line 2)",
 		"LIST\nFLATTEN":                           "Spread: expected a value, found the end of the spread (line 2)",
 		"CALENDAR file.mtime":                     "Spread: CALENDAR isn't supported yet (line 1)",
@@ -339,8 +339,8 @@ func TestErrorsNameTheProblemAndTheLine(t *testing.T) {
 		"TABLE file.day":                          "Spread: file.day isn't supported yet (line 1)",
 		"TABLE this.file.day":                     "Spread: this.file.day isn't supported yet (line 1)",
 		"TABLE this.file.ctime":                   "Spread: this.file.ctime isn't available: Linux can't tell when a note was created (line 1)",
-		"LIST WHERE this = 1":                     "Spread: this on its own isn't a value — try this.file.name, this.file.link or this.property (line 1)",
-		"LIST WHERE this.file = 1":                "Spread: this.file on its own isn't a value — try this.file.name, this.file.link or this.property (line 1)",
+		"LIST WHERE this = 1":                     "Spread: this on its own isn't a value (line 1)",
+		"LIST WHERE this.file = 1":                "Spread: this.file on its own isn't a value (line 1)",
 		"LIST WHERE rating * 2 > 4":               "Spread: arithmetic (+ - * /) isn't supported yet (line 1)",
 		"LIST WHERE startswith(file.name, \"a\")": "Spread: startswith() isn't supported yet (line 1)",
 		"LIST WHERE contains(tags)":               "Spread: contains() takes two values: contains(field, value) (line 1)",
@@ -354,8 +354,129 @@ func TestErrorsNameTheProblemAndTheLine(t *testing.T) {
 		"LIST WHERE file.tags = #books":           `Spread: a tag here needs quotes: "#books" (line 1)`,
 		"LIST WHERE (rating > 3":                  "Spread: expected ), found the end of the spread (line 1)",
 	} {
-		if got := Run(q, library, "").Err; got != want {
-			t.Errorf("%q\n got  %s\n want %s", q, got, want)
+		// The message has to start with what went wrong. Most of them then
+		// carry a hint after a "·" — see the test below — so this checks
+		// the beginning rather than the whole line, and the wording of a
+		// hint can be improved without a test to edit.
+		want = strings.TrimSuffix(want, " (line 1)")
+		want = strings.TrimSuffix(want, " (line 2)")
+		want = strings.TrimSuffix(want, " (line 3)")
+		got := Run(q, library, "").Err
+		if !strings.HasPrefix(got, want) {
+			t.Errorf("%q\n got  %s\n want it to start with %s", q, got, want)
 		}
+		if !strings.HasSuffix(got, ")") {
+			t.Errorf("%q: the message should end with the line it is on: %s", q, got)
+		}
+	}
+}
+
+// Every refusal has to say what would have worked. The user's own words,
+// 2026-09-28: "Felmeddelanden i Spread behöver fler hints, jag är inte så
+// flytande i syntaxen ännu. Exempel på vad som efterfrågas." A message
+// that only names the mistake leaves you exactly where you were.
+func TestEveryRefusalCarriesAHint(t *testing.T) {
+	for _, q := range []string{
+		"",
+		"SHOW everything",
+		"TABLE author\nFROM #books\nWHER x",
+		"LIST FROM #books\nGROUP BY status",
+		"LIST\nFLATTEN",
+		"CALENDAR file.mtime",
+		"TASK text FROM #todo",
+		"TABLE file.ctime",
+		"TABLE file.day",
+		"TABLE this.file.day",
+		"LIST WHERE this = 1",
+		"LIST WHERE rating * 2 > 4",
+		`LIST WHERE startswith(file.name, "a")`,
+		"LIST WHERE contains(tags)",
+		"LIST FROM",
+		"LIST LIMIT many",
+		"LIST a, b",
+		"TABLE WITHOUT ID",
+		"LIST FROM #a FROM #b",
+		"LIST WHERE file.tags = #books",
+	} {
+		got := Run(q, library, "").Err
+		if got == "" {
+			t.Errorf("%q should be refused at all", q)
+			continue
+		}
+		if !strings.Contains(got, "·") {
+			t.Errorf("%q\n %s\n ↑ no hint: say what would have worked", q, got)
+		}
+	}
+}
+
+// The hint for an unknown file field is the one that answers "what can I
+// ask for?", so it has to name them all.
+func TestTheUnknownFieldHintNamesEveryFileField(t *testing.T) {
+	got := Run("TABLE file.day", library, "").Err
+	for _, f := range fileFieldOrder {
+		if !strings.Contains(got, f) {
+			t.Errorf("the hint should name %s:\n%s", f, got)
+		}
+	}
+	if len(fileFieldOrder) != len(fileFields) {
+		t.Errorf("fileFieldOrder has %d fields and fileFields %d: the hint would leave one out",
+			len(fileFieldOrder), len(fileFields))
+	}
+	for _, f := range fileFieldOrder {
+		if !fileFields[f] {
+			t.Errorf("%s is named in the hint but isn't a field", f)
+		}
+	}
+}
+
+// An empty answer is the hardest thing to debug in a query language you
+// aren't fluent in: "No notes match" reads the same whether the query is
+// right or the property is misspelled. When no note in the vault has the
+// name at all, the answer says so.
+func TestAnEmptyAnswerNamesAPropertyNoNoteHas(t *testing.T) {
+	got := Run(`LIST WHERE statuss = "reading"`, library, "").Note
+	if !strings.Contains(got, "No notes match") {
+		t.Fatalf("note = %q", got)
+	}
+	if !strings.Contains(got, `no note has a property called "statuss"`) {
+		t.Errorf("note = %q: it should name the property nothing has", got)
+	}
+}
+
+func TestAPropertyThatExistsIsNeverBlamed(t *testing.T) {
+	// status is a real property here; it simply doesn't match. Blaming it
+	// would send the reader hunting for a spelling mistake that isn't there.
+	got := Run(`LIST WHERE status = "no such status"`, library, "").Note
+	if got != "No notes match" {
+		t.Errorf("note = %q, want the plain answer", got)
+	}
+}
+
+func TestFileFieldsAndTaskFieldsAreNeverBlamed(t *testing.T) {
+	for _, q := range []string{
+		`LIST WHERE file.name = "nothing at all"`,
+		`TASK WHERE completed AND text = "nothing at all"`,
+	} {
+		if got := Run(q, library, "").Note; strings.Contains(got, "no note has a property") {
+			t.Errorf("%q\n note = %q: a field spreads answer themselves is not a missing property", q, got)
+		}
+	}
+}
+
+func TestTwoMissingPropertiesAreBothNamed(t *testing.T) {
+	got := Run(`TABLE autor, yeer FROM "books"`, library, "").Note
+	if !strings.Contains(got, `"autor"`) || !strings.Contains(got, `"yeer"`) {
+		t.Errorf("note = %q: both names should be named", got)
+	}
+}
+
+// FLATTEN names a value of the query's own. Blaming the vault for not
+// having a property by that name would be worse than saying nothing — it
+// sends the reader looking for a mistake that isn't there. Found in real
+// use against the user's own vault, 2026-09-28.
+func TestAFlattenNameIsNeverBlamed(t *testing.T) {
+	q := `TABLE WITHOUT ID link FROM "no such folder" FLATTEN file.outlinks AS link`
+	if got := Run(q, library, "").Note; strings.Contains(got, "no note has a property") {
+		t.Errorf("note = %q: link is FLATTEN's name, not a property", got)
 	}
 }

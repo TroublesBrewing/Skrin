@@ -76,7 +76,7 @@ func Run(src string, v Vault, from string) Result {
 		return Result{Err: err.Error()}
 	}
 	if len(rows) == 0 {
-		return Result{Note: "No notes match"}
+		return Result{Note: "No notes match" + q.whyNothing(v)}
 	}
 	var note string
 	if q.Limit < 0 && len(rows) > maxRows {
@@ -84,4 +84,46 @@ func Run(src string, v Vault, from string) Result {
 		rows = rows[:maxRows]
 	}
 	return Result{Markdown: q.markdown(rows), Note: note}
+}
+
+// whyNothing looks for the reason an answer is empty that a person can't
+// see: a property name no note in the vault has, which is nearly always a
+// spelling. "No notes match" is true either way, and useless on its own —
+// it reads the same whether the query is right and the vault is empty of
+// matches, or the query asks for "statuss".
+//
+// It only ever adds what it is sure of: a name is reported only when *no*
+// note has it, so a name that exists and simply didn't match is never
+// blamed.
+func (q *Query) whyNothing(v Vault) string {
+	if len(q.refs) == 0 {
+		return ""
+	}
+	seen := map[string]bool{}
+	for _, n := range v.Notes() {
+		for k := range n.Props {
+			seen[k] = true
+		}
+		for k := range n.Fields {
+			seen[k] = true
+		}
+		for _, t := range n.Tasks {
+			for k := range t.Fields {
+				seen[k] = true
+			}
+		}
+	}
+	var missing []string
+	for _, r := range q.refs {
+		if !seen[r] {
+			missing = append(missing, r)
+		}
+	}
+	switch len(missing) {
+	case 0:
+		return ""
+	case 1:
+		return fmt.Sprintf(" · no note has a property called %q", missing[0])
+	}
+	return fmt.Sprintf(" · no note has a property called %q or %q", missing[0], missing[1])
 }

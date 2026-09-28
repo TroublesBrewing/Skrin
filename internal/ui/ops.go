@@ -671,6 +671,13 @@ func (m *Model) refresh() {
 // cursor, the Files cursor along with items that moved.
 func (m *Model) followMoves(moves [][2]string, cursor bool) {
 	m.notePath = movedPath(m.notePath, moves)
+	if len(m.editAt) > 0 {
+		at := make(map[string]editPlace, len(m.editAt))
+		for rel, p := range m.editAt {
+			at[movedPath(rel, moves)] = p
+		}
+		m.editAt = at
+	}
 	if m.split != nil {
 		m.split.path = movedPath(m.split.path, moves)
 	}

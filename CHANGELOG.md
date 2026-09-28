@@ -2,6 +2,18 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.64.1 — 2026-09-28
+
+**The cursor comes back to where it was.** The UX charter's flow rules have always promised continuity — *"back into a note lands where you left it; the editor opens at the line you were reading"* — and half of it was true. The editor opened at the note pane's top line every time, so writing, pressing Esc to read something, and going back put the cursor at the top of the screen instead of in the sentence you were in the middle of. The user's report: *"Markören ska minnas sin plats i dokumentet … och inte behöva börja om med markören högst upp i dokumentet."*
+
+- **Editing a note again puts the cursor back on the line and column it was on**, and puts the same lines on screen: the window is restored as well as the cursor, so coming back looks like nothing happened rather than like your line has moved to the bottom edge.
+- **Esc lands the reading view on the line the cursor was on**, not on whatever happened to be at the top of the editor's window, and leaves the note's own cursor there so `v` starts where you stopped writing.
+- **Every note keeps its own place**, so going off to another note and back lands in both correctly. The memory lives as long as Skrin runs — "as long as the note is open", which is what was asked — and follows a rename or a move.
+- **A note that changed underneath meanwhile lands as close as it can** rather than nowhere: both the line and the column are clamped into the text as it now is.
+- The first edit of a note still opens at the line the reading view was showing, as it always has.
+
+A fix, not a feature: a promised behaviour that didn't hold. Eight new tests, full suite green (`-count=1`), `go vet` and `gofmt` clean. Verified live in tmux at 100×30: the screen before leaving and after coming back is identical, and the next character typed landed where it had left off.
+
 ## v0.64.0 — 2026-09-28
 
 **Every spread error now shows what would have worked, and an empty answer says why it is empty.** The user's report: *"Felmeddelanden i Spread behöver fler hints, jag är inte så flytande i syntaxen ännu."* A message that only names the mistake leaves you exactly where you were.

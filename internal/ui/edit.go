@@ -29,6 +29,19 @@ type editSession struct {
 	linkFormat  string // Obsidian's newLinkFormat, for [[ completion
 }
 
+// editPlace is where the cursor stood in one note. The model keeps one per
+// note for the session, so leaving a note and coming back to it lands in
+// the same sentence rather than at the top.
+type editPlace struct {
+	row, col int
+	// top is the line that was at the top of the editor's window. Putting
+	// the cursor back is not quite enough: without the window the screen
+	// looks different from the one you left, with your line at the bottom
+	// edge instead of where your eye was. Keeping both makes coming back
+	// look like nothing happened, which is the point of remembering at all.
+	top int
+}
+
 // conflict is raised when a save finds that the note changed on disk since
 // the editor loaded it (Obsidian, Sync, another editor).
 type conflict struct {
@@ -85,8 +98,16 @@ func (m *Model) startEdit() {
 
 }
 
-// openEditor opens rel in the built-in editor, at the line the note pane
-// was showing at its top.
+// openEditor opens rel in the built-in editor, where the cursor was when
+// you last left it — and, the first time in a session, at the line the
+// note pane was showing at its top.
+//
+// The flow rules in the UX charter promise continuity: "back into a note
+// lands where you left it; the editor opens at the line you were reading."
+// Half of that was true. The editor used to open at the note pane's top
+// line every time, so writing, pressing Esc to read, and coming back put
+// the cursor at the top of the screen instead of in the sentence you were
+// in the middle of.
 func (m *Model) openEditor(rel string) {
 	m.remember(rel)
 	text, err := m.vault.Read(rel)
@@ -94,8 +115,9 @@ func (m *Model) openEditor(rel string) {
 		m.flash = "Can't open " + rel + ": " + err.Error()
 		return
 	}
-	row := 0
-	if m.notePath == rel && m.noteOff < len(m.lines) {
+	place, known := m.editAt[rel]
+	row := place.row
+	if !known && m.notePath == rel && m.noteOff < len(m.lines) {
 		row = m.lines[m.noteOff].Src
 	}
 	m.editor = editor.New(text, m.opts.Vim, m.pal)
@@ -103,7 +125,31 @@ func (m *Model) openEditor(rel string) {
 	m.edit = editSession{rel: rel, base: text, opened: text, linkFormat: obsidian.LoadSettings(m.vault.Root).NewLinkFormat}
 	m.focus = paneNote
 	m.settle()
+	if known {
+		// The window first, then the cursor: GoTo puts that line at the top,
+		// and MoveTo only scrolls when the cursor would be off screen, so
+		// the view comes back as it was. Both clamp into the text, so a note
+		// that changed under us lands as close as it can rather than nowhere.
+		m.editor.GoTo(place.top)
+		m.editor.MoveTo(place.row, place.col)
+		return
+	}
 	m.editor.GoTo(row)
+}
+
+// rememberEditPlace keeps where the cursor was in the note being closed, so
+// coming back lands there. It is the session's own memory: it follows a
+// move (followMoves) and is gone when Skrin quits, which is as long as the
+// user asked for — "så länge anteckningen är öppen".
+func (m *Model) rememberEditPlace() {
+	if m.editor == nil || m.edit.rel == "" {
+		return
+	}
+	if m.editAt == nil {
+		m.editAt = map[string]editPlace{}
+	}
+	row, col := m.editor.Cursor()
+	m.editAt[m.edit.rel] = editPlace{row: row, col: col, top: m.editor.TopRow()}
 }
 
 func (m *Model) editorKey(k tea.KeyPressMsg) tea.Cmd {
@@ -362,11 +408,15 @@ func (m *Model) takeTheirs() {
 }
 
 func (m *Model) closeEditor() {
-	row := m.editor.TopRow()
+	m.rememberEditPlace()
+	row, _ := m.editor.Cursor()
 	m.editor, m.conflict, m.edit = nil, nil, editSession{}
 	m.complete, m.noComplete = nil, false
 	m.refresh()
-	m.jumpSrc = row
+	// The reading view lands on the line the cursor was on, not on whatever
+	// happened to be at the top of the editor's window, and the note's own
+	// cursor is left there too so that v starts where you stopped writing.
+	m.jumpSrc, m.noteAt = row, row
 }
 
 func diffLines(disk, mine string) []string {

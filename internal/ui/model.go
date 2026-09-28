@@ -236,6 +236,11 @@ type Model struct {
 	copied  string
 	pasting bool
 
+	// editAt is where the cursor stood in each note edited this session, so
+	// coming back to one lands in the same sentence instead of at the top.
+	// It follows a move or rename (followMoves) and is not saved: the
+	// promise is "as long as the note is open", not forever.
+	editAt map[string]editPlace
 	// noteAt is the line the reading view's cursor was last on, so v
 	// brings it back where you left it. -1 when there is none.
 	noteAt int

@@ -2,6 +2,20 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.68.0 — 2026-09-29
+
+**Skrin says when a newer Skrin has been installed under it.** A new **beta** feature, off until switched on. The user's idea, from the day it bit: a Skrin left running since before v0.29.0 went three releases without the person at the keyboard knowing, because the launcher switches to the window that is already open. *"That notice would be perfect."*
+
+- **The program file is watched**, not a version server: Skrin stamps the file it was started from — size and modification time, symlinks resolved — and looks at it once a minute. A stat of one file costs nothing.
+- **The status line says `A newer Skrin is installed · restart to use it`**, and keeps saying it until Skrin is restarted. The running program is still the old one however many fixes are sitting on disk, so the notice stands as long as it is true.
+- **It is said once and then stops looking.** An installer that writes the file twice can't make the notice flicker, and nothing takes it back but a restart.
+- **A key's own answer still wins the line.** The notice stands where the hints are; a flash answers what you just pressed and takes the line while it shows.
+- **A file that can't be read is not a new version.** A failed stat says nothing at all, because a Skrin that cries wolf about its own program file would be worse than one that stays quiet.
+
+Being beta it takes two switches (Settings' "Beta features", then "Say when a newer Skrin is installed") and a build with `version.Beta = false` leaves it out. The stamp is taken at start either way, so switching the notice on later compares against the file Skrin actually started from.
+
+Four new tests. Full suite green, `go vet` and `gofmt` clean. Verified live in tmux: the running Skrin's own program file replaced underneath it, and the notice standing in the status line a minute later.
+
 ## v0.67.0 — 2026-09-29
 
 **The status line says where you are, and moves when it answers.** A new **beta** feature, off until switched on, closing two cards at once — they are two changes to the same line, and making them one after the other is how a line gets messy.

@@ -301,6 +301,13 @@ func (m *Model) statusLine() string {
 		left += m.st.muted.Render("  " + w)
 	}
 	right := m.st.muted.Render(m.hintLine(m.width - min(ansi.StringWidth(left), m.width/2) - 3))
+	// A newer Skrin installed under the running one stands in for the
+	// hints until the restart: a fix nobody is told about is a fix that
+	// hasn't arrived. A flash still wins, since it answers the key just
+	// pressed.
+	if n := m.newerNotice(); n != "" {
+		right = m.st.flash.Render(n)
+	}
 	if m.flash != "" {
 		// The blink: for its first moment the answer is drawn the way the
 		// mode pill is, so the line moves rather than merely changing a

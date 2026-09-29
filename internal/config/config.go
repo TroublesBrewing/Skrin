@@ -166,6 +166,9 @@ type Config struct {
 	Status struct {
 		SaysWhere *bool `toml:"says_where,omitempty"` // unset means off: an experiment is always asked for
 	} `toml:"status,omitempty"`
+	Update struct {
+		Notice *bool `toml:"notice,omitempty"` // unset means off: an experiment is always asked for
+	} `toml:"update,omitempty"`
 	Library struct {
 		Folder        string `toml:"folder,omitempty"`         // default: "Books"
 		CoversFolder  string `toml:"covers_folder,omitempty"`  // default: "Assets/Covers"
@@ -287,6 +290,14 @@ func (c Config) CopyPathEnabled() bool {
 // looks, which is exactly what an experiment must not do unasked.
 func (c Config) StatusSaysWhereEnabled() bool {
 	return c.Status.SaysWhere != nil && *c.Status.SaysWhere
+}
+
+// NewerNoticeEnabled reports whether Skrin says so when a newer one has
+// been installed while this one is running. Off unless asked for, like
+// every experiment — though it is the one experiment that can do nothing
+// at all until it is switched on.
+func (c Config) NewerNoticeEnabled() bool {
+	return c.Update.Notice != nil && *c.Update.Notice
 }
 
 // LibraryFolder is where new book notes are created: Books, unless set.

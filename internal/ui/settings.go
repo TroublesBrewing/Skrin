@@ -77,6 +77,16 @@ func betaSettings() []settingsItem {
 			beta: true,
 		},
 		{
+			label: "Say when a newer Skrin is installed",
+			help:  "While Skrin runs, it watches the program file it was started from. When a new version is installed underneath it, the status line says so and keeps saying so until Skrin is restarted — the running program is still the old one, however many fixes are sitting on disk. It has happened: a Skrin left running since before v0.29.0 went three releases without the person at the keyboard knowing. Switched off, nothing is watched and nothing is said.",
+			get:   func(m *Model) bool { return m.opts.NewerNotice },
+			set: func(m *Model, v bool) {
+				m.opts.NewerNotice = v
+				m.opts.Config.Update.Notice = boolPtr(v)
+			},
+			beta: true,
+		},
+		{
 			label: "Status line says where you are",
 			help:  "The bar along the bottom reads FILES or NOTE instead of VIEW for both, so it says which pane the next key lands in — d, r and n mean different things in each. And when a key's only answer is that line, the line blinks once instead of quietly swapping one word for another: it is the line that teaches every key, and it is the easiest one to miss. Off, it reads VIEW in both panes and never moves.",
 			get:   func(m *Model) bool { return m.opts.StatusSaysWhere },

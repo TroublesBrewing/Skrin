@@ -21,6 +21,21 @@ import (
 	"github.com/lurioso/skrin/internal/version"
 )
 
+// exePath is the program file this run was started from, for the notice
+// that a newer Skrin has been installed under it. Symlinks are resolved,
+// so an install that replaces the file a link points at is seen as the
+// change it is. Empty means the notice can't work, which is fine.
+func exePath() string {
+	p, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	if real, err := filepath.EvalSymlinks(p); err == nil {
+		return real
+	}
+	return p
+}
+
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "mcp" {
 		mcp(os.Args[2:])
@@ -138,6 +153,8 @@ func run(vaultArg string) error {
 		ScrollOther:     cfg.ScrollOtherEnabled(),
 		CopyPath:        cfg.CopyPathEnabled(),
 		StatusSaysWhere: cfg.StatusSaysWhereEnabled(),
+		NewerNotice:     cfg.NewerNoticeEnabled(),
+		ExePath:         exePath(),
 		Beta:            cfg.BetaEnabled(),
 		LineNumbers:     cfg.RenderLineNumbers(),
 		ReadableWidth:   cfg.RenderReadableWidth(),

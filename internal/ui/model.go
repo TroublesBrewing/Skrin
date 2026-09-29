@@ -149,6 +149,15 @@ type Options struct {
 	// key's only answer is that line. An experiment, off unless switched
 	// on in Settings' beta block.
 	StatusSaysWhere bool
+	// ExePath is the program file this Skrin was started from, watched so
+	// a newer one installed while this one runs can be pointed out. Empty
+	// turns the watching off, which is what tests leave it as unless they
+	// are testing it.
+	ExePath string
+	// NewerNotice turns on the notice that a newer Skrin has been
+	// installed while this one is running. An experiment, off unless
+	// switched on in Settings' beta block.
+	NewerNotice bool
 	// Versions turns on the time machine (V): a note's earlier versions,
 	// read from the same snapshots u walks back through, with any of them
 	// restorable. An experiment, off unless switched on in Settings' beta
@@ -325,6 +334,10 @@ type Model struct {
 	pendingThumb map[string]bool
 
 	flash string // one-shot status message, cleared by the next key
+	// exeStamp is how the program file looked at start, and newerSkrin
+	// says it has been replaced since. Both stand until Skrin restarts.
+	exeStamp   string
+	newerSkrin bool
 	// statusBlinkAt is when the flash showing now arrived, so the status
 	// line can stand out for a moment before settling. Zero means no blink.
 	statusBlinkAt time.Time
@@ -425,7 +438,7 @@ func (m *Model) sizeNote() string {
 }
 
 func (m *Model) Init() tea.Cmd {
-	return m.listen()
+	return tea.Batch(m.listen(), m.watchExe())
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -439,6 +452,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if was[0] != 0 && was != [2]int{m.width, m.height} {
 			cmd = m.flashFor(m.sizeNote())
 		}
+	case exeCheckMsg:
+		cmd = m.checkExe()
 	case statusBlinkMsg:
 		// Nothing to change: the blink is timed from statusBlinkAt, and
 		// this only brings the redraw that ends it.

@@ -160,6 +160,9 @@ type Config struct {
 	Split struct {
 		ScrollOther *bool `toml:"scroll_other,omitempty"` // unset means off: an experiment is always asked for
 	} `toml:"split,omitempty"`
+	CopyPath struct {
+		Enabled *bool `toml:"enabled,omitempty"` // unset means off: an experiment is always asked for
+	} `toml:"copy_path,omitempty"`
 	Library struct {
 		Folder        string `toml:"folder,omitempty"`         // default: "Books"
 		CoversFolder  string `toml:"covers_folder,omitempty"`  // default: "Assets/Covers"
@@ -265,6 +268,14 @@ func (c Config) VersionsEnabled() bool {
 // the kind of thing that should never arrive unasked.
 func (c Config) ScrollOtherEnabled() bool {
 	return c.Split.ScrollOther != nil && *c.Split.ScrollOther
+}
+
+// CopyPathEnabled reports whether y and Y copy the path of what's in hand.
+// Off unless asked for, like every experiment — and this one gives two
+// keys their first meaning in the main view, which is the kind of thing
+// that should never arrive unasked.
+func (c Config) CopyPathEnabled() bool {
+	return c.CopyPath.Enabled != nil && *c.CopyPath.Enabled
 }
 
 // LibraryFolder is where new book notes are created: Books, unless set.

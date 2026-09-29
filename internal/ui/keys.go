@@ -105,10 +105,12 @@ const (
 	actRenameTag     // from the palette: rename a tag everywhere it is written
 	actOtherPageDown // Alt+PgDn/PgUp: the other half of a split, a screen at a time
 	actOtherPageUp
-	actVersions    // V: the time machine, a note's earlier versions
-	actVersionDiff // d in it: what changed, instead of the text
-	actMentions    // M: where this note is talked about without a link
-	actLinkMention // a in it: link this mention
+	actVersions     // V: the time machine, a note's earlier versions
+	actCopyPath     // y: the vault-relative path of what's in hand, copied
+	actCopyPathFull // Y: the same path, whole, as the disk spells it
+	actVersionDiff  // d in it: what changed, instead of the text
+	actMentions     // M: where this note is talked about without a link
+	actLinkMention  // a in it: link this mention
 	actLinkAllMentions
 )
 
@@ -218,6 +220,8 @@ var defaultBindings = []binding{
 	{actWeeds, []string{"W"}, "weeds: the vault's loose ends on one page", groupSearch, inMain},
 	{actMentions, []string{"M"}, "mentions: where this note is talked about without a link", groupSearch, inMain},
 	{actVersions, []string{"V"}, "time machine: this note's earlier versions", groupNote, inMain},
+	{actCopyPath, []string{"y"}, "copy the path of what's in hand, vault-relative", groupFiles, inMain},
+	{actCopyPathFull, []string{"Y"}, "copy that path whole, as the disk spells it", groupFiles, inMain},
 	{actNewBook, []string{"B"}, "Book Card: catalogue a book, or edit the open book note", groupFiles, inMain},
 	{actQuickNote, []string{"i"}, "quick note: capture into a folder, first line names it", groupFiles, inMain},
 	{actOrderUp, []string{"shift+up"}, "Files: move the item up · note: select up", groupFiles, inMain},
@@ -472,6 +476,7 @@ var actionName = map[action]string{
 	actWeeds:        "weeds", actMakeMissing: "make-missing",
 	actMergeNote: "merge-note", actRenameTag: "rename-tag",
 	actVersions: "versions", actVersionDiff: "version-diff",
+	actCopyPath: "copy-path", actCopyPathFull: "copy-path-full",
 	actOtherPageDown: "other-page-down", actOtherPageUp: "other-page-up",
 	actMentions: "mentions", actLinkMention: "link-mention",
 	actLinkAllMentions: "link-all-mentions",

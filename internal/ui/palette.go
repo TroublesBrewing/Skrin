@@ -59,6 +59,8 @@ var mainCommands = []paletteEntry{
 	{actMergeNote, "Merge this note into another…", "join combine two notes duplicate same name"},
 	{actRenameTag, "Rename a tag everywhere…", "tags spelling typo unify label"},
 	{actVersions, "Time machine: this note's earlier versions", "history versions restore snapshot undo back"},
+	{actCopyPath, "Copy the path of what's in hand", "yank filename location clipboard relative"},
+	{actCopyPathFull, "Copy that path whole, as the disk spells it", "yank absolute full filename location clipboard"},
 	{actNewBook, "Book Card: catalogue a book", "library reading isbn"},
 	{actClaude, "Claude drawer: open or hide", "ai assistant chat"},
 	{actClaudeInput, "Ask Claude", "ai assistant chat question"},
@@ -214,6 +216,9 @@ func (m *Model) mainPaletteItems() []choice {
 			continue
 		}
 		if !m.versionsOn() && e.act == actVersions {
+			continue
+		}
+		if !m.copyPathOn() && (e.act == actCopyPath || e.act == actCopyPathFull) {
 			continue
 		}
 		if !m.habitsOn() && e.act == actHabits {

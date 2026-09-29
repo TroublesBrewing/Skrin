@@ -138,6 +138,12 @@ type Options struct {
 	// read without leaving the note being written. An experiment, off
 	// unless switched on in Settings' beta block.
 	ScrollOther bool
+	// CopyPath turns on y and Y: the path of whatever is in hand — the
+	// marked items, the Files row under the cursor, or the open note —
+	// copied to the system clipboard, vault-relative on y and the whole
+	// path on disk on Y. An experiment, off unless switched on in
+	// Settings' beta block.
+	CopyPath bool
 	// Versions turns on the time machine (V): a note's earlier versions,
 	// read from the same snapshots u walks back through, with any of them
 	// restorable. An experiment, off unless switched on in Settings' beta
@@ -646,6 +652,10 @@ func (m *Model) do(a action) tea.Cmd {
 		m.startTagRename()
 	case actVersions:
 		m.openVersions()
+	case actCopyPath:
+		return m.copyPath(false)
+	case actCopyPathFull:
+		return m.copyPath(true)
 	case actQuickNote:
 		m.openQuickNote()
 	case actEscape:

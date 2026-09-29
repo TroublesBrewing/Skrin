@@ -2,6 +2,20 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.66.0 — 2026-09-29
+
+**Copy the path of what you're standing on.** A new **beta** feature, off until switched on, from the user's own note in the idea box: *"'yy' ska kopiera hela filsökvägen för filen som just nu är i fokus eller markerad i filträdet"*.
+
+- **`y` copies the vault-relative path** (`Filosofi/Stoic.md`), **`Y` the whole path as the disk spells it** (`/home/you/vault/Filosofi/Stoic.md`). The case grammar picks which is which: lowercase is the smaller thing, uppercase the larger.
+- **No double tap.** `yy` was the request, but a prefix key that waits is against the charter's fifth rule, and a single `y` is what the key means in vim anyway. Pressing it twice simply copies the same path again, so the habit costs nothing.
+- **What "in hand" means is not a new rule.** It is the same answer `r`, `m` and `d` already give: the marked items if there are any, otherwise the Files row under the cursor, or the open note when the note pane has the focus. Several marked paths come out one per line, which is what a shell expects.
+- **A folder copies too** — it is a path like any other — and the vault row itself says there is nothing in hand rather than quietly copying an empty line over your clipboard.
+- **It travels the way `Ctrl+C` already does**, over the terminal itself (OSC 52), so it works locally, over ssh and inside tmux with passthrough on, with no clipboard program of its own. What was copied is also kept for `Ctrl+V`, for terminals that will write the clipboard but not read it back.
+
+Being beta it takes two switches (Settings' "Beta features", then "Copy a path (y/Y)") and a build with `version.Beta = false` leaves it out. Off, the keys are still registered and still answer — they say where to switch the feature on, because an undocumented key is a defect.
+
+Six new tests. Full suite green, `go vet` clean. Verified live in tmux at 120×34 on the vault copy: `y` on the Daily folder flashing `Copied Daily`, `Y` flashing `Copied /home/lurioso/Work/tries/vault-copy/Daily`, and both rows plus the Settings row showing up in the palette under "path".
+
 ## v0.65.0 — 2026-09-28
 
 **Scroll the other half of a split without leaving the note you're in.** A new **beta** feature, off until switched on, and the user's own proposal: *"Något som hade varit guld hade varit om man kunde skrolla den panel som inte var i fokus … så att man aldrig behövde lämna anteckningen man skriver i bara för att skrolla ner på den andra."*

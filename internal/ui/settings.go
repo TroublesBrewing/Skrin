@@ -77,6 +77,16 @@ func betaSettings() []settingsItem {
 			beta: true,
 		},
 		{
+			label: "Copy a path (y/Y)",
+			help:  "y copies the path of whatever is in hand — the marked items, the Files row under the cursor, or the open note — so it can be pasted into a terminal, a command or another app. y copies it vault-relative (Books/Bilbo.md), Y whole, as the disk spells it; several marked items come out one per line. It travels the same way Ctrl+C does, over the terminal itself, so it works over ssh too. Off, y and Y do nothing in the main view.",
+			get:   func(m *Model) bool { return m.opts.CopyPath },
+			set: func(m *Model, v bool) {
+				m.opts.CopyPath = v
+				m.opts.Config.CopyPath.Enabled = boolPtr(v)
+			},
+			beta: true,
+		},
+		{
 			label: "Time machine (V): a note's earlier versions",
 			help:  "V shows the whole line of versions Skrin has kept of a note — oldest on the left, the note as it is now on the right — instead of stepping back one at a time with u. Read any of them, see what changed against now with d, and put one back with Enter; u and U take that off again. It only ever writes when you press Enter. An experiment: the versions themselves have been kept since v0.14.0 either way.",
 			get:   func(m *Model) bool { return m.opts.Versions },

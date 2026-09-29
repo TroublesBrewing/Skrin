@@ -101,6 +101,7 @@ const (
 	actNewNoteSplit  // Alt+n: a new note in a split beside the one you're reading
 	actWeeds         // W: the vault's loose ends, gathered on one page
 	actMakeMissing   // n in it: make the note a dead link wanted
+	actOutgoing      // from the palette: the notes this one links to
 	actMergeNote     // from the palette: join this note onto another
 	actRenameTag     // from the palette: rename a tag everywhere it is written
 	actOtherPageDown // Alt+PgDn/PgUp: the other half of a split, a screen at a time
@@ -474,6 +475,7 @@ var actionName = map[action]string{
 	actFindNote: "find-note", actNextMatch: "next-match", actPrevMatch: "prev-match",
 	actNewNoteSplit: "new-note-split",
 	actWeeds:        "weeds", actMakeMissing: "make-missing",
+	actOutgoing:  "outgoing",
 	actMergeNote: "merge-note", actRenameTag: "rename-tag",
 	actVersions: "versions", actVersionDiff: "version-diff",
 	actCopyPath: "copy-path", actCopyPathFull: "copy-path-full",

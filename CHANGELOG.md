@@ -2,6 +2,19 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.71.0 — 2026-09-29
+
+**Outgoing links: the notes this one points at.** A new **beta** feature, off until switched on. The other half of Obsidian's backlinks pane, and the last row of the *Kärnfunktioner från Obsidian som saknas* survey that was still only half there — it existed as the spread function `outgoing([[note]])`, with no panel and no way to ask for it.
+
+- **`Ctrl+P` → "Outgoing links"** lists the notes the note in hand links to, and Enter opens one.
+- **It is the mirror of `b`**, deliberately: same panel, same filtering, same way of leaving the editor behind. A panel that answers the opposite question shouldn't have to be learned twice.
+- **No key of its own.** Every new key is a cost the steering document asks to be counted, and this is a lookup rather than a move; what deserves a key is what the *Paletten som gränssnitt* card is for. Until then it sits in the palette beside Merge and Rename a tag.
+- **A note that links nowhere says so** instead of opening an empty panel.
+
+Being beta it takes two switches (Settings' "Beta features", then "Outgoing links (Ctrl+P)") and a build with `version.Beta = false` leaves it out. Off, the row isn't in the palette at all.
+
+Four new tests. Full suite green, `go vet` and `gofmt` clean. Verified live in tmux on the vault copy: `Links from skrin arrange (2)`, listing the two notes it links to.
+
 ## v0.70.0 — 2026-09-29
 
 **Closing the terminal window no longer takes your last sentence with it.** Not a feature and not beta: this is a path to lost text, and the steering document's rule for those is that they are fixed and the fix is on.

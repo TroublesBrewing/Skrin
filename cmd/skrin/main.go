@@ -157,6 +157,7 @@ func run(vaultArg string) error {
 		CopyPath:        cfg.CopyPathEnabled(),
 		StatusSaysWhere: cfg.StatusSaysWhereEnabled(),
 		NewerNotice:     cfg.NewerNoticeEnabled(),
+		Outgoing:        cfg.OutgoingEnabled(),
 		ExePath:         exePath(),
 		Beta:            cfg.BetaEnabled(),
 		LineNumbers:     cfg.RenderLineNumbers(),

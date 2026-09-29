@@ -174,6 +174,9 @@ type Config struct {
 	Update struct {
 		Notice *bool `toml:"notice,omitempty"` // unset means off: an experiment is always asked for
 	} `toml:"update,omitempty"`
+	Outgoing struct {
+		Enabled *bool `toml:"enabled,omitempty"` // unset means off: an experiment is always asked for
+	} `toml:"outgoing,omitempty"`
 	Library struct {
 		Folder        string `toml:"folder,omitempty"`         // default: "Books"
 		CoversFolder  string `toml:"covers_folder,omitempty"`  // default: "Assets/Covers"
@@ -303,6 +306,12 @@ func (c Config) StatusSaysWhereEnabled() bool {
 // at all until it is switched on.
 func (c Config) NewerNoticeEnabled() bool {
 	return c.Update.Notice != nil && *c.Update.Notice
+}
+
+// OutgoingEnabled reports whether the Outgoing links panel is switched
+// on. Off unless asked for, like every experiment.
+func (c Config) OutgoingEnabled() bool {
+	return c.Outgoing.Enabled != nil && *c.Outgoing.Enabled
 }
 
 // LibraryFolder is where new book notes are created: Books, unless set.

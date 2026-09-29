@@ -158,6 +158,11 @@ type Options struct {
 	// installed while this one is running. An experiment, off unless
 	// switched on in Settings' beta block.
 	NewerNotice bool
+	// Outgoing turns on the Outgoing links panel: the notes this one
+	// links to, the other half of Obsidian's backlinks pane. Palette
+	// only, and an experiment, off unless switched on in Settings' beta
+	// block.
+	Outgoing bool
 	// Versions turns on the time machine (V): a note's earlier versions,
 	// read from the same snapshots u walks back through, with any of them
 	// restorable. An experiment, off unless switched on in Settings' beta
@@ -686,6 +691,8 @@ func (m *Model) do(a action) tea.Cmd {
 		m.openWeeds()
 	case actMentions:
 		m.openMentions()
+	case actOutgoing:
+		m.showOutgoing()
 	case actMergeNote:
 		m.startMerge()
 	case actRenameTag:

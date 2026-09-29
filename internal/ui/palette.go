@@ -56,6 +56,7 @@ var mainCommands = []paletteEntry{
 	{actHabits, "Habits: today's list, the week and the month", "tracker streak routine"},
 	{actWeeds, "Weeds: what needs tending in the vault", "loose ends dead links orphans stubs tidy garden"},
 	{actMentions, "Mentions: where this note is talked about without a link", "unlinked mention backlink connect"},
+	{actOutgoing, "Outgoing links: notes this one links to", "forward links out references leaving"},
 	{actMergeNote, "Merge this note into another…", "join combine two notes duplicate same name"},
 	{actRenameTag, "Rename a tag everywhere…", "tags spelling typo unify label"},
 	{actVersions, "Time machine: this note's earlier versions", "history versions restore snapshot undo back"},
@@ -219,6 +220,9 @@ func (m *Model) mainPaletteItems() []choice {
 			continue
 		}
 		if !m.copyPathOn() && (e.act == actCopyPath || e.act == actCopyPathFull) {
+			continue
+		}
+		if !m.outgoingOn() && e.act == actOutgoing {
 			continue
 		}
 		if !m.habitsOn() && e.act == actHabits {

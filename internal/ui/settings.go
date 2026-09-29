@@ -77,6 +77,16 @@ func betaSettings() []settingsItem {
 			beta: true,
 		},
 		{
+			label: "Outgoing links (Ctrl+P)",
+			help:  "The other half of Obsidian's backlinks pane: the notes this one links to, listed the same way b lists the notes that link here. Enter opens one. It has no key of its own — it is a lookup, not a move, and every new key is a cost — so it lives in the command palette beside Merge and Rename a tag. Off, the row isn't in the palette at all.",
+			get:   func(m *Model) bool { return m.opts.Outgoing },
+			set: func(m *Model, v bool) {
+				m.opts.Outgoing = v
+				m.opts.Config.Outgoing.Enabled = boolPtr(v)
+			},
+			beta: true,
+		},
+		{
 			label: "Note to open on start",
 			help:  "Skrin opens on this note every time, instead of the welcome card — a navigation page, an index, today's plan. It wins over \"Remember the last note\": you named this one, and it is the same every morning, which is the point of a note you navigate from. Unset, nothing changes: the welcome card, or the last note if that is switched on. Enter chooses a note, and the first row in the list clears it again. It is saved with the vault, not with this machine, because a note path means nothing in another vault.",
 			value: func(m *Model) string { return m.startNoteLabel() },

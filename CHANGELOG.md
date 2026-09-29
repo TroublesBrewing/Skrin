@@ -2,6 +2,21 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.69.0 — 2026-09-29
+
+**Choose the note Skrin opens on.** A new **beta** feature. The user's idea, from setting up the launcher: a navigation page is where you want to land once a vault gets big enough to need one.
+
+- **Settings → "Note to open on start"** picks any note in the vault. Unset — the default — nothing changes at all: the welcome card, or the last note if that is switched on.
+- **There is no separate on/off switch**, because choosing a note *is* the switch. A row that does nothing until you fill it cannot arrive unasked, which is what an experiment has to promise.
+- **It wins over "Remember the last note".** You named this one, and it is the same every morning; that is the point of a note you navigate from. The Settings help says so, rather than leaving two switches to fight quietly.
+- **The first row of the picker clears it**, so the welcome card is always one Enter away again. A setting you can't undo from the place you set it is a trap.
+- **A start note that has been deleted or renamed away is not an error**: Skrin lands on the welcome card and the row says the note is gone, so it can be pointed somewhere else.
+- **It is saved with the vault**, in `skrin-settings.json`, not in `config.toml`: a note path means nothing in another vault, and this follows the vault rather than the machine — the same rule the templates folder already follows.
+
+The welcome card stays exactly where it was for anyone who chooses nothing: it is where the first keys are learned.
+
+Six new tests. Full suite green, `go vet` and `gofmt` clean. Verified live in tmux on the vault copy: a start note set in the vault's settings file, and Skrin opening straight onto that note with the status line reading `FILES  Filosofi/Stoiska reflektioner.md`.
+
 ## v0.68.0 — 2026-09-29
 
 **Skrin says when a newer Skrin has been installed under it.** A new **beta** feature, off until switched on. The user's idea, from the day it bit: a Skrin left running since before v0.29.0 went three releases without the person at the keyboard knowing, because the launcher switches to the window that is already open. *"That notice would be perfect."*

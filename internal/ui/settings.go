@@ -77,6 +77,13 @@ func betaSettings() []settingsItem {
 			beta: true,
 		},
 		{
+			label: "Note to open on start",
+			help:  "Skrin opens on this note every time, instead of the welcome card — a navigation page, an index, today's plan. It wins over \"Remember the last note\": you named this one, and it is the same every morning, which is the point of a note you navigate from. Unset, nothing changes: the welcome card, or the last note if that is switched on. Enter chooses a note, and the first row in the list clears it again. It is saved with the vault, not with this machine, because a note path means nothing in another vault.",
+			value: func(m *Model) string { return m.startNoteLabel() },
+			pick:  func(m *Model) { m.pickStartNote() },
+			beta:  true,
+		},
+		{
 			label: "Say when a newer Skrin is installed",
 			help:  "While Skrin runs, it watches the program file it was started from. When a new version is installed underneath it, the status line says so and keeps saying so until Skrin is restarted — the running program is still the old one, however many fixes are sitting on disk. It has happened: a Skrin left running since before v0.29.0 went three releases without the person at the keyboard knowing. Switched off, nothing is watched and nothing is said.",
 			get:   func(m *Model) bool { return m.opts.NewerNotice },

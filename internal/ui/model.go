@@ -388,7 +388,14 @@ func New(v *vault.Vault, pal theme.Palette, opts Options) (*Model, error) {
 		return nil, err
 	}
 	m.files.selectPath(opts.Session.Cursor)
-	if rel := opts.Session.Open; opts.RestoreLastNote && vault.IsNote(rel) && m.vault.Exists(rel) {
+	// Where Skrin lands: a start note you chose for this vault wins, then
+	// the note the last run left open, then the welcome card. The start
+	// note is the more particular choice of the two — you named it — and
+	// it is the one that can be counted on to be the same every morning,
+	// which is the whole point of a note you navigate from.
+	if rel := m.startNote(); rel != "" {
+		m.showNote(rel)
+	} else if rel := opts.Session.Open; opts.RestoreLastNote && vault.IsNote(rel) && m.vault.Exists(rel) {
 		m.showNote(rel)
 		m.noteOff = opts.Session.Offset // clamped once the note is rendered
 	}

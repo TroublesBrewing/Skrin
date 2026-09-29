@@ -39,6 +39,11 @@ const SettingsFile = "skrin-settings.json"
 type VaultSettings struct {
 	TemplatesFolder string         `json:"templates_folder,omitempty"`
 	TemplateRules   []TemplateRule `json:"template_rules,omitempty"`
+	// StartNote is the note this vault opens on, vault-relative. Empty
+	// means none, which is the default and leaves the welcome card where
+	// it was. It belongs to the vault because a note path means nothing
+	// in another one.
+	StartNote string `json:"start_note,omitempty"`
 }
 
 // LoadVaultSettings reads the vault's own settings file. A missing or

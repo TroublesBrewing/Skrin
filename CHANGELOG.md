@@ -2,6 +2,19 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.70.0 — 2026-09-29
+
+**Closing the terminal window no longer takes your last sentence with it.** Not a feature and not beta: this is a path to lost text, and the steering document's rule for those is that they are fixed and the fix is on.
+
+Autosave (v0.37.0) closed the everyday path, but not this one. A closed terminal window sends `SIGHUP`, which Skrin didn't handle at all — the process died where it stood — and Bubble Tea's own handler turns `SIGTERM` into a quit that returns out of the event loop without ever reaching the model. Either way, everything typed since the last autosave was gone.
+
+- **`SIGHUP` and `SIGTERM` are Skrin's own now.** The signal becomes a message the model acts on: it writes what the editor is holding, then quits.
+- **The ordinary shutdown still runs**, so where you were is remembered as usual.
+- **It saves by exactly the autosave rules.** A note that changed on disk underneath is still not overwritten and `HELD` still stands: being shut down is no reason to decide something that is yours to decide. That remaining case — the conflict copy — is its own card.
+- **Two seconds, then it lets go.** If the event loop can't take the message, the program is taken down anyway rather than holding the terminal.
+
+Three new tests. Full suite green, `go vet` and `gofmt` clean. Verified live in tmux as an A/B against the previous build, on the vault copy: text typed after the last autosave, then `SIGHUP`. v0.69.0 left the file at `AUTOSPARAD`; this build left it at `AUTOSPARAD EFTER-SISTA-AUTOSAVE`.
+
 ## v0.69.0 — 2026-09-29
 
 **Choose the note Skrin opens on.** A new **beta** feature. The user's idea, from setting up the launcher: a navigation page is where you want to land once a vault gets big enough to need one.

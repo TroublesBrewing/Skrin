@@ -459,6 +459,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if was[0] != 0 && was != [2]int{m.width, m.height} {
 			cmd = m.flashFor(m.sizeNote())
 		}
+	case ShutdownMsg:
+		m.shutdown()
+		return m, tea.Quit
 	case exeCheckMsg:
 		cmd = m.checkExe()
 	case statusBlinkMsg:

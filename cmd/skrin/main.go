@@ -6,7 +6,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -169,7 +172,27 @@ func run(vaultArg string) error {
 		m.Flash("theme unreadable, using built-in colours: " + themeErr.Error())
 	}
 
-	p := tea.NewProgram(m)
+	// Skrin keeps SIGHUP and SIGTERM to itself. Bubble Tea's own handler
+	// turns SIGTERM into a quit that returns straight out of the event
+	// loop without reaching Update, and SIGHUP — what a closed terminal
+	// window sends — isn't handled at all, so the process dies where it
+	// stands. Either way anything typed since the last autosave went with
+	// it. Now the signal becomes a message the model can act on: it saves
+	// what the editor is holding, then quits, and the ordinary shutdown
+	// below still runs, so where you were is remembered too.
+	p := tea.NewProgram(m, tea.WithoutSignalHandler())
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGTERM)
+	defer signal.Stop(sig)
+	go func() {
+		if _, ok := <-sig; !ok {
+			return
+		}
+		p.Send(ui.ShutdownMsg{})
+		// If the loop can't take it — wedged, or already on its way out —
+		// don't hold the terminal hostage over it.
+		time.AfterFunc(shutdownGrace, p.Kill)
+	}()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	// Outside Omarchy there is no theme to watch; the built-in palette stays.
@@ -198,6 +221,11 @@ func run(vaultArg string) error {
 	}
 	return err
 }
+
+// shutdownGrace is how long the event loop gets to save and quit after a
+// SIGHUP or SIGTERM before the program is taken down anyway. A save is a
+// write of one file; anything longer than this means it isn't coming.
+const shutdownGrace = 2 * time.Second
 
 // runtimeDir is where Skrin's socket goes: $XDG_RUNTIME_DIR, or else the
 // temp dir.

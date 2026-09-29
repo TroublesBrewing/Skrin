@@ -2,6 +2,21 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.67.0 — 2026-09-29
+
+**The status line says where you are, and moves when it answers.** A new **beta** feature, off until switched on, closing two cards at once — they are two changes to the same line, and making them one after the other is how a line gets messy.
+
+From the user's note in the idea box: *"Statusraden längst ner är lätt att missa om man inte vet att den finns. I början tryckte jag på (d)elete och (r)ename och undrade varför inget hände — tangenten finns, men ledtråden om den sitter i en rad jag inte tittade på."*
+
+- **`FILES` or `NOTE` instead of `VIEW` for both.** Files and the note pane have always shown the same word, though `d`, `r` and `n` mean different things in each. The pill now names the pane the next key will land in, which is what the charter asks of a context.
+- **The line blinks once when a key's only answer is there.** For 700 ms the message is drawn the way the mode pill is, then settles into its ordinary colour. Movement is caught in peripheral vision; one word swapped for another is not, which is exactly what the report describes.
+- **Only a key's own answer blinks.** A message that arrives on its own — a theme change, a watcher's complaint — doesn't move the line. A line that twitches at things you didn't do would be the nagging this is meant to avoid.
+- **Nothing else about the line changed**: the location, the marks, the scroll position, the word count and the hints are where they were.
+
+Being beta it takes two switches (Settings' "Beta features", then "Status line says where you are") and a build with `version.Beta = false` leaves it out. Off, the line reads `VIEW` in both panes and never moves.
+
+Five new tests. Full suite green, `go vet` and `gofmt` clean. Verified live in tmux at 120×34 on the vault copy: `FILES` in the tree, `NOTE` after opening a note, and a key with no meaning drawing the message on the accent background and then settling back to plain accent by itself.
+
 ## v0.66.0 — 2026-09-29
 
 **Copy the path of what you're standing on.** A new **beta** feature, off until switched on, from the user's own note in the idea box: *"'yy' ska kopiera hela filsökvägen för filen som just nu är i fokus eller markerad i filträdet"*.

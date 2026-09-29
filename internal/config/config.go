@@ -163,6 +163,9 @@ type Config struct {
 	CopyPath struct {
 		Enabled *bool `toml:"enabled,omitempty"` // unset means off: an experiment is always asked for
 	} `toml:"copy_path,omitempty"`
+	Status struct {
+		SaysWhere *bool `toml:"says_where,omitempty"` // unset means off: an experiment is always asked for
+	} `toml:"status,omitempty"`
 	Library struct {
 		Folder        string `toml:"folder,omitempty"`         // default: "Books"
 		CoversFolder  string `toml:"covers_folder,omitempty"`  // default: "Assets/Covers"
@@ -276,6 +279,14 @@ func (c Config) ScrollOtherEnabled() bool {
 // that should never arrive unasked.
 func (c Config) CopyPathEnabled() bool {
 	return c.CopyPath.Enabled != nil && *c.CopyPath.Enabled
+}
+
+// StatusSaysWhereEnabled reports whether the status line names the pane
+// you're in (FILES/NOTE instead of VIEW for both) and blinks once when it
+// answers. Off unless asked for: it changes how a line everybody reads
+// looks, which is exactly what an experiment must not do unasked.
+func (c Config) StatusSaysWhereEnabled() bool {
+	return c.Status.SaysWhere != nil && *c.Status.SaysWhere
 }
 
 // LibraryFolder is where new book notes are created: Books, unless set.

@@ -137,6 +137,7 @@ func run(vaultArg string) error {
 		Versions:        cfg.VersionsEnabled(),
 		ScrollOther:     cfg.ScrollOtherEnabled(),
 		CopyPath:        cfg.CopyPathEnabled(),
+		StatusSaysWhere: cfg.StatusSaysWhereEnabled(),
 		Beta:            cfg.BetaEnabled(),
 		LineNumbers:     cfg.RenderLineNumbers(),
 		ReadableWidth:   cfg.RenderReadableWidth(),

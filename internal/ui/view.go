@@ -280,7 +280,7 @@ func (m *Model) statusLine() string {
 	if m.noteFind != nil {
 		return m.noteFindLine()
 	}
-	mode := " VIEW "
+	mode := m.paneWord()
 	switch {
 	case m.visual != nil:
 		mode = " MARK " // a range of items in Files
@@ -302,7 +302,14 @@ func (m *Model) statusLine() string {
 	}
 	right := m.st.muted.Render(m.hintLine(m.width - min(ansi.StringWidth(left), m.width/2) - 3))
 	if m.flash != "" {
-		right = m.st.flash.Render(m.flash)
+		// The blink: for its first moment the answer is drawn the way the
+		// mode pill is, so the line moves rather than merely changing a
+		// word. It settles into the ordinary flash colour by itself.
+		if m.statusBlinking() {
+			right = m.st.pill.Render(" " + m.flash + " ")
+		} else {
+			right = m.st.flash.Render(m.flash)
+		}
 	}
 	return spread(left, right, m.width)
 }

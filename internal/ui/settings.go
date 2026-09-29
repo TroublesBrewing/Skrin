@@ -77,6 +77,16 @@ func betaSettings() []settingsItem {
 			beta: true,
 		},
 		{
+			label: "Status line says where you are",
+			help:  "The bar along the bottom reads FILES or NOTE instead of VIEW for both, so it says which pane the next key lands in — d, r and n mean different things in each. And when a key's only answer is that line, the line blinks once instead of quietly swapping one word for another: it is the line that teaches every key, and it is the easiest one to miss. Off, it reads VIEW in both panes and never moves.",
+			get:   func(m *Model) bool { return m.opts.StatusSaysWhere },
+			set: func(m *Model, v bool) {
+				m.opts.StatusSaysWhere = v
+				m.opts.Config.Status.SaysWhere = boolPtr(v)
+			},
+			beta: true,
+		},
+		{
 			label: "Copy a path (y/Y)",
 			help:  "y copies the path of whatever is in hand — the marked items, the Files row under the cursor, or the open note — so it can be pasted into a terminal, a command or another app. y copies it vault-relative (Books/Bilbo.md), Y whole, as the disk spells it; several marked items come out one per line. It travels the same way Ctrl+C does, over the terminal itself, so it works over ssh too. Off, y and Y do nothing in the main view.",
 			get:   func(m *Model) bool { return m.opts.CopyPath },

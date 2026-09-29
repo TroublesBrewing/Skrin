@@ -144,6 +144,11 @@ type Options struct {
 	// path on disk on Y. An experiment, off unless switched on in
 	// Settings' beta block.
 	CopyPath bool
+	// StatusSaysWhere makes the status line name the pane the focus is in
+	// — FILES or NOTE, where both read VIEW today — and blink once when a
+	// key's only answer is that line. An experiment, off unless switched
+	// on in Settings' beta block.
+	StatusSaysWhere bool
 	// Versions turns on the time machine (V): a note's earlier versions,
 	// read from the same snapshots u walks back through, with any of them
 	// restorable. An experiment, off unless switched on in Settings' beta
@@ -320,6 +325,9 @@ type Model struct {
 	pendingThumb map[string]bool
 
 	flash string // one-shot status message, cleared by the next key
+	// statusBlinkAt is when the flash showing now arrived, so the status
+	// line can stand out for a moment before settling. Zero means no blink.
+	statusBlinkAt time.Time
 
 	// lastPeekCur and lastPeekRel track the Files row peeked last time.
 	// notes only open when the cursor moves to a different row in Files
@@ -431,6 +439,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if was[0] != 0 && was != [2]int{m.width, m.height} {
 			cmd = m.flashFor(m.sizeNote())
 		}
+	case statusBlinkMsg:
+		// Nothing to change: the blink is timed from statusBlinkAt, and
+		// this only brings the redraw that ends it.
 	case flashDoneMsg:
 		if m.flash == msg.text {
 			m.flash = ""
@@ -585,7 +596,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	m.settle()
-	return m, tea.Batch(cmd, m.startThumbnails(), m.armAutosave(), m.armBlink(), m.armCursorBlink())
+	var blink tea.Cmd
+	if _, pressed := msg.(tea.KeyPressMsg); pressed {
+		blink = m.armStatusBlink()
+	}
+	return m, tea.Batch(cmd, m.startThumbnails(), m.armAutosave(), m.armBlink(), m.armCursorBlink(), blink)
 }
 
 // setPalette recolours everything, the logo included.

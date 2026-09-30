@@ -2,6 +2,21 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.73.0 — 2026-09-30
+
+**Properties as fields.** A new **beta** feature, off until switched on, and the last of the survey's remaining rows. Obsidian gives each property its own field; in Skrin you have always typed YAML.
+
+- **`Ctrl+P` → "Properties"** lists the open note's properties. Enter edits one in the ordinary prompt, `d` removes one, and the first row adds one.
+- **No new overlay and no new key.** It is built out of what was already there — the chooser and the name prompt — because the point is a field to type in, not a new place to learn.
+- **Every edit touches only the lines the property owns.** Nothing is re-serialised, so a comment, a nested map or anything else in the frontmatter comes out of a write byte for byte as it went in. That rule is what made the feature buildable without touching how a note is edited.
+- **Only plain one-line properties are edited here.** A list or a nested block is shown and can be removed, but Skrin won't rewrite it from a single field: there is no way to put it back wrong.
+- **The last property takes the empty block with it**, but only when nothing else is left inside it, comments included.
+- **The write path is the existing one:** the editor's buffer when that note is open for editing, otherwise read-check-snapshot-journal, the same path Mentions uses. So `u`, `U` and autosave behave as they always do.
+
+**A bug the tests caught before it reached a vault:** the first parse let any line under an empty property belong to it, so a comment below `empty:` counted as its contents — and would have gone into the trash along with the property. Only indented lines and bullets belong to a property now.
+
+Thirteen new tests, one of them holding the rule above: a note with a list and a comment in its frontmatter comes out identical apart from the line that changed. Full suite green, `go vet` and `gofmt` clean. Verified live in tmux on the vault copy: three properties listed with the list marked *edit it in the note itself*, `status` changed from `påbörjad` to `klar` with the comment and the list untouched, `d` removing `title`, and `U` putting it back.
+
 ## v0.72.0 — 2026-09-30
 
 **Block links Skrin writes for you.** A new **beta** feature, off until switched on. Skrin has always *followed* `[[note#^id]]`; it could never make one, which is the half that makes block links worth having. Obsidian's *Copy link to block*, from the survey's remaining rows.

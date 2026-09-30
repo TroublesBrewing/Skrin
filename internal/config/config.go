@@ -180,6 +180,9 @@ type Config struct {
 	BlockRef struct {
 		Enabled *bool `toml:"enabled,omitempty"` // unset means off: an experiment is always asked for
 	} `toml:"block_ref,omitempty"`
+	Properties struct {
+		Enabled *bool `toml:"enabled,omitempty"` // unset means off: an experiment is always asked for
+	} `toml:"properties,omitempty"`
 	Library struct {
 		Folder        string `toml:"folder,omitempty"`         // default: "Books"
 		CoversFolder  string `toml:"covers_folder,omitempty"`  // default: "Assets/Covers"
@@ -321,6 +324,12 @@ func (c Config) OutgoingEnabled() bool {
 // switched on. Off unless asked for, like every experiment.
 func (c Config) BlockRefEnabled() bool {
 	return c.BlockRef.Enabled != nil && *c.BlockRef.Enabled
+}
+
+// PropertiesEnabled reports whether the properties panel is switched on.
+// Off unless asked for, like every experiment.
+func (c Config) PropertiesEnabled() bool {
+	return c.Properties.Enabled != nil && *c.Properties.Enabled
 }
 
 // LibraryFolder is where new book notes are created: Books, unless set.

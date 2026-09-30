@@ -205,6 +205,10 @@ func (m *Model) submitPrompt() tea.Cmd {
 		err = m.openFolderAsSkrin(input)
 	case promptRenameTag:
 		err = m.renameTag(p.target, input)
+	case promptPropValue:
+		err = m.setProperty(p.target, p.propKey, input)
+	case promptPropNew:
+		err = m.addProperty(p.target, input)
 	}
 	if err != nil {
 		p.err = err.Error()

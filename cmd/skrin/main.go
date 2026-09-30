@@ -159,6 +159,7 @@ func run(vaultArg string) error {
 		NewerNotice:     cfg.NewerNoticeEnabled(),
 		Outgoing:        cfg.OutgoingEnabled(),
 		BlockRef:        cfg.BlockRefEnabled(),
+		Properties:      cfg.PropertiesEnabled(),
 		ExePath:         exePath(),
 		Beta:            cfg.BetaEnabled(),
 		LineNumbers:     cfg.RenderLineNumbers(),

@@ -77,6 +77,16 @@ func betaSettings() []settingsItem {
 			beta: true,
 		},
 		{
+			label: "Properties as fields (Ctrl+P)",
+			help:  "Obsidian gives each property its own field; in Skrin you type YAML. This lists the open note's properties, Enter edits one in the ordinary prompt, d removes one and the first row adds one. Only plain one-line properties can be edited here — a list or a nested block is shown and can be removed, but Skrin won't rewrite it from a single field, because there is no way to put it back wrong. Every edit touches only the lines the property owns, so a comment or anything else in the frontmatter comes out byte for byte as it went in.",
+			get:   func(m *Model) bool { return m.opts.Properties },
+			set: func(m *Model, v bool) {
+				m.opts.Properties = v
+				m.opts.Config.Properties.Enabled = boolPtr(v)
+			},
+			beta: true,
+		},
+		{
 			label: "Copy a link to this block (Ctrl+P, editing)",
 			help:  "Obsidian's \"Copy link to block\": while editing, it writes a short ^id at the end of the paragraph the cursor is in and copies [[Note#^id]] for you to paste somewhere else. A paragraph that already has an id keeps it, so the same block always gives the same link. A heading gets none — it is already an anchor. The id goes into the editor, so it saves, snapshots and undoes like anything else you type.",
 			get:   func(m *Model) bool { return m.opts.BlockRef },

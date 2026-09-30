@@ -142,6 +142,8 @@ const (
 	promptExtract
 	promptOpenFolder
 	promptRenameTag
+	promptPropValue // a property's new value; target is the note, propKey the property
+	promptPropNew   // a new property, written as name: value
 )
 
 // prompt asks for a name in the status line.
@@ -156,6 +158,8 @@ type prompt struct {
 	// and whether the note opens in a split beside the one being read.
 	folder string
 	split  bool
+	// propKey is which property promptPropValue is setting.
+	propKey string
 }
 
 func (m *Model) promptKey(k tea.KeyPressMsg) tea.Cmd {

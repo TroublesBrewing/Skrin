@@ -168,6 +168,10 @@ type Options struct {
 	// clipboard. Palette only, and an experiment, off unless switched on
 	// in Settings' beta block.
 	BlockRef bool
+	// Properties turns on the properties panel: a note's frontmatter as
+	// fields to edit, rather than YAML to type. Palette only, and an
+	// experiment, off unless switched on in Settings' beta block.
+	Properties bool
 	// Versions turns on the time machine (V): a note's earlier versions,
 	// read from the same snapshots u walks back through, with any of them
 	// restorable. An experiment, off unless switched on in Settings' beta
@@ -698,6 +702,8 @@ func (m *Model) do(a action) tea.Cmd {
 		m.openMentions()
 	case actOutgoing:
 		m.showOutgoing()
+	case actProperties:
+		m.showProperties()
 	case actMergeNote:
 		m.startMerge()
 	case actRenameTag:

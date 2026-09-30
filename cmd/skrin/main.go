@@ -160,6 +160,7 @@ func run(vaultArg string) error {
 		Outgoing:        cfg.OutgoingEnabled(),
 		BlockRef:        cfg.BlockRefEnabled(),
 		Properties:      cfg.PropertiesEnabled(),
+		DateVars:        cfg.DateVarsEnabled(),
 		ExePath:         exePath(),
 		Beta:            cfg.BetaEnabled(),
 		LineNumbers:     cfg.RenderLineNumbers(),

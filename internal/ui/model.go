@@ -172,6 +172,11 @@ type Options struct {
 	// fields to edit, rather than YAML to type. Palette only, and an
 	// experiment, off unless switched on in Settings' beta block.
 	Properties bool
+	// DateVars turns {{date}}, {{time}} and their formatted forms into
+	// the dates they mean when the editor is left, on the lines written
+	// during that edit. An experiment, off unless switched on in
+	// Settings' beta block.
+	DateVars bool
 	// Versions turns on the time machine (V): a note's earlier versions,
 	// read from the same snapshots u walks back through, with any of them
 	// restorable. An experiment, off unless switched on in Settings' beta

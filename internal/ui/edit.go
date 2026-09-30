@@ -266,7 +266,7 @@ func (m *Model) saveEdit(closing bool) {
 	s := &m.edit
 	var dates string
 	if closing {
-		dates = m.resolveDueDates()
+		dates = m.resolveDueDates() + m.resolveDateVars()
 	}
 	text := m.editor.Text()
 	if text == s.base {

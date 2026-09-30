@@ -77,6 +77,16 @@ func betaSettings() []settingsItem {
 			beta: true,
 		},
 		{
+			label: "{{date}} becomes the date when you leave the editor",
+			help:  "Type {{date}}, {{time}}, {{date:YYYY-MM-DD}} or an offset like {{date+1d:dddd}} while writing, and it becomes the date it means as you leave the editor — the same variables and the same formats Insert template uses. Only lines you wrote or changed during that edit are touched, so a {{date}} in an old note keeps saying what its author wrote, and code blocks are left alone so a note about templates can show the variable. Templates themselves are never touched. The status line says what changed, and ctrl+z takes it back.",
+			get:   func(m *Model) bool { return m.opts.DateVars },
+			set: func(m *Model, v bool) {
+				m.opts.DateVars = v
+				m.opts.Config.DateVars.Enabled = boolPtr(v)
+			},
+			beta: true,
+		},
+		{
 			label: "Properties as fields (Ctrl+P)",
 			help:  "Obsidian gives each property its own field; in Skrin you type YAML. This lists the open note's properties, Enter edits one in the ordinary prompt, d removes one and the first row adds one. Only plain one-line properties can be edited here — a list or a nested block is shown and can be removed, but Skrin won't rewrite it from a single field, because there is no way to put it back wrong. Every edit touches only the lines the property owns, so a comment or anything else in the frontmatter comes out byte for byte as it went in.",
 			get:   func(m *Model) bool { return m.opts.Properties },

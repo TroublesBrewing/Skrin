@@ -2,6 +2,18 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.74.0 — 2026-09-30
+
+**`{{date}}` becomes the date when you leave the editor.** A new **beta** feature, off until switched on. The user's idea: *"When typing {{date}} in a note, when next you exit edit mode, that variable gets translated into todays date."*
+
+- **The same variables and formats Insert template uses**: `{{date}}`, `{{time}}`, `{{date:dddd}}`, offsets like `{{date+1d:YYYY-MM-DD}}`, filled by the one expander that already serves templates and folder templates, with the Templates plugin's own date and time formats.
+- **Only lines written or changed during that edit.** This is the bargain `due:: tomorrow` has made since v0.21.1, and for the same reason: a `{{date}}` that has sat in a note since March still says what its author wrote, rather than becoming today.
+- **Code is left alone**, fenced or inline, so a note about templates can show the variable without it evaporating as you leave.
+- **Templates themselves are never touched.** A template holds `{{date}}` on purpose; filling it in while the template is being written would destroy the thing being written. With no templates folder set anywhere — neither in Settings nor in Obsidian's own config — there is nothing to exempt, and nothing pretends there is.
+- **The status line says what changed**, one variable named or a count with the list, and `ctrl+z` takes it back like any other edit.
+
+Ten new tests, in a package of their own beside `internal/duedate`, whose shape this follows. Full suite green, `go vet` and `gofmt` clean. Verified live in tmux on the vault copy: an old line's `{{date}}` left standing, while a line typed in the same session became `Ny rad skriven 2026-09-30 kl 09:22, i morgon Thursday.`
+
 ## v0.73.0 — 2026-09-30
 
 **Properties as fields.** A new **beta** feature, off until switched on, and the last of the survey's remaining rows. Obsidian gives each property its own field; in Skrin you have always typed YAML.

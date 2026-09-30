@@ -854,7 +854,14 @@ func (m *Model) filesAction(a action) {
 	case actMarkAll:
 		m.markAll()
 	case actPaneRight:
-		m.focusSplit()
+		// Shift+→ from Files: focus the note you can already see. With a
+		// split, the skimmed note becomes the focused one; without one,
+		// the open note simply takes focus.
+		if m.split != nil {
+			m.focusSplit()
+		} else {
+			m.focus = paneNote
+		}
 	default:
 		if c := step(f.cur, len(f.rows), a, m.layout().bodyH-2); c != f.cur {
 			f.cur = c
@@ -865,13 +872,13 @@ func (m *Model) filesAction(a action) {
 	}
 }
 
-// focusSplit is Shift+→ from Files: the "done browsing, now look at what I
-// skimmed beside" step the skim flash promises. It swaps the split's note
-// into focus — the same swap openRow does when the cursor lands back on the
-// split's own note — so the note you skimmed to becomes the interactive
-// one, not just whichever happens to render on the right. With no split,
-// it's a no-op; there is nothing to Files' own left to focus, so Shift+←
-// from Files stays unhandled.
+// focusSplit is Shift+→ from Files with a split open: the "done browsing,
+// now look at what I skimmed beside" step the skim flash promises. It swaps
+// the split's note into focus — the same swap openRow does when the cursor
+// lands back on the split's own note — so the note you skimmed to becomes
+// the interactive one, not just whichever happens to render on the right.
+// Without a split the caller takes focus to the note pane directly, so this
+// is only ever reached when m.split is set.
 func (m *Model) focusSplit() {
 	if m.split != nil {
 		m.swapPanes()
@@ -983,9 +990,15 @@ func (m *Model) noteAction(a action) {
 	case actBottom:
 		off = maxOff
 	case actPaneLeft, actPaneRight:
-		// Move to the other pane when it lies that way.
-		if m.split != nil && (a == actPaneLeft) == m.splitLeft {
-			m.swapPanes()
+		// Move focus to the pane that lies that way. With a split, the
+		// other half lies left or right; without one, Files is to the
+		// left of the note and the note is to the right of Files.
+		if m.split != nil {
+			if (a == actPaneLeft) == m.splitLeft {
+				m.swapPanes()
+			}
+		} else if a == actPaneLeft {
+			m.focus = paneFiles
 		}
 		return
 	case actLeft:

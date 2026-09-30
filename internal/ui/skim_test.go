@@ -217,15 +217,36 @@ func TestShiftRightFocusesTheSplitFromFiles(t *testing.T) {
 	}
 }
 
-// TestShiftRightFromFilesIsANoOpWithoutASplit makes sure the new handler
-// doesn't do anything when there's nothing to focus.
-func TestShiftRightFromFilesIsANoOpWithoutASplit(t *testing.T) {
+// TestShiftRightFromFilesFocusesTheNoteWithoutASplit is the point of the
+// whole change: the report was that standing in Files on a folder left no
+// arrow back to the note you can already see. Shift+→ now takes focus to
+// the note pane, split or not.
+func TestShiftRightFromFilesFocusesTheNoteWithoutASplit(t *testing.T) {
 	m := newTestModel(t)
 	m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
-	press(m, "G")
-	cur := m.notePath
+	press(m, "G") // Welcome.md opens under the cursor
+	press(m, "k") // Templates/, a folder: the note stays open, focus in Files
+	if m.focus != paneFiles || m.notePath != "Welcome.md" {
+		t.Fatalf("setup: focus %v, note %q", m.focus, m.notePath)
+	}
 	press(m, "shift+right")
-	if m.focus != paneFiles || m.notePath != cur || m.split != nil {
-		t.Errorf("Shift+→ with no split changed something: focus %v, note %q, split %+v", m.focus, m.notePath, m.split)
+	if m.focus != paneNote || m.notePath != "Welcome.md" || m.split != nil {
+		t.Errorf("Shift+→ from Files should focus the open note: focus %v, note %q, split %+v", m.focus, m.notePath, m.split)
+	}
+}
+
+// TestShiftLeftFromNoteReturnsToFiles is the mirror: from the note, Shift+←
+// goes back to Files without a split, as the two panes sit side by side.
+func TestShiftLeftFromNoteReturnsToFiles(t *testing.T) {
+	m := newTestModel(t)
+	m.Update(tea.WindowSizeMsg{Width: 140, Height: 40})
+	press(m, "G") // Welcome.md opens, focus in Files
+	press(m, "2") // focus the note pane
+	if m.focus != paneNote {
+		t.Fatalf("setup: focus %v", m.focus)
+	}
+	press(m, "shift+left")
+	if m.focus != paneFiles {
+		t.Errorf("Shift+← from the note should return to Files: focus %v", m.focus)
 	}
 }

@@ -2,6 +2,16 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.75.0 — 2026-09-30
+
+**Shift+→/← moves focus between the panes, split or not.** A genuinely missing feature, not beta. The user's report, from the idea box: *"shift+arrow should also move focus between folder pane and the open note pane. Right now, if I move the selection in the folder pane to a folder I can't focus back onto the note without first finding it in the folder. I can see the note, there is no way of focusing on it without moving to it in the folders pane and then hit right arrow."*
+
+- **`Shift+→` from Files focuses the note** you can already see, and **`Shift+←` from the note goes back to Files** — exactly the two panes sitting side by side. Before, those keys only moved between the two halves of a *split*, and were a silent dead end otherwise.
+- **A split keeps its own meaning.** With a split open, `Shift+→` still focuses the skimmed note beside, and `Shift+←`/`→` still move between the halves, untouched.
+- **Directional, as the charter prescribes.** Shift already means "directional or intensifying" in [[skrin ux]]; this is the same word — left goes to the pane on the left, right to the one on the right — not a new one.
+
+Two tests rewritten: the old "no-op without a split" contract was exactly the reported hole, so it now asserts focus moves to the note (and its mirror, back to Files). Full suite green, `go vet` and `gofmt` clean. Verified live in tmux on the vault copy: standing on a folder, `Shift+→` flipped the status hints from Files ("l open · n new note") to the note ("e edit · f follow link"), and `Shift+←` flipped them back.
+
 ## v0.74.0 — 2026-09-30
 
 **`{{date}}` becomes the date when you leave the editor.** A new **beta** feature, off until switched on. The user's idea: *"When typing {{date}} in a note, when next you exit edit mode, that variable gets translated into todays date."*

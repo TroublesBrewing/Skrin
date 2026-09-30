@@ -124,6 +124,7 @@ var editorCommands = []editorCommand{
 	{act: actOtherPageDown, name: "The other half, a screen down", also: "split pane page"},
 	{act: actOtherPageUp, name: "The other half, a screen up", also: "split pane page"},
 	{act: actFindNote, name: "Find in the note", also: "search sök hitta text"},
+	{name: "Copy a link to this block", also: "block reference anchor ^id paragraph link to", run: func(m *Model) tea.Cmd { return m.copyBlockLink() }},
 	{name: "Insert table", also: "add new grid columns rows markdown tabell", run: func(m *Model) tea.Cmd { m.startTable(); return nil }},
 	{name: "Insert template", also: "add snippet boilerplate mall", run: func(m *Model) tea.Cmd { m.startTemplate(); return nil }},
 }
@@ -303,6 +304,9 @@ func (m *Model) editorPaletteItems() []choice {
 		}
 	}
 	for _, c := range editorCommands {
+		if !m.blockRefOn() && strings.HasPrefix(c.name, "Copy a link to this block") {
+			continue // a switched-off experiment isn't findable by name either
+		}
 		if c.act == actNone {
 			run := c.run
 			items = append(items, choice{label: c.name, also: c.also, key: statusKey(c.key), run: m.paletteRun(c.name, func() tea.Cmd { return run(m) })})

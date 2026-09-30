@@ -158,6 +158,7 @@ func run(vaultArg string) error {
 		StatusSaysWhere: cfg.StatusSaysWhereEnabled(),
 		NewerNotice:     cfg.NewerNoticeEnabled(),
 		Outgoing:        cfg.OutgoingEnabled(),
+		BlockRef:        cfg.BlockRefEnabled(),
 		ExePath:         exePath(),
 		Beta:            cfg.BetaEnabled(),
 		LineNumbers:     cfg.RenderLineNumbers(),

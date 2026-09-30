@@ -163,6 +163,11 @@ type Options struct {
 	// only, and an experiment, off unless switched on in Settings' beta
 	// block.
 	Outgoing bool
+	// BlockRef turns on "Copy a link to this block": the block the cursor
+	// is in gets an id if it hasn't got one, and a link to it goes to the
+	// clipboard. Palette only, and an experiment, off unless switched on
+	// in Settings' beta block.
+	BlockRef bool
 	// Versions turns on the time machine (V): a note's earlier versions,
 	// read from the same snapshots u walks back through, with any of them
 	// restorable. An experiment, off unless switched on in Settings' beta

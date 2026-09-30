@@ -2,6 +2,19 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.72.0 — 2026-09-30
+
+**Block links Skrin writes for you.** A new **beta** feature, off until switched on. Skrin has always *followed* `[[note#^id]]`; it could never make one, which is the half that makes block links worth having. Obsidian's *Copy link to block*, from the survey's remaining rows.
+
+- **`Ctrl+P` → "Copy a link to this block"** while editing: the block the cursor is in gets a short `^id` at its end, and `[[Note#^id]]` goes to the clipboard.
+- **The id lands at the end of the block, not on the cursor's line**, so the anchor points at the whole thing. A blank line, a heading or the next list item ends a block — which means **each list item is its own block**, and a link can point at one line of a list rather than all of it. An item's indented continuation belongs to it.
+- **A block that already has an id keeps it.** The same block gives the same link every time, or the links already written down would stop meaning anything.
+- **A heading gets none**, as in Obsidian: it is already an anchor, and the flash says to link to it as `[[note#Heading]]` instead.
+- **The id is written into the editor's buffer**, not straight to the file, so it rides the ordinary autosave, the ordinary snapshot and the ordinary `u`. A link shouldn't be the one thing in Skrin that writes by its own rules.
+- **No key of its own**, for the same reason Outgoing links has none: it lives in the palette until *Paletten som gränssnitt* decides what deserves a key.
+
+Nine new tests. Full suite green, `go vet` and `gofmt` clean. Verified live in tmux on the vault copy: the cursor on the first line of a two-line paragraph, `Copied [[Stoiska reflektioner#^ayevfv]]`, and the id written at the end of the second line — the block's end, not the cursor's.
+
 ## v0.71.0 — 2026-09-29
 
 **Outgoing links: the notes this one points at.** A new **beta** feature, off until switched on. The other half of Obsidian's backlinks pane, and the last row of the *Kärnfunktioner från Obsidian som saknas* survey that was still only half there — it existed as the spread function `outgoing([[note]])`, with no panel and no way to ask for it.

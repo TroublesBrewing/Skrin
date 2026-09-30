@@ -77,6 +77,16 @@ func betaSettings() []settingsItem {
 			beta: true,
 		},
 		{
+			label: "Copy a link to this block (Ctrl+P, editing)",
+			help:  "Obsidian's \"Copy link to block\": while editing, it writes a short ^id at the end of the paragraph the cursor is in and copies [[Note#^id]] for you to paste somewhere else. A paragraph that already has an id keeps it, so the same block always gives the same link. A heading gets none — it is already an anchor. The id goes into the editor, so it saves, snapshots and undoes like anything else you type.",
+			get:   func(m *Model) bool { return m.opts.BlockRef },
+			set: func(m *Model, v bool) {
+				m.opts.BlockRef = v
+				m.opts.Config.BlockRef.Enabled = boolPtr(v)
+			},
+			beta: true,
+		},
+		{
 			label: "Outgoing links (Ctrl+P)",
 			help:  "The other half of Obsidian's backlinks pane: the notes this one links to, listed the same way b lists the notes that link here. Enter opens one. It has no key of its own — it is a lookup, not a move, and every new key is a cost — so it lives in the command palette beside Merge and Rename a tag. Off, the row isn't in the palette at all.",
 			get:   func(m *Model) bool { return m.opts.Outgoing },

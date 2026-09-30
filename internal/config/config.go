@@ -177,6 +177,9 @@ type Config struct {
 	Outgoing struct {
 		Enabled *bool `toml:"enabled,omitempty"` // unset means off: an experiment is always asked for
 	} `toml:"outgoing,omitempty"`
+	BlockRef struct {
+		Enabled *bool `toml:"enabled,omitempty"` // unset means off: an experiment is always asked for
+	} `toml:"block_ref,omitempty"`
 	Library struct {
 		Folder        string `toml:"folder,omitempty"`         // default: "Books"
 		CoversFolder  string `toml:"covers_folder,omitempty"`  // default: "Assets/Covers"
@@ -312,6 +315,12 @@ func (c Config) NewerNoticeEnabled() bool {
 // on. Off unless asked for, like every experiment.
 func (c Config) OutgoingEnabled() bool {
 	return c.Outgoing.Enabled != nil && *c.Outgoing.Enabled
+}
+
+// BlockRefEnabled reports whether "Copy a link to this block" is
+// switched on. Off unless asked for, like every experiment.
+func (c Config) BlockRefEnabled() bool {
+	return c.BlockRef.Enabled != nil && *c.BlockRef.Enabled
 }
 
 // LibraryFolder is where new book notes are created: Books, unless set.

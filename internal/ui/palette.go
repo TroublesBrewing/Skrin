@@ -61,6 +61,7 @@ var mainCommands = []paletteEntry{
 	{actMergeNote, "Merge this note into another…", "join combine two notes duplicate same name"},
 	{actRenameTag, "Rename a tag everywhere…", "tags spelling typo unify label"},
 	{actVersions, "Time machine: this note's earlier versions", "history versions restore snapshot undo back"},
+	{actGlow, "Glow: the last year of writing as a heatmap", "writing heatmap calendar year streak activity"},
 	{actCopyPath, "Copy the path of what's in hand", "yank filename location clipboard relative"},
 	{actCopyPathFull, "Copy that path whole, as the disk spells it", "yank absolute full filename location clipboard"},
 	{actNewBook, "Book Card: catalogue a book", "library reading isbn"},
@@ -216,6 +217,9 @@ func (m *Model) mainPaletteItems() []choice {
 	var items []choice
 	for _, e := range mainCommands {
 		if !m.weedsOn() && e.act == actWeeds {
+			continue
+		}
+		if !m.glowOn() && e.act == actGlow {
 			continue
 		}
 		if !m.versionsOn() && e.act == actVersions {

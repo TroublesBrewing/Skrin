@@ -152,6 +152,7 @@ func run(vaultArg string) error {
 		Images:          cfg.RenderImages(),
 		Habits:          cfg.HabitsEnabled(),
 		Weeds:           cfg.WeedsEnabled(),
+		Glow:            cfg.GlowEnabled(),
 		Versions:        cfg.VersionsEnabled(),
 		ScrollOther:     cfg.ScrollOtherEnabled(),
 		CopyPath:        cfg.CopyPathEnabled(),

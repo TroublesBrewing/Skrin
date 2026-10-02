@@ -159,6 +159,9 @@ type Config struct {
 	Weeds struct {
 		Enabled *bool `toml:"enabled,omitempty"` // unset means off: an experiment is always asked for
 	} `toml:"weeds,omitempty"`
+	Glow struct {
+		Enabled *bool `toml:"enabled,omitempty"` // unset means off: an experiment is always asked for
+	} `toml:"glow,omitempty"`
 	Versions struct {
 		Enabled *bool `toml:"enabled,omitempty"` // unset means off: an experiment is always asked for
 	} `toml:"versions,omitempty"`
@@ -276,6 +279,12 @@ func (c Config) HabitsEnabled() bool {
 // judges your notes should never turn up unasked.
 func (c Config) WeedsEnabled() bool {
 	return c.Weeds.Enabled != nil && *c.Weeds.Enabled
+}
+
+// GlowEnabled reports whether the writing heatmap is switched on. Off
+// unless asked for, like every experiment.
+func (c Config) GlowEnabled() bool {
+	return c.Glow.Enabled != nil && *c.Glow.Enabled
 }
 
 // VersionsEnabled reports whether the time machine (V) is switched on. Off

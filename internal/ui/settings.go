@@ -174,6 +174,16 @@ func betaSettings() []settingsItem {
 			beta: true,
 		},
 		{
+			label: "Glow: the last year of writing (Ctrl+P)",
+			help:  "A heatmap of your writing: the last year of the vault as a grid of small squares, one per day, green where you wrote and dim where you didn't. It reads only what the index already knows — each note's modification time — so it changes nothing and reads nothing extra. The cursor moves a day or a week; Enter lists what was written that day; a quiet day says so. It lives in the palette, not behind a key, because it is a look rather than a move. An experiment.",
+			get:   func(m *Model) bool { return m.opts.Glow },
+			set: func(m *Model, v bool) {
+				m.opts.Glow = v
+				m.opts.Config.Glow.Enabled = boolPtr(v)
+			},
+			beta: true,
+		},
+		{
 			label: "Habit tracker",
 			help:  "T shows today's habits, the week and the month, read from the ### Habits block of your daily note. An experiment: either it grows into something that stands on its own, or it goes. Your checkboxes are plain markdown and stay as they are either way.",
 			get:   func(m *Model) bool { return m.opts.Habits },

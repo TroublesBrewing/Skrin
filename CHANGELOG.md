@@ -2,6 +2,18 @@
 
 Each milestone in the plan (`~/Documents/vault-1/tui.md`) ships as a minor version, so milestone N is v0.N.0. Fixes between milestones bump the patch number (v0.1.1). v1.0.0 follows milestone 9, once Skrin has held up in daily use.
 
+## v0.76.0 — 2026-10-01
+
+**Glow: the last year of writing as a heatmap.** A new **beta** feature, off until switched on. The user's brief, on the heels of Weeds: *"Skrin sakar något. Kan inte du hitta på en kul, spännande feature och bygga den som en beta feature?"*
+
+- **A grid of small squares, one per day**, Monday-first, the last 52 weeks ending today, green where you wrote and dim where you didn't — the shape of your practice at a glance, which is exactly what a single note can't show you.
+- **`Ctrl+P` → "Glow"** opens it. It has no key of its own, for the same reason Outgoing links has none: it is a look rather than a move, and it lives in the palette until *Paletten som gränssnitt* decides what deserves a key.
+- **The cursor moves a day or a week** (`←→` / `↑↓`), the columns scroll so today is always reachable on a narrow terminal, and **Enter lists what was written that day** — a quiet day says so rather than opening empty.
+- **It reads only what the index already knows** — each note's modification time, bucketed by day — so it costs a walk over notes in memory, never a disk pass, and it changes nothing.
+- **The ramp is four greens** lerped from the page's own tint up to the theme's green, with the cursor drawn as a solid block; the colour follows the active theme.
+
+Six new tests, including one that pins the grid's shape (52 Monday-first weeks, ending today, no future days) and one that drives the cursor through the keymap table rather than a synthetic action. Full suite green, `go vet` and `gofmt` clean. Verified live in tmux: the grid rendered with real background colours (base, one-note green, cursor block), `←` moved the cursor a day, `Enter` listed `2026-09-30` for yesterday's note, and a quiet day flashed *Nothing written on Fri 10 Jul 2026*.
+
 ## v0.75.0 — 2026-09-30
 
 **Shift+→/← moves focus between the panes, split or not.** A genuinely missing feature, not beta. The user's report, from the idea box: *"shift+arrow should also move focus between folder pane and the open note pane. Right now, if I move the selection in the folder pane to a folder I can't focus back onto the note without first finding it in the folder. I can see the note, there is no way of focusing on it without moving to it in the folders pane and then hit right arrow."*

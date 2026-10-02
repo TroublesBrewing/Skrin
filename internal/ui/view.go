@@ -47,6 +47,9 @@ func (m *Model) render() string {
 	if m.versions != nil {
 		out = m.overlay(out, m.versionsBox())
 	}
+	if m.glow != nil {
+		out = m.overlay(out, m.glowBox())
+	}
 	if m.quickNote != nil {
 		out = m.overlay(out, m.quickNoteBox())
 	}

@@ -114,6 +114,7 @@ const (
 	actMentions     // M: where this note is talked about without a link
 	actLinkMention  // a in it: link this mention
 	actLinkAllMentions
+	actGlow // from the palette: the last year of writing as a heatmap
 )
 
 // Contexts say where a binding works. Each gets its own keymap, built from
@@ -140,6 +141,7 @@ const (
 	inWeeds     = "weeds"     // the W overlay: the vault's loose ends
 	inMentions  = "mentions"  // the M overlay: unlinked mentions of a note
 	inVersions  = "versions"  // the V overlay: the time machine
+	inGlow      = "glow"      // the heatmap overlay: a year of writing
 )
 
 // binding is one row of the keymap registry. Every key Skrin handles is
@@ -182,6 +184,7 @@ const (
 	groupWeeds     = "In Weeds (W)"
 	groupMentions  = "In Mentions (M)"
 	groupVersions  = "In the time machine (V)"
+	groupGlow      = "In Glow (the writing heatmap)"
 )
 
 var defaultBindings = []binding{
@@ -408,6 +411,13 @@ var defaultBindings = []binding{
 	{actPick, []string{"enter"}, "put this version back (u or U undoes)", groupVersions, inVersions},
 	{actCancel, []string{"esc", "ctrl+c"}, "close the time machine, changing nothing", groupVersions, inVersions},
 
+	{actLeft, []string{"left", "h"}, "a day back", groupGlow, inGlow},
+	{actRight, []string{"right", "l"}, "a day forward", groupGlow, inGlow},
+	{actUp, []string{"up", "k"}, "a week back", groupGlow, inGlow},
+	{actDown, []string{"down", "j"}, "a week forward", groupGlow, inGlow},
+	{actPick, []string{"enter"}, "what was written that day", groupGlow, inGlow},
+	{actCancel, []string{"esc", "ctrl+c"}, "close Glow", groupGlow, inGlow},
+
 	{actPick, []string{"enter"}, "text: save · folder row: pick the highlighted match", groupQuickNote, inQuickNote},
 	{actNewLine, []string{"shift+enter", "alt+enter"}, "a new line", groupQuickNote, inQuickNote},
 	{actNextField, []string{"tab"}, "text ↔ folder", groupQuickNote, inQuickNote},
@@ -483,6 +493,7 @@ var actionName = map[action]string{
 	actOtherPageDown: "other-page-down", actOtherPageUp: "other-page-up",
 	actMentions: "mentions", actLinkMention: "link-mention",
 	actLinkAllMentions: "link-all-mentions",
+	actGlow:            "glow",
 }
 
 // actionByName is actionName the other way round, for reading overrides

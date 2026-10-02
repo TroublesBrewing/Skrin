@@ -187,6 +187,10 @@ type Options struct {
 	// once, notes untouched for half a year — gathered on one page. An
 	// experiment, off unless switched on in Settings' beta block.
 	Weeds bool
+	// Glow turns on the writing heatmap: the last year of the vault as a
+	// grid of squares, green where you wrote. Palette only, and an
+	// experiment, off unless switched on in Settings' beta block.
+	Glow bool
 	// Habits turns on the habits view (T). Off — the default — keeps it
 	// out of the way entirely: no key, no palette row, no tip, as the
 	// Claude drawer does when it is switched off. The "### Habits" block
@@ -331,6 +335,7 @@ type Model struct {
 	weeds     *weedsView    // the W overlay: the vault's loose ends
 	mentions  *mentionsView // the M overlay: unlinked mentions of a note
 	versions  *versionsView // the V overlay: the time machine
+	glow      *glowView     // the heatmap overlay: a year of writing
 	quickNote *quickNote
 	table     *tableForm // Insert table, over the editor
 	noteFind  *noteFind  // Ctrl+F in the editor
@@ -608,6 +613,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.mentionKey(msg)
 		case m.versions != nil:
 			m.versionKey(msg)
+		case m.glow != nil:
+			m.glowKey(msg)
 		case m.quickNote != nil:
 			m.quickNoteKey(msg)
 		case m.search != nil:
@@ -715,6 +722,8 @@ func (m *Model) do(a action) tea.Cmd {
 		m.startTagRename()
 	case actVersions:
 		m.openVersions()
+	case actGlow:
+		m.openGlow()
 	case actCopyPath:
 		return m.copyPath(false)
 	case actCopyPathFull:
